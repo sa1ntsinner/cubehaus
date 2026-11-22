@@ -986,7 +986,10 @@ export const COLL: readonly TrainerCaseData[] = [
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "T shape: two neighbouring colours on the right, two neighbouring colours on the left; the back right corner's right sticker matches the front left corner's left one.",
+      "ru": "Форма T: два соседних цвета справа, два соседних цвета слева; наклейка заднего правого угла справа совпадает по цвету с наклейкой переднего левого слева."
+    },
     "subsets": []
   },
   {
@@ -1035,7 +1038,10 @@ export const COLL: readonly TrainerCaseData[] = [
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "T shape: two neighbouring colours on the right, two neighbouring colours on the left; the front right corner's front sticker matches the front left corner's left one.",
+      "ru": "Форма T: два соседних цвета справа, два соседних цвета слева; наклейка переднего правого угла спереди совпадает по цвету с наклейкой переднего левого слева."
+    },
     "subsets": []
   },
   {
@@ -1344,7 +1350,10 @@ export const COLL: readonly TrainerCaseData[] = [
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "L shape: two neighbouring colours on the right, two opposite colours at the back; the front left corner's front sticker matches the back right corner's right one.",
+      "ru": "Форма L: два соседних цвета справа, два противоположных цвета сзади; наклейка переднего левого угла спереди совпадает по цвету с наклейкой заднего правого справа."
+    },
     "subsets": []
   },
   {
@@ -1393,7 +1402,10 @@ export const COLL: readonly TrainerCaseData[] = [
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "L shape: two neighbouring colours on the right, two opposite colours at the back; the front right corner's right sticker matches the back left corner's back one.",
+      "ru": "Форма L: два соседних цвета справа, два противоположных цвета сзади; наклейка переднего правого угла справа совпадает по цвету с наклейкой заднего левого сзади."
+    },
     "subsets": []
   },
   {
@@ -1494,7 +1506,10 @@ export const COLL: readonly TrainerCaseData[] = [
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Sune shape: two neighbouring colours on the left; the front left corner's front sticker matches the front right corner's right one.",
+      "ru": "Форма Суне: два соседних цвета слева; наклейка переднего левого угла спереди совпадает по цвету с наклейкой переднего правого справа."
+    },
     "subsets": []
   },
   {
@@ -1751,7 +1766,10 @@ export const COLL: readonly TrainerCaseData[] = [
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Sune shape: two neighbouring colours on the left; the front left corner's front sticker matches the back left corner's left one.",
+      "ru": "Форма Суне: два соседних цвета слева; наклейка переднего левого угла спереди совпадает по цвету с наклейкой заднего левого слева."
+    },
     "subsets": []
   },
   {

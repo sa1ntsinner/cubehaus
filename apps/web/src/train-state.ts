@@ -101,3 +101,61 @@ export function reviewCase(
     from[Math.min(from.length - 1, Math.floor(draw * from.length))] ?? null
   );
 }
+
+/**
+ * The algorithm a person chose as theirs for a case, by set and case (`pll/<id>`): what
+ * Learn shows first and the drill's answer gives. Stored as the setting `trainer.algs`,
+ * so it is in the backup; a choice of an algorithm no longer shipped falls back to the
+ * best one.
+ */
+export type AlgChoices = Readonly<Record<string, string>>;
+type WithAlgs<A> = { id: string; algs: readonly A[] };
+
+const choiceKey = (set: string, caseId: string) => `${set}/${caseId}`;
+
+export function myAlg<A extends { moves: string }>(
+  c: WithAlgs<A>,
+  choices: AlgChoices,
+  set = "",
+): A {
+  const chosen = choices[choiceKey(set, c.id)];
+  return (c.algs.find((a) => a.moves === chosen) ?? c.algs[0]) as A;
+}
+
+/** The case's other algorithms, best first. */
+export function otherAlgs<A extends { moves: string }>(
+  c: WithAlgs<A>,
+  choices: AlgChoices,
+  set = "",
+): A[] {
+  const mine = myAlg(c, choices, set);
+  return c.algs.filter((a) => a !== mine);
+}
+
+/** The choices after choosing `moves`; choosing the best one forgets the choice. */
+export function chooseAlg<A extends { moves: string }>(
+  choices: AlgChoices,
+  set: string,
+  c: WithAlgs<A>,
+  moves: string,
+): Record<string, string> {
+  const next: Record<string, string> = { ...choices };
+  const key = choiceKey(set, c.id);
+  if (moves === c.algs[0]?.moves) delete next[key];
+  else next[key] = moves;
+  return next;
+}
+
+export function parseChoices(json: string | null): Record<string, string> {
+  try {
+    const value: unknown = JSON.parse(json ?? "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return {};
+  }
+}

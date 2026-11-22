@@ -22,6 +22,7 @@ import { backupFileName, download } from "./backup-file";
 import { backupDue } from "./db/native";
 import { openDatabase } from "./db/open";
 import { createPendingJournal, memoryStorage } from "./db/pending";
+import { canFullscreen, toggleFullscreen } from "./fullscreen";
 import { actionsForEvent, bindActions } from "./keys/actions";
 import type { Action } from "./keys/engine";
 import { Help } from "./keys/Help";
@@ -34,6 +35,7 @@ import { pictureSupport } from "./scramble/picture";
 import {
   createTrainingClient,
   drillName,
+  heldScramble,
   type TrainingProfile,
   trainingReady,
   type WorkerLike,
@@ -65,6 +67,7 @@ import {
   VIEW_PARTS,
   type ViewSizes,
 } from "./view-size";
+import { keepAwake, type WakeLockHost } from "./wake-lock";
 import "./input/behavior.css";
 
 const Training = lazy(() =>
@@ -348,16 +351,18 @@ function TimerPage({
     event,
     isMulti ? cubes : null,
     drill ? JSON.stringify(drill) : null,
+    view.settings.holding,
   ]);
   const currentKey = useRef(historyKey);
   currentKey.current = historyKey;
   // ← and → go back and forward through the scrambles of this puzzle (and Multi count).
   const [history] = useState(() =>
     createScrambleHistory(async (key) => {
-      const [event, cubes, drill] = JSON.parse(key) as [
+      const [event, cubes, drill, holding] = JSON.parse(key) as [
         EventId,
         number | null,
         string | null,
+        string,
       ];
       if (drill) {
         if (fixed) return fixed;
@@ -368,7 +373,7 @@ function TimerPage({
             { request } as TrainingProfile,
             ++trainerSequence.current,
           );
-          if (made) return made.scramble;
+          if (made) return heldScramble(request, made.scramble, holding);
         }
         throw new Error("The drill changed");
       }
@@ -491,7 +496,10 @@ function TimerPage({
   >(
     openCommands || seed?.state === "palette"
       ? "palette"
-      : openDrills || seed?.state === "drills" || seed?.state === "drills-oll"
+      : openDrills ||
+          seed?.state === "drills" ||
+          seed?.state === "drills-oll" ||
+          seed?.state === "drills-white"
         ? "drills"
         : seed?.state === "keys"
           ? "help"
@@ -681,6 +689,12 @@ function TimerPage({
     (state.phase === "idle" || state.phase === "stopped");
 
   // Today's count starts again at local midnight, and when the tab comes back.
+  // The screen stays on while the app shows: a solve or a drill is not touched for a while.
+  const awake = view.settings.awake;
+  useEffect(
+    () => (awake ? keepAwake(navigator as WakeLockHost, document) : undefined),
+    [awake],
+  );
   const showToday = view.settings.today;
   useEffect(() => {
     if (!showToday) return;
@@ -1102,6 +1116,9 @@ function TimerPage({
   };
   for (let i = 0; i < 9; i++)
     handlers[`session.${i + 1}`] = () => goToSession(i);
+  // Only where the browser has a fullscreen: elsewhere the key and its line in Keys go.
+  if (canFullscreen(document))
+    handlers["view.fullscreen"] = () => toggleFullscreen(document);
   const actions = bindActions(
     handlers,
     (spec) => setNotice(words.notYet(spec.title[view.settings.language])),
@@ -1472,6 +1489,7 @@ function TimerPage({
           <Training
             profile={profile}
             words={words}
+            holding={view.settings.holding}
             onChange={(next) =>
               void app.setSetting("training", next, session.id)
             }
@@ -1635,8 +1653,9 @@ function TimerPage({
           </p>
         )}
         <nav data-no-timer>
-          <a href="#/train" data-action="train">
-            {words.train.title}
+          <a href="#/train" data-action="train" aria-label={words.train.title}>
+            <span data-word="long">{words.train.title}</span>
+            <span data-word="short">{words.train.short}</span>
           </a>{" "}
           <a href="#/progress" data-action="progress">
             {words.progress.title}

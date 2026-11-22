@@ -24,8 +24,8 @@ const FACES = ["R", "U", "F"] as const;
 const POWERS = ["", "2", "'"] as const;
 export const MOVES = FACES.flatMap((f) => POWERS.map((p) => f + p));
 
-type Perm = { pieces: number[]; orientation: number[] };
-type Full = { corners: Perm; edges: Perm };
+export type Perm = { pieces: number[]; orientation: number[] };
+export type Full = { corners: Perm; edges: Perm };
 
 const FACT = [1, 1, 2, 6, 24, 120, 720, 5040];
 
@@ -56,8 +56,8 @@ function cornerIndex(s: Full): number {
 
 // First-two-layer edge coordinate: where each of the five is among the nine places, and
 // its flip.
-const EDGE_SIZE = 9 * 8 * 7 * 6 * 5 * 32;
-function edgeIndex(s: Full): number {
+export const EDGE_SIZE = 9 * 8 * 7 * 6 * 5 * 32;
+export function edgeIndex(s: Full): number {
   let index = 0;
   const used: number[] = [];
   let flips = 0;
@@ -89,7 +89,7 @@ type Tables = {
   goalCorners: "solved" | "oriented";
 };
 
-function apply(s: Full, t: Full): Full {
+export function apply(s: Full, t: Full): Full {
   const orbit = (a: Perm, b: Perm, n: number): Perm => ({
     pieces: b.pieces.map((from) => a.pieces[from] as number),
     orientation: b.pieces.map(
@@ -103,7 +103,7 @@ function apply(s: Full, t: Full): Full {
   };
 }
 
-function solved(): Full {
+export function solved(): Full {
   return {
     corners: { pieces: [...Array(8).keys()], orientation: Array(8).fill(0) },
     edges: { pieces: [...Array(12).keys()], orientation: Array(12).fill(0) },
@@ -111,7 +111,7 @@ function solved(): Full {
 }
 
 /** Fills a distance table by breadth-first search from the goal states. */
-function fill(
+export function fill(
   size: number,
   starts: readonly Full[],
   index: (s: Full) => number,
@@ -245,15 +245,9 @@ function goalCornerStates(kind: "solved" | "oriented"): Full[] {
   return out;
 }
 
-const cache = new Map<string, Tables>();
-
-export function tables(
-  puzzle: KPuzzle,
-  goalCorners: "solved" | "oriented",
-): Tables {
-  const found = cache.get(goalCorners);
-  if (found) return found;
-  const moves = MOVES.map((m) => {
+/** R, U and F in their three powers, as cubing's transformations. */
+export function movesOf(puzzle: KPuzzle): Full[] {
+  return MOVES.map((m) => {
     const t = puzzle.moveToTransformation(m).transformationData;
     const c = t.CORNERS as unknown as {
       permutation: number[];
@@ -274,6 +268,17 @@ export function tables(
       },
     };
   });
+}
+
+const cache = new Map<string, Tables>();
+
+export function tables(
+  puzzle: KPuzzle,
+  goalCorners: "solved" | "oriented",
+): Tables {
+  const found = cache.get(goalCorners);
+  if (found) return found;
+  const moves = movesOf(puzzle);
   const built: Tables = {
     moves,
     corner: fillCorners(goalCornerStates(goalCorners), moves),

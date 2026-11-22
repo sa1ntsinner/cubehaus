@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import {
   createTrainingClient,
+  heldScramble,
   type TrainingProfile,
   trainingReady,
   type WorkerLike,
@@ -96,4 +97,15 @@ it("late PLL result cannot replace the selected OLL scramble", async () => {
   worker.held.at(-1)?.reply();
   expect(await slow).toBeNull();
   expect(await quick).toEqual({ sequence: 10, moves: ["R'"], length: 1 });
+});
+
+it("a last-layer drill is renamed for the colours held, a cross drill is not", () => {
+  const ll = { kind: "pll", caseIds: ["x"] } as const;
+  // Yellow on top, green in front: the case must come up on the yellow side.
+  expect(heldScramble(ll, "R U R' F2 D", "DF")).toBe("L D L' F2 U");
+  expect(heldScramble(ll, "R U R'", "UF")).toBe("R U R'");
+  expect(heldScramble({ kind: "two-gen" }, "R U2 R'", "DF")).toBe("L D2 L'");
+  const cross = { kind: "easy-cross", face: "U", length: 3 } as const;
+  expect(heldScramble(cross, "R U F", "DF")).toBe("R U F");
+  expect(heldScramble(null, "R U F", "DF")).toBe("R U F");
 });

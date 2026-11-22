@@ -1,5 +1,6 @@
 import {
   type EventId,
+  eventInfo,
   formatSolve,
   formatTime,
   penaltyOf,
@@ -201,15 +202,16 @@ export function Timer({
           <Moves line={scramble} event={event} upto={upto} />
         ) : blocked ? (
           blocked
+        ) : pending ? (
+          // The first scramble is still being made: no words at all for the moment it
+          // usually takes, then the waiting line. `No scramble` only once making one failed.
+          <span data-part="scramble-wait">
+            {words.waiting(eventInfo(event).label)}
+          </span>
         ) : (
           <>
             {words.noScramble}{" "}
-            <button
-              data-no-timer
-              type="button"
-              disabled={pending}
-              onClick={retry}
-            >
+            <button data-no-timer type="button" onClick={retry}>
               {words.retry}
             </button>
           </>

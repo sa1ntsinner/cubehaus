@@ -1,11 +1,12 @@
 import {
+  algGroups,
   caseMedian,
   type Grade,
   gradeOf,
-  groupMoves,
   newCard,
   nextCase,
   pictureOf,
+  pllArrows,
   recall,
   recolour,
   review,
@@ -17,11 +18,15 @@ import {
   weakCases,
 } from "@cubehaus/algs";
 import { formatTime, newId } from "@cubehaus/core";
+import { holdingFaces } from "@cubehaus/cube/holding";
 import type { TrainerAttempt, TrainerCase } from "@cubehaus/storage";
 import {
+  createContext,
   Fragment,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -29,16 +34,22 @@ import {
   useState,
 } from "react";
 import type { AppView, createAppState } from "../app-state";
-import { CaseDiagram } from "../scramble/Training";
+import { CaseDiagram, SlotDiagram } from "../scramble/Training";
 import {
   createTrainingClient,
+  heldScramble,
   type TrainingClient,
   type WorkerLike,
 } from "../scramble/training-client";
 import type { Text } from "../text";
 import {
+  type AlgChoices,
+  chooseAlg,
   type Drill,
   drillStep,
+  myAlg,
+  otherAlgs,
+  parseChoices,
   reviewCase,
   reviewPool,
   showCase,
@@ -53,9 +64,10 @@ import "../input/train-behavior.css";
  * picture turned and recoloured at random or as a scramble; Review shows only the slow
  * and often missed ones. Attempts are stored apart from solves.
  */
-const SETS: readonly SetId[] = ["pll", "oll", "coll"];
+const SETS: readonly SetId[] = ["pll", "oll", "coll", "f2l"];
 const showKey = "trainer.show";
 const poolKey = (set: SetId) => `trainer.pool.${set}`;
+const algsKey = "trainer.algs";
 type Mode = "learn" | "drill" | "review";
 const MODES: readonly Mode[] = ["learn", "drill", "review"];
 type App = ReturnType<typeof createAppState>;
@@ -86,12 +98,15 @@ const kindOf = (move: string) =>
 function Alg({ moves }: { moves: string }) {
   return (
     <span data-part="train-moves">
-      {groupMoves(moves).map((group, g) => (
+      {algGroups(moves).map((group, g) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: groups are positional.
         <Fragment key={g}>
-          {g > 0 && " "}
-          <span data-part="train-group">
-            {group.map((move, m) => (
+          {g > 0 && <span data-part="train-gap"> </span>}
+          <span
+            data-part="train-group"
+            data-trigger={group.trigger ? "" : undefined}
+          >
+            {group.moves.map((move, m) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: moves are positional.
               <Fragment key={m}>
                 {m > 0 && " "}
@@ -105,10 +120,54 @@ function Alg({ moves }: { moves: string }) {
   );
 }
 
-function Picture({ set, stickers }: { set: SetId; stickers: string }) {
+/** One algorithm in the case view: its U turn before, the moves, the move count. */
+function AlgLine({
+  alg,
+  words,
+  children,
+}: {
+  alg: TrainerCaseData["algs"][number];
+  words: Text;
+  children?: ReactNode;
+}) {
+  return (
+    <li data-part="train-alg">
+      {alg.auf > 0 && (
+        <span data-move="plain" data-part="train-auf">
+          {["", "U", "U2", "U'"][alg.auf]}
+        </span>
+      )}
+      <Alg moves={alg.moves} />
+      <span data-part="train-alg-foot">
+        <span data-part="train-count">
+          {words.train.moves(alg.metrics.moves)}
+        </span>
+        {children}
+      </span>
+    </li>
+  );
+}
+
+/** The colours of the faces as the person holds the cube, for every picture here. */
+const Held = createContext<Record<string, string> | undefined>(undefined);
+
+function Picture({
+  set,
+  stickers,
+  arrows = false,
+}: {
+  set: SetId;
+  stickers: string;
+  /** PLL: arrows on the top for which piece goes where. */
+  arrows?: boolean;
+}) {
+  const faces = useContext(Held);
+  if (set === "f2l") return <SlotDiagram stickers={stickers} faces={faces} />;
   return (
     <CaseDiagram
       stickers={stickers}
+      arrows={arrows && set === "pll" ? pllArrows(stickers) : undefined}
+      faces={faces}
       orientationOnly={set === "oll"}
       edgesOnTop={set === "coll"}
     />
@@ -135,9 +194,13 @@ export function Train({
   const [attempts, setAttempts] = useState<TrainerAttempt[]>([]);
   // How the drill shows a case: remembered, changed at the drill's foot.
   const [byPicture, setByPicture] = useState<boolean | null>(null);
+  // The algorithm each case is learnt with, when not the best one (setting `trainer.algs`).
+  const [choices, setChoices] = useState<AlgChoices>({});
   // Drill the person's own cases, or the whole set: remembered per set.
   const [whole, setWhole] = useState<boolean | null>(null);
   const ru = view.settings.language === "ru";
+  const holding = view.settings.holding;
+  const faces = useMemo(() => holdingFaces(holding), [holding]);
 
   useEffect(() => {
     let stale = false;
@@ -153,12 +216,14 @@ export function Train({
       store.attempts(set),
       stored?.get(showKey) ?? null,
       stored?.get(poolKey(set)) ?? null,
-    ]).then(([c, a, show, pool]) => {
+      stored?.get(algsKey) ?? null,
+    ]).then(([c, a, show, pool, algs]) => {
       if (stale) return;
       setRows(c);
       setAttempts(a);
       setByPicture(show !== "scramble");
       setWhole(pool === "all");
+      setChoices(parseChoices(algs));
     });
     return () => {
       stale = true;
@@ -177,96 +242,110 @@ export function Train({
   const go = (next: { set?: SetId; mode?: Mode }) => {
     location.hash = `#/train/${next.set ?? set}/${next.mode ?? mode}`;
   };
-  const learning = new Set(rows?.map((r) => r.caseId));
+  const learning = useMemo(() => new Set(rows?.map((r) => r.caseId)), [rows]);
 
   return (
-    <main data-no-timer data-part="train" data-mode={mode}>
-      <nav>
-        <a href="#/" data-action="train-close">
-          {words.timer}
-        </a>
-      </nav>
-      <h1>{t.title}</h1>
-      <div data-part="train-bar">
-        <p data-part="train-sets">
-          {SETS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              data-action="train-set"
-              data-set={id}
-              aria-pressed={id === set}
-              onClick={() => go({ set: id })}
-            >
-              {id.toUpperCase()}
-            </button>
-          ))}
-        </p>
-        <p data-part="train-modes">
-          {MODES.map((id) => (
-            <button
-              key={id}
-              type="button"
-              data-action="train-mode"
-              data-mode={id}
-              aria-pressed={id === mode}
-              onClick={() => go({ mode: id })}
-            >
-              {t.modes[id]}
-            </button>
-          ))}
-        </p>
-      </div>
-      {rows === null || byPicture === null || whole === null ? null : mode ===
-        "learn" ? (
-        <Learn
-          key={set}
-          set={set}
-          cases={cases}
-          learning={learning}
-          words={words}
-          ru={ru}
-          onAdd={async (id) => {
-            if (!store) return;
-            const { card, dueAt } = await newCard(id, Date.now());
-            await store.putCase({ setId: set, caseId: id, card, dueAt });
-            setRows(await store.cases(set));
-          }}
-          onRemove={async (id) => {
-            if (!store) return;
-            await store.removeCase(set, id);
-            setRows(await store.cases(set));
-          }}
-        />
-      ) : (
-        <Practice
-          key={`${set}/${mode}/${whole}`}
-          set={set}
-          review={mode === "review"}
-          cases={cases}
-          rows={rows}
-          attempts={attempts}
-          words={words}
-          ru={ru}
-          precision={view.settings.precision}
-          byPicture={byPicture}
-          whole={whole}
-          onWhole={(next) => {
-            setWhole(next);
-            void stored?.set(poolKey(set), next ? "all" : "mine");
-          }}
-          onShow={(picture) => {
-            setByPicture(picture);
-            void stored?.set(showKey, picture ? "picture" : "scramble");
-          }}
-          onSaved={(nextRows, nextAttempts) => {
-            setRows(nextRows);
-            setAttempts(nextAttempts);
-          }}
-          app={app}
-        />
-      )}
-    </main>
+    <Held.Provider value={faces}>
+      <main data-no-timer data-part="train" data-mode={mode}>
+        <nav>
+          <a href="#/" data-action="train-close">
+            {words.timer}
+          </a>
+        </nav>
+        <h1>{t.title}</h1>
+        <div data-part="train-bar">
+          <p data-part="train-sets">
+            {SETS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                data-action="train-set"
+                data-set={id}
+                aria-pressed={id === set}
+                onClick={() => go({ set: id })}
+              >
+                {id.toUpperCase()}
+              </button>
+            ))}
+          </p>
+          <p data-part="train-modes">
+            {MODES.map((id) => (
+              <button
+                key={id}
+                type="button"
+                data-action="train-mode"
+                data-mode={id}
+                aria-pressed={id === mode}
+                onClick={() => go({ mode: id })}
+              >
+                {t.modes[id]}
+              </button>
+            ))}
+          </p>
+        </div>
+        {rows === null || byPicture === null || whole === null ? null : mode ===
+          "learn" ? (
+          <Learn
+            key={set}
+            set={set}
+            cases={cases}
+            learning={learning}
+            words={words}
+            ru={ru}
+            choices={choices}
+            onChoose={(next) => {
+              setChoices(next);
+              void stored?.set(algsKey, JSON.stringify(next));
+            }}
+            onDrill={async (ids, on) => {
+              if (!store) return;
+              const current = new Set(
+                (await store.cases(set)).map((r) => r.caseId),
+              );
+              for (const id of ids) {
+                if (on === current.has(id)) continue;
+                if (!on) await store.removeCase(set, id);
+                // Back in: the schedule it had, else a new card due now.
+                else if (!(await store.restoreCase(set, id))) {
+                  const { card, dueAt } = await newCard(id, Date.now());
+                  await store.putCase({ setId: set, caseId: id, card, dueAt });
+                }
+              }
+              setRows(await store.cases(set));
+            }}
+          />
+        ) : (
+          <Practice
+            key={`${set}/${mode}/${whole}`}
+            set={set}
+            review={mode === "review"}
+            cases={cases}
+            rows={rows}
+            attempts={attempts}
+            words={words}
+            ru={ru}
+            precision={view.settings.precision}
+            byPicture={byPicture}
+            choices={choices}
+            holding={holding}
+            whole={whole}
+            onWhole={(next) => {
+              setWhole(next);
+              void stored?.set(poolKey(set), next ? "all" : "mine");
+            }}
+            onShow={(picture) => {
+              setByPicture(picture);
+              void stored?.set(showKey, picture ? "picture" : "scramble");
+            }}
+            onSaved={(nextRows, nextAttempts) => {
+              setRows(nextRows);
+              setAttempts(nextAttempts);
+            }}
+            app={app}
+          />
+        )}
+      </main>
+    </Held.Provider>
   );
 }
 
@@ -276,23 +355,37 @@ function Learn({
   learning,
   words,
   ru,
-  onAdd,
-  onRemove,
+  onDrill,
+  choices,
+  onChoose,
 }: {
   set: SetId;
   cases: readonly TrainerCaseData[];
   learning: ReadonlySet<string>;
   words: Text;
   ru: boolean;
-  onAdd(id: string): Promise<void>;
-  onRemove(id: string): Promise<void>;
+  /** Puts the cases into the drills, or takes them out. */
+  onDrill(ids: readonly string[], on: boolean): Promise<void>;
+  choices: AlgChoices;
+  onChoose(next: AlgChoices): void;
 }) {
   const t = words.train;
   const [open, setOpen] = useState<string | null>(null);
-  const [twoLook, setTwoLook] = useState(false);
-  const shown = twoLook
-    ? cases.filter((c) => c.subsets.includes("2-look"))
-    : cases;
+  // The other algorithms of the open case, one tap away.
+  const [more, setMore] = useState(false);
+  // A tap shows at once; the stored list catches up a moment later.
+  const [pending, setPending] = useState<ReadonlyMap<string, boolean>>(
+    new Map(),
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the stored list arrived.
+  useEffect(() => setPending(new Map()), [learning]);
+  const picked = (id: string) => pending.get(id) ?? learning.has(id);
+  const twoLook = cases
+    .filter((c) => c.subsets.includes("2-look"))
+    .map((c) => c.id);
+  const all = cases.map((c) => c.id);
+  const inDrills = (ids: readonly string[]) =>
+    ids.length > 0 && ids.every((id) => learning.has(id));
   const current = cases.find((c) => c.id === open) ?? null;
 
   // Narrow, the case takes the list's place: show it from its top, and on the way back
@@ -302,6 +395,7 @@ function Learn({
     const narrow = matchMedia("(max-width: 899px)").matches;
     if (id && !open) listScroll.current = window.scrollY;
     setOpen(id);
+    setMore(false);
     if (narrow)
       requestAnimationFrame(() =>
         window.scrollTo({ top: id ? 0 : listScroll.current }),
@@ -324,37 +418,72 @@ function Learn({
   return (
     <div data-part="train-learn" data-open={current ? "" : undefined}>
       <section data-part="train-cases">
-        {set === "oll" && (
-          <p data-part="train-filter">
-            <button
-              type="button"
-              aria-pressed={!twoLook}
-              onClick={() => setTwoLook(false)}
-            >
-              {t.all}
-            </button>
+        <p data-part="train-filter">
+          <button
+            type="button"
+            data-action="train-all"
+            aria-pressed={inDrills(all)}
+            onClick={() => void onDrill(all, true)}
+          >
+            {t.all}
+          </button>
+          <button
+            type="button"
+            data-action="train-none"
+            aria-pressed={learning.size === 0}
+            onClick={() => void onDrill(all, false)}
+          >
+            {t.none}
+          </button>
+          {twoLook.length > 0 && (
             <button
               type="button"
               data-action="train-two-look"
-              aria-pressed={twoLook}
-              onClick={() => setTwoLook(true)}
+              aria-pressed={
+                inDrills(twoLook) && learning.size === twoLook.length
+              }
+              onClick={() =>
+                void onDrill(twoLook, true).then(() =>
+                  onDrill(
+                    all.filter((id) => !twoLook.includes(id)),
+                    false,
+                  ),
+                )
+              }
             >
               {t.twoLook}
             </button>
-          </p>
-        )}
+          )}
+        </p>
         <ul data-part="train-case-list">
-          {shown.map((c) => (
-            <li key={c.id} data-case-id={c.id}>
+          {cases.map((c) => (
+            <li
+              key={c.id}
+              data-case-id={c.id}
+              data-learning={learning.has(c.id) ? "" : undefined}
+            >
               <button
                 type="button"
+                aria-label={c.label}
                 aria-current={c.id === open ? "true" : undefined}
                 data-learning={learning.has(c.id) ? "" : undefined}
                 onClick={() => choose(c.id)}
               >
                 <Picture set={set} stickers={pictureOf(c)} />
-                <span>{c.label}</span>
               </button>
+              <label data-part="train-pick">
+                <input
+                  type="checkbox"
+                  data-action="train-pick"
+                  checked={picked(c.id)}
+                  onChange={(event) => {
+                    const on = event.currentTarget.checked;
+                    setPending((was) => new Map(was).set(c.id, on));
+                    void onDrill([c.id], on);
+                  }}
+                />
+                <span>{c.label}</span>
+              </label>
             </li>
           ))}
         </ul>
@@ -369,7 +498,7 @@ function Learn({
             {t.back}
           </button>
           <div data-part="train-case-head">
-            <Picture set={set} stickers={pictureOf(current)} />
+            <Picture set={set} stickers={pictureOf(current)} arrows />
             <h2>{current.label}</h2>
           </div>
           {current.recognise && (
@@ -380,28 +509,49 @@ function Learn({
           {current.algs.length === 0 ? (
             <p data-part="train-recognise">{t.noAlg}</p>
           ) : (
-            <ol data-part="train-algs">
-              {current.algs.map((alg) => (
-                <li key={alg.moves} data-part="train-alg">
-                  {alg.auf > 0 && (
-                    <span data-move="plain" data-part="train-auf">
-                      {["", "U", "U2", "U'"][alg.auf]}
-                    </span>
+            <>
+              <ol data-part="train-algs">
+                <AlgLine alg={myAlg(current, choices, set)} words={words} />
+              </ol>
+              {otherAlgs(current, choices, set).length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    data-action="train-more"
+                    aria-expanded={more}
+                    onClick={() => setMore(!more)}
+                  >
+                    {t.more(otherAlgs(current, choices, set).length)}
+                  </button>
+                  {more && (
+                    <ol data-part="train-algs" data-others="">
+                      {otherAlgs(current, choices, set).map((alg) => (
+                        <AlgLine key={alg.moves} alg={alg} words={words}>
+                          <button
+                            type="button"
+                            data-action="train-use"
+                            onClick={() =>
+                              onChoose(
+                                chooseAlg(choices, set, current, alg.moves),
+                              )
+                            }
+                          >
+                            {t.use}
+                          </button>
+                        </AlgLine>
+                      ))}
+                    </ol>
                   )}
-                  <Alg moves={alg.moves} />
-                  <span data-part="train-count">
-                    {t.moves(alg.metrics.moves)}
-                  </span>
-                </li>
-              ))}
-            </ol>
+                </>
+              )}
+            </>
           )}
           <p data-part="train-case-actions">
             {learning.has(current.id) ? (
               <button
                 type="button"
                 data-action="train-remove"
-                onClick={() => void onRemove(current.id)}
+                onClick={() => void onDrill([current.id], false)}
               >
                 {t.remove}
               </button>
@@ -409,7 +559,7 @@ function Learn({
               <button
                 type="button"
                 data-action="train-add"
-                onClick={() => void onAdd(current.id)}
+                onClick={() => void onDrill([current.id], true)}
               >
                 {t.add}
               </button>
@@ -473,6 +623,8 @@ function Practice({
   ru,
   precision,
   byPicture,
+  choices,
+  holding,
   onShow,
   whole,
   onWhole,
@@ -488,6 +640,8 @@ function Practice({
   ru: boolean;
   precision: 2 | 3;
   byPicture: boolean;
+  choices: AlgChoices;
+  holding: string;
   onShow(picture: boolean): void;
   whole: boolean;
   onWhole(whole: boolean): void;
@@ -575,7 +729,9 @@ function Practice({
         return;
       }
       const auf = random4();
-      const colour = random4();
+      // A last-layer case comes up with any side in front; an F2L case is the front
+      // right slot's, so its colours stay.
+      const colour = set === "f2l" ? 0 : random4();
       if (byPicture) {
         setShown({ caseId: id, auf, colour, scramble: null });
         moveDrill(showCase(true));
@@ -602,10 +758,14 @@ function Practice({
         caseId: id,
         auf,
         colour,
-        scramble: turnScramble(result.scramble, colour),
+        scramble: heldScramble(
+          { kind: set, caseIds: [id] },
+          turnScramble(result.scramble, colour),
+          holding,
+        ),
       });
     },
-    [byPicture, onlyWeak, whole, pool, set, moveDrill],
+    [byPicture, onlyWeak, whole, pool, set, holding, moveDrill],
   );
 
   // A new sitting, or the way of showing changed: the first case.
@@ -830,6 +990,7 @@ function Practice({
             <Picture
               set={set}
               stickers={recolour(pictureOf(c, shown.auf), shown.colour)}
+              arrows={drill.phase === "stopped"}
             />
           </div>
         )}
@@ -869,7 +1030,7 @@ function Practice({
             </p>
             <p data-part="train-answer">
               <span data-part="train-label">{c.label}</span>
-              {c.algs[0] && <Alg moves={c.algs[0].moves} />}
+              {c.algs[0] && <Alg moves={myAlg(c, choices, set).moves} />}
             </p>
             {c.recognise && (
               <p data-part="train-recognise">

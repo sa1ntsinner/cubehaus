@@ -247,6 +247,28 @@ test("folder and selected sessions combine one puzzle in chronological order", a
   await expect(part("average")).toHaveText("12.67");
 });
 
+test("Progress opens on the scope and puzzle last looked at", async ({
+  page,
+}) => {
+  await page.goto("/?state=progress-scopes#/progress");
+  const part = (name: string) => page.locator(`[data-part="progress-${name}"]`);
+  const action = (name: string) =>
+    page.locator(`[data-action="progress-${name}"]`);
+  await expect(part("event-name")).toHaveText(["A", "B", "C"]);
+  await part("scope").locator("summary").click();
+  await action("scope").selectOption("folder");
+  await action("puzzle").selectOption("333fm");
+  await expect(part("scope-count")).toHaveText("3 solves");
+  // Back to the timer and in again: the same folder and puzzle.
+  await page.keyboard.press("Escape");
+  await expect(sessionButton(page)).toHaveText("A");
+  await page.keyboard.press("KeyT");
+  await expect(part("average-name")).toHaveText("mo3");
+  await part("scope").locator("summary").click();
+  await expect(action("scope")).toHaveValue("folder");
+  await expect(part("scope-count")).toHaveText("3 solves");
+});
+
 test("on a phone a month opens its days, and today counts in the file", async ({
   page,
 }) => {

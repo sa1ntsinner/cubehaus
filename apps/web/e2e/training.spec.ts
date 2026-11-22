@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { solveCross, solveXCross } from "@cubehaus/cube";
+import { holdingFaces, renameTurns } from "@cubehaus/cube/holding";
 import { kpuzzle333 } from "@cubehaus/scramble/cubing";
 import { classifyLL, lastLayerCases } from "@cubehaus/scramble/last-layer";
 import type { Page } from "@playwright/test";
@@ -25,6 +26,13 @@ const caseButton = (page: Page, name: string) =>
     .filter({
       has: page.locator("span", { hasText: new RegExp(`^${name}$`) }),
     });
+
+/**
+ * A last-layer drill's scramble as if held white on top: the default holding (yellow on
+ * top, green in front) is a z2 away, which renames back the same way.
+ */
+const whiteOnTop = (scramble: string) =>
+  renameTurns(scramble, holdingFaces("DF"));
 
 async function readyScramble(page: Page) {
   await expect(scramble(page)).toHaveAttribute("data-ready", "true", {
@@ -94,8 +102,9 @@ test("a late PLL scramble never replaces the OLL case picked after it", async ({
   await expect(line(page)).toContainText("Drill: OLL, 1 case");
   const shown = await readyScramble(page);
   const puzzle = await kpuzzle333();
-  expect(classifyLL(puzzle.defaultPattern().applyAlg(shown)).oll).toBe(oll27);
-  expect(classifyLL(puzzle.defaultPattern().applyAlg(shown)).pll).not.toBe(h);
+  const held = whiteOnTop(shown);
+  expect(classifyLL(puzzle.defaultPattern().applyAlg(held)).oll).toBe(oll27);
+  expect(classifyLL(puzzle.defaultPattern().applyAlg(held)).pll).not.toBe(h);
 
   await keyboardSolve(page);
   await expect(page.locator("[data-solve-id]")).toHaveCount(1);
@@ -110,7 +119,9 @@ test("a late PLL scramble never replaces the OLL case picked after it", async ({
   const stored = backup.tables.solve[0]?.scramble ?? "";
   expect(stored).toBe(shown);
   // Replayed on a solved cube, the stored scramble makes OLL 27.
-  expect(classifyLL(puzzle.defaultPattern().applyAlg(stored)).oll).toBe(oll27);
+  expect(
+    classifyLL(puzzle.defaultPattern().applyAlg(whiteOnTop(stored))).oll,
+  ).toBe(oll27);
   // The setting row names the drill and leads back to the sheet.
   await expect(page.locator('[data-part="training-current"]')).toHaveText(
     "OLL, 1 case",
@@ -246,7 +257,9 @@ test.describe("on a phone", () => {
     const shown = await readyScramble(page);
     const puzzle = await kpuzzle333();
     const t = lastLayerCases().pll.find((c) => c.label === "T")?.id;
-    expect(classifyLL(puzzle.defaultPattern().applyAlg(shown)).pll).toBe(t);
+    expect(
+      classifyLL(puzzle.defaultPattern().applyAlg(whiteOnTop(shown))).pll,
+    ).toBe(t);
     const box = await line(page).boundingBox();
     expect(box?.width ?? 0).toBeLessThanOrEqual(390);
   });

@@ -1,4 +1,5 @@
 import type { CrossResult, Face } from "@cubehaus/cube";
+import { holdingFaces, renameTurns } from "@cubehaus/cube/holding";
 import type { TrainingBase, TrainingLL } from "@cubehaus/scramble";
 import type { Text } from "../text";
 
@@ -47,7 +48,32 @@ export function drillName(
     case "pll":
     case "coll":
     case "ll":
+    case "f2l":
       return t.cases(request.kind.toUpperCase(), request.caseIds.length);
+  }
+}
+
+/**
+ * A drill scramble as the person applies it, in the scrambling orientation. Drills of
+ * last-layer and F2L cases and of R and U mean the faces as the person holds them while solving,
+ * so their turns are renamed for the holding; cross drills name a colour and stay.
+ */
+export function heldScramble(
+  request: TrainingProfile["request"],
+  scramble: string,
+  holding: string,
+): string {
+  if (!request) return scramble;
+  switch (request.kind) {
+    case "oll":
+    case "pll":
+    case "coll":
+    case "ll":
+    case "f2l":
+    case "two-gen":
+      return renameTurns(scramble, holdingFaces(holding));
+    default:
+      return scramble;
   }
 }
 

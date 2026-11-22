@@ -1,14 +1,17 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import { f2lKey, f2lOf } from "@cubehaus/scramble/f2l";
+import { f2lState, f2lStickers } from "@cubehaus/scramble/f2l-state";
 import { classifyLL, stickersOf } from "@cubehaus/scramble/last-layer";
 import { fromKey } from "@cubehaus/scramble/last-layer-state";
 import { generateTraining } from "@cubehaus/scramble/training";
 import { describe, expect, it } from "vitest";
-import { type BuiltSet, buildSet, render, turned } from "./build";
-import { collWords } from "./collwords";
+import { type BuiltSet, buildF2l, buildSet, render, turned } from "./build";
+import F2L_SEARCHED from "./candidates/f2l-search.json";
+import { collWords, sameColour } from "./collwords";
 import { lights, upExactly } from "./diagram";
 import { pictureOf, trainerSet } from "./index";
 import type { SetId } from "./types";
-import { kpuzzle, memberState, verify } from "./verify";
+import { kpuzzle, memberState, verify, verifyF2l } from "./verify";
 
 const dataFile = (set: SetId) => new URL(`./data/${set}.ts`, import.meta.url);
 
@@ -18,7 +21,10 @@ const dataFile = (set: SetId) => new URL(`./data/${set}.ts`, import.meta.url);
  * ships.
  */
 async function rebuilt(set: SetId): Promise<BuiltSet> {
-  const built = await buildSet(set);
+  const built =
+    set === "f2l"
+      ? await buildF2l(F2L_SEARCHED as Record<string, string[]>)
+      : await buildSet(set);
   const text = render(built);
   if (process.env.ALGS_WRITE === "1") writeFileSync(dataFile(set), text);
   expect(readFileSync(dataFile(set), "utf8")).toBe(text);
@@ -31,6 +37,10 @@ describe("trainer sets", () => {
     const cases = trainerSet("pll");
     expect(cases).toHaveLength(21);
     expect(new Set(cases.map((c) => c.label)).size).toBe(21);
+    // 2-look PLL as beginners learn it: T and Y place the corners, then the edges.
+    expect(
+      cases.filter((c) => c.subsets.includes("2-look")).map((c) => c.label),
+    ).toEqual(["H", "T", "Ua", "Ub", "Y", "Z"]);
     for (const c of cases) {
       expect(c.algs.length, c.label).toBeGreaterThanOrEqual(1);
       expect(c.algs.length).toBeLessThanOrEqual(3);
@@ -110,16 +120,37 @@ describe("trainer sets", () => {
         const verdict = await verify("coll", c.id.slice(5), alg.moves);
         expect(verdict.ok, `${c.label}: ${alg.moves}`).toBe(true);
       }
-      // A description is read from the picture; one shared by two cases of a shape is
-      // dropped from both.
+      // A description is read from the picture. Two cases of a shape that read the same
+      // are told apart by one sticker of the first that has the colour of another, which
+      // holds on its picture and on no twin's.
       const words = collWords(c.group as "S", pictureOf(c));
       const twins = cases.filter(
         (o) =>
+          o !== c &&
           o.group === c.group &&
-          collWords(o.group as "S", pictureOf(o)).en === words.en,
+          collWords(o.group as "S", pictureOf(o))?.en === words?.en,
       );
-      expect(c.recognise, c.label).toEqual(twins.length > 1 ? null : words);
+      const apart = sameColour(
+        pictureOf(c),
+        twins.map((o) => pictureOf(o)),
+      );
+      if (twins.length > 0) {
+        expect(apart, c.label).not.toBeNull();
+        const [a, b] = apart as [number, number];
+        expect(pictureOf(c)[a]).toBe(pictureOf(c)[b]);
+        for (const o of twins)
+          expect(pictureOf(o)[a]).not.toBe(pictureOf(o)[b]);
+      }
+      expect(c.recognise, c.label).toEqual(
+        collWords(
+          c.group as "S",
+          pictureOf(c),
+          twins.map((o) => pictureOf(o)),
+        ),
+      );
     }
+    // Every case has one.
+    expect(cases.filter((c) => !c.recognise).map((c) => c.label)).toEqual([]);
     // Sune with its corners in place is solved by Sune itself.
     expect(cases.find((c) => c.label === "S 1")?.algs[0]?.moves).toBe(
       "R U R' U R U2 R'",
@@ -141,5 +172,32 @@ describe("trainer sets", () => {
         c.id,
       );
     }
+  }, 120_000);
+  it("F2L has 41 cases and every shipped algorithm solves the slot in R, U and F", async () => {
+    const built = await rebuilt("f2l");
+    const cases = trainerSet("f2l");
+    expect(cases).toHaveLength(41);
+    const count = (group: string) =>
+      cases.filter((c) => c.group === group).length;
+    expect(["top", "edge", "corner", "slot"].map(count)).toEqual([24, 6, 6, 5]);
+    for (const c of cases) {
+      expect(c.algs, c.label).toHaveLength(3);
+      expect(c.algs[0]?.auf).toBe(0);
+      for (const alg of c.algs) {
+        expect(alg.moves, c.label).toMatch(/^[RUF]['2]?( [RUF]['2]?)*$/);
+        const verdict = await verifyF2l(c.id.slice(4), alg.moves);
+        expect(verdict.ok, `${c.label}: ${alg.moves}`).toBe(true);
+      }
+      // The picture is the pair as the main algorithm expects it.
+      expect(pictureOf(c)).toBe(f2lStickers(f2lState(c.state)));
+      expect(f2lKey(f2lState(c.state))).toBe(c.id.slice(4));
+    }
+    // The plainest insert: the case R U' R' makes is solved by R U R'.
+    const puzzle = await kpuzzle();
+    const made = f2lKey(f2lOf(puzzle.defaultPattern().applyAlg("R U' R'")));
+    expect(cases.find((c) => c.id === `f2l-${made}`)?.algs[0]?.moves).toBe(
+      "R U R'",
+    );
+    expect(built.rejected).toEqual([]);
   }, 120_000);
 });

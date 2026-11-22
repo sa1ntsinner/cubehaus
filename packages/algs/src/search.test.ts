@@ -1,7 +1,9 @@
 import { writeFileSync } from "node:fs";
+import { F2L_CASES, f2lState, f2lTurned } from "@cubehaus/scramble/f2l-state";
 import { describe, expect, it } from "vitest";
 import { turned } from "./build";
 import { collCases, collState } from "./coll";
+import { f2lTables, searchF2l } from "./f2l-search";
 import { searchLL, tables } from "./search";
 import { kpuzzle, verify } from "./verify";
 
@@ -53,6 +55,32 @@ describe.runIf(process.env.ALGS_SEARCH === "1")("COLL search", () => {
     }
     writeFileSync(
       new URL("./candidates/coll-search.json", import.meta.url),
+      `${JSON.stringify(out, null, 2)}\n`,
+    );
+  }, 1_200_000);
+});
+
+/**
+ * Writes `candidates/f2l-search.json`: for every F2L case and each of its four angles, the
+ * shortest algorithms in R, U and F and those up to two turns longer (up to 15 an angle).
+ * Run with ALGS_SEARCH=1 when the search or the cases change.
+ */
+describe.runIf(process.env.ALGS_SEARCH === "1")("F2L search", () => {
+  it("writes the F2L candidates our search finds", async () => {
+    const t = f2lTables(await kpuzzle());
+    const out: Record<string, string[]> = {};
+    for (const c of F2L_CASES) {
+      const found = new Set<string>();
+      for (let k = 0; k < 4; k++)
+        for (const alg of searchF2l(t, f2lTurned(f2lState(c.key), k), {
+          extra: 2,
+          limit: 15,
+        }))
+          found.add(alg);
+      out[c.key] = [...found];
+    }
+    writeFileSync(
+      new URL("./candidates/f2l-search.json", import.meta.url),
       `${JSON.stringify(out, null, 2)}\n`,
     );
   }, 1_200_000);

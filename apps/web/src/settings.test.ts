@@ -46,7 +46,19 @@ describe("settings", () => {
         averages: 100,
         times: 100,
       },
+      holding: "DF",
+      awake: true,
     });
+  });
+
+  test("the colours held on top and in front are kept only as a valid pair", async () => {
+    const store = memoryStore();
+    await changeSetting(store, "holding", "UF");
+    expect((await loadSettings(store, "s1")).holding).toBe("UF");
+    // Yellow on top with white in front cannot be held.
+    await expect(changeSetting(store, "holding", "DU")).rejects.toThrow();
+    store.values.set("settings.global", JSON.stringify({ holding: "DU" }));
+    expect((await loadSettings(store, "s1")).holding).toBe("DF");
   });
 
   test("a drill belongs to its session and a malformed one is ignored", async () => {

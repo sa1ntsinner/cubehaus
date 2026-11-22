@@ -128,10 +128,13 @@
   height: 60px;
   border-radius: 6px;
   background: var(--pz-body);
-  opacity: 0.4;
 }
-[aria-pressed="true"] > [data-part="case-diagram"] {
-  opacity: 1;
+/* Not picked: grey, so a dimmed colour never turns muddy (yellow on black went olive). */
+[data-part="training-case-list"]
+  [aria-pressed="false"]
+  > [data-part="case-diagram"] {
+  filter: grayscale(1);
+  opacity: 0.5;
 }
 
 @media (max-width: 699px), (pointer: coarse) {

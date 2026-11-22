@@ -145,10 +145,60 @@
   }
 }
 
-/* The narrowest phones: the name gets the room the gaps gave. Each word is still wider
-   than a finger, so 8 px between them keeps the targets apart. */
+/* The narrowest phones: the name gets the room the gaps gave, and Algorithms is said the
+   short way cubers say it (Algs, Алги), so a name keeps eight letters or more. Each word
+   is still wider than a finger, so 8 px between them keeps the targets apart. */
+[data-action="train"] [data-word="short"] {
+  display: none;
+}
 @media (max-width: 360px) {
+  main > footer[data-part="status-line"] {
+    column-gap: var(--s2);
+  }
   [data-part="status-line"] > nav:last-child {
     gap: var(--s2);
+  }
+  [data-action="train"] [data-word="long"] {
+    display: none;
+  }
+  [data-action="train"] [data-word="short"] {
+    display: inline;
+  }
+}
+
+/* A phone on its side or a tablet: one row whatever happens. A message shares the row,
+   in at most two short lines of its own, so the links never move to a second row. */
+@media (hover: none) and (min-width: 700px) {
+  main > footer[data-part="status-line"] {
+    flex-wrap: nowrap;
+    column-gap: var(--s4);
+  }
+  [data-part="status-line"] > nav:last-child {
+    flex: none;
+    gap: var(--s4);
+  }
+  /* While a message shares the row, Algorithms is said the short way. */
+  [data-part="status-line"]:has(
+      > :is([data-part="db-state"], [data-part="notice"], [data-part="update"])
+    )
+    [data-action="train"] {
+    & [data-word="long"] {
+      display: none;
+    }
+    & [data-word="short"] {
+      display: inline;
+    }
+  }
+  [data-part="status-line"]
+    > :is([data-part="db-state"], [data-part="notice"], [data-part="update"]) {
+    flex: 1 1 0;
+    min-width: 0;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 14px;
+    line-height: 18px;
+    align-self: center;
   }
 }

@@ -459,7 +459,9 @@ export const PLL: readonly TrainerCaseData[] = [
       "en": "Headlights on all four sides, each edge the opposite colour of its corners.",
       "ru": "Фары на всех четырёх сторонах, ребро между ними противоположного цвета."
     },
-    "subsets": []
+    "subsets": [
+      "2-look"
+    ]
   },
   {
     "id": "pll-01320213",
@@ -784,7 +786,9 @@ export const PLL: readonly TrainerCaseData[] = [
       "en": "Headlights on the left; the front and the back each have a pair next to them.",
       "ru": "Фары слева, спереди и сзади по паре рядом с ними."
     },
-    "subsets": []
+    "subsets": [
+      "2-look"
+    ]
   },
   {
     "id": "pll-01323012",
@@ -836,7 +840,9 @@ export const PLL: readonly TrainerCaseData[] = [
       "en": "A bar at the back, headlights on the other sides. The front edge has the colour of the right side's corners.",
       "ru": "Полоса сзади, на остальных сторонах фары. Переднее ребро цвета углов справа."
     },
-    "subsets": []
+    "subsets": [
+      "2-look"
+    ]
   },
   {
     "id": "pll-01321230",
@@ -888,7 +894,9 @@ export const PLL: readonly TrainerCaseData[] = [
       "en": "A bar at the back, headlights on the other sides. The front edge has the colour of the left side's corners.",
       "ru": "Полоса сзади, на остальных сторонах фары. Переднее ребро цвета углов слева."
     },
-    "subsets": []
+    "subsets": [
+      "2-look"
+    ]
   },
   {
     "id": "pll-01320321",
@@ -992,7 +1000,9 @@ export const PLL: readonly TrainerCaseData[] = [
       "en": "Two pairs that do not meet: the front's at the left, the right side's at the back. No headlights.",
       "ru": "Две пары, которые не сходятся: спереди у левого края, справа у задней стороны. Фар нет."
     },
-    "subsets": []
+    "subsets": [
+      "2-look"
+    ]
   },
   {
     "id": "pll-03211230",
@@ -1044,6 +1054,8 @@ export const PLL: readonly TrainerCaseData[] = [
       "en": "Headlights on all four sides, each edge the colour of a neighbouring side.",
       "ru": "Фары на всех четырёх сторонах, ребро между ними цвета соседней стороны."
     },
-    "subsets": []
+    "subsets": [
+      "2-look"
+    ]
   }
 ];

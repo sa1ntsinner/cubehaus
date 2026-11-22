@@ -1,5 +1,14 @@
 import { cubeState } from "@cubehaus/cube";
 import {
+  f2lKey,
+  f2lOf,
+  f2lReady,
+  f2lSolved,
+  f2lState,
+  f2lStickers,
+  placePair,
+} from "@cubehaus/scramble/f2l";
+import {
   lastLayerCases,
   lastLayerOf,
   stickersOf,
@@ -15,9 +24,10 @@ import { Alg } from "cubing/alg";
 import { KPattern, type KPuzzle } from "cubing/kpuzzle";
 import { puzzles } from "cubing/puzzles";
 import { collKey, collState, isCollState } from "./coll";
-import type { SetId } from "./types";
+import type { LastLayerSet } from "./types";
 
-export type { SetId };
+/** The last-layer sets; F2L has its own check below. */
+export type SetId = LastLayerSet;
 
 /**
  * Checks an algorithm against a case on two models of the cube. Used by the tests and the
@@ -179,5 +189,48 @@ export async function verify(
   const ours = stickerTop(`${inverse} ${rotation}`.trim());
   if (ours !== stickersOf(made))
     return { ok: false, reason: "the two cube models disagree" };
+  return { ok: true, auf };
+}
+
+/**
+ * Checks a front-right-slot algorithm against an F2L case, the same three ways: forward
+ * from the case with U 0 to 3 times before, the cross and four slots whole after; backward,
+ * the inverse on a solved cube keeps the cross and the other three slots and makes this
+ * very case; and our own sticker model shows the picture's stickers after the inverse.
+ */
+export async function verifyF2l(key: string, alg: string): Promise<Verdict> {
+  const puzzle = await kpuzzle();
+  let parsed: Alg;
+  try {
+    parsed = new Alg(alg);
+  } catch {
+    return { ok: false, reason: "does not parse" };
+  }
+  const start = placePair(puzzle.defaultPattern(), f2lState(key));
+  let auf = -1;
+  for (let k = 0; k < 4 && auf < 0; k++) {
+    const pre = ["", "U", "U2", "U'"][k] as string;
+    const after = upright(
+      (pre ? start.applyAlg(pre) : start).applyAlg(parsed),
+    ).pattern;
+    if (f2lSolved(after)) auf = k;
+  }
+  if (auf < 0)
+    return { ok: false, reason: "does not solve the slot from the case" };
+  const inverse = parsed.invert().toString();
+  const { pattern, rotation } = upright(
+    puzzle.defaultPattern().applyAlg(inverse),
+  );
+  if (!f2lReady(pattern))
+    return { ok: false, reason: "its inverse breaks the cross or a slot" };
+  const made = f2lOf(pattern);
+  const got = f2lKey(made);
+  if (got !== key) return { ok: false, reason: `its inverse makes f2l ${got}` };
+  const s = cubeState(3, `${inverse} ${rotation}`.trim());
+  const faces = [...s.U, ...s.F, ...s.R].join("");
+  const picture = f2lStickers(made);
+  for (let at = 0; at < 27; at++)
+    if (picture[at] !== "x" && picture[at] !== faces[at])
+      return { ok: false, reason: "the two cube models disagree" };
   return { ok: true, auf };
 }

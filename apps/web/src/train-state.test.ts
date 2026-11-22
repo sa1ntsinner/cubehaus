@@ -1,7 +1,11 @@
 import { expect, test } from "vitest";
 import {
+  chooseAlg,
   drillStep,
   HOLD_MS,
+  myAlg,
+  otherAlgs,
+  parseChoices,
   reviewCase,
   reviewPool,
   showCase,
@@ -71,4 +75,30 @@ test("review drills only the slow and the often missed", () => {
   // One weak case repeats; none gives nothing.
   expect(reviewCase(["Y"], "Y", 0.5)).toBe("Y");
   expect(reviewCase([], null, 0.5)).toBeNull();
+});
+
+test("the algorithm chosen as mine is the one shown, the others are one tap away", () => {
+  const c = {
+    id: "pll-T",
+    algs: [
+      { moves: "A B", auf: 0 },
+      { moves: "C D", auf: 1 },
+      { moves: "E F", auf: 0 },
+    ],
+  };
+  // Nothing chosen: the best first.
+  expect(myAlg(c, {}).moves).toBe("A B");
+  expect(otherAlgs(c, {}).map((a) => a.moves)).toEqual(["C D", "E F"]);
+  // Chosen: it leads, the best moves among the others.
+  const mine = chooseAlg({}, "pll", c, "C D");
+  expect(mine).toEqual({ "pll/pll-T": "C D" });
+  expect(myAlg(c, mine, "pll").moves).toBe("C D");
+  expect(otherAlgs(c, mine, "pll").map((a) => a.moves)).toEqual(["A B", "E F"]);
+  // Choosing the best again forgets the choice; one no longer shipped falls back.
+  expect(chooseAlg(mine, "pll", c, "A B")).toEqual({});
+  expect(myAlg(c, { "pll/pll-T": "X Y" }, "pll").moves).toBe("A B");
+  expect(parseChoices('{"pll/pll-T":"C D","x":3}')).toEqual({
+    "pll/pll-T": "C D",
+  });
+  expect(parseChoices("nonsense")).toEqual({});
 });

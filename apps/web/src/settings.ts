@@ -1,4 +1,5 @@
 import type { EventId } from "@cubehaus/core";
+import { DEFAULT_HOLDING, isHolding } from "@cubehaus/cube/holding";
 import type { TrainingProfile } from "./scramble/training-client";
 import { type SlotPreferences, statId } from "./session-stats";
 import { isThemeChoice, type ThemeChoice } from "./theme";
@@ -44,6 +45,10 @@ export interface Settings {
   training: TrainingProfile;
   /** The size of each part of the timer screen; per device, in its own row. */
   sizes: ViewSizes;
+  /** The colours held on top and in front while solving (`@cubehaus/cube/holding`). */
+  holding: string;
+  /** The screen stays on while the app shows (Screen Wake Lock, where there is one). */
+  awake: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -63,6 +68,8 @@ export const DEFAULT_SETTINGS: Settings = {
   today: false,
   training: { request: null },
   sizes: DEFAULT_SIZES,
+  holding: DEFAULT_HOLDING,
+  awake: true,
 };
 
 export function languageFrom(tag: string | undefined): Settings["language"] {
@@ -112,6 +119,8 @@ const choices: {
   entry: (v): v is Settings["entry"] => v === "timer" || v === "typing",
   training: isTrainingProfile,
   sizes: isViewSizes,
+  holding: isHolding,
+  awake: (v): v is boolean => typeof v === "boolean",
 };
 
 const FACE_NAMES = ["U", "L", "F", "R", "B", "D"];

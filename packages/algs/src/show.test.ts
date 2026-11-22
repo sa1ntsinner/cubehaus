@@ -1,7 +1,7 @@
 import { classifyLL } from "@cubehaus/scramble/last-layer";
 import { describe, expect, it } from "vitest";
 import { pictureOf, trainerSet } from "./index";
-import { groupMoves, recolour, turnScramble } from "./show";
+import { algGroups, groupMoves, recolour, turnScramble } from "./show";
 import { kpuzzle } from "./verify";
 
 describe("showing a case", () => {
@@ -29,5 +29,13 @@ describe("showing a case", () => {
         classifyLL(puzzle.defaultPattern().applyAlg(turnScramble(scramble, k)))
           .pll,
       ).toBe(t?.id);
+  });
+
+  it("a trigger is marked, the moves between triggers are not", () => {
+    expect(algGroups("F R U R' U' F'")).toEqual([
+      { moves: ["F"], trigger: false },
+      { moves: ["R", "U", "R'", "U'"], trigger: true },
+      { moves: ["F'"], trigger: false },
+    ]);
   });
 });

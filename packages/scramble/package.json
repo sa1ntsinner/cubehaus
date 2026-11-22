@@ -9,7 +9,9 @@
     "./cubing": "./src/cubing.ts",
     "./training": "./src/training.ts",
     "./last-layer": "./src/last-layer-cases.ts",
-    "./last-layer-state": "./src/last-layer.ts"
+    "./last-layer-state": "./src/last-layer.ts",
+    "./f2l": "./src/f2l.ts",
+    "./f2l-state": "./src/f2l-state.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.browser.json"

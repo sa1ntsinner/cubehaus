@@ -1,4 +1,5 @@
 import { eventInfo } from "@cubehaus/core";
+import { type FaceLetter, frontsFor } from "@cubehaus/cube/holding";
 import { eventOfScrType } from "@cubehaus/importers";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { AppState, AppView } from "../app-state";
@@ -222,6 +223,9 @@ function ShortcutSettings({
 // A plain list: the label, then its control. Language, calls, hold, the
 // running display and decimals hold for every session; inspection and entry
 // belong to the session on screen, as the I and E keys change them.
+/** The six colours, white and yellow first, then round the sides. */
+const COLOUR_ORDER: readonly FaceLetter[] = ["U", "D", "F", "R", "B", "L"];
+
 export function Settings({
   app,
   view,
@@ -443,6 +447,10 @@ export function Settings({
     }
     set("theme", "custom");
   }
+  const colourName = (face: FaceLetter) => {
+    const name = words.drill.colour[face];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
   const row = (
     key: string,
     label: string,
@@ -636,6 +644,20 @@ export function Settings({
             <option value="off">{t.recordCueChoices.off}</option>
           </select>
         ))}
+        {"wakeLock" in navigator &&
+          row("awake", t.awake, (id) => (
+            <select
+              id={id}
+              value={values.awake ? "on" : "off"}
+              disabled={!enabled}
+              onChange={(event) =>
+                set("awake", event.currentTarget.value === "on")
+              }
+            >
+              <option value="on">{t.recordCueChoices.on}</option>
+              <option value="off">{t.recordCueChoices.off}</option>
+            </select>
+          ))}
         {row("precision", t.precision, (id) => (
           <select
             id={id}
@@ -647,6 +669,44 @@ export function Settings({
           >
             <option value="2">2</option>
             <option value="3">3</option>
+          </select>
+        ))}
+        {row("holdingTop", t.holdingTop, (id) => (
+          <select
+            id={id}
+            value={values.holding[0]}
+            disabled={!enabled}
+            onChange={(e) => {
+              const top = e.currentTarget.value as FaceLetter;
+              const front = values.holding[1] as FaceLetter;
+              const fronts = frontsFor(top);
+              set(
+                "holding",
+                `${top}${fronts.includes(front) ? front : fronts[0]}`,
+              );
+            }}
+          >
+            {COLOUR_ORDER.map((face) => (
+              <option key={face} value={face}>
+                {colourName(face)}
+              </option>
+            ))}
+          </select>
+        ))}
+        {row("holdingFront", t.holdingFront, (id) => (
+          <select
+            id={id}
+            value={values.holding[1]}
+            disabled={!enabled}
+            onChange={(e) =>
+              set("holding", `${values.holding[0]}${e.currentTarget.value}`)
+            }
+          >
+            {frontsFor(values.holding[0] as FaceLetter).map((face) => (
+              <option key={face} value={face}>
+                {colourName(face)}
+              </option>
+            ))}
           </select>
         ))}
         {session &&

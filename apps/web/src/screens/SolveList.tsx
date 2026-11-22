@@ -22,7 +22,12 @@ import {
 import type { AppState, AppView, Records, SolveRow } from "../app-state";
 import { actionKey, type Keymap } from "../keys/keymap";
 import { fitFile } from "../list/fit";
-import { selectedSlots, statId, supportsStat } from "../session-stats";
+import {
+  selectedSlots,
+  solvesToGo,
+  statId,
+  supportsStat,
+} from "../session-stats";
 
 import type { Text } from "../text";
 
@@ -733,6 +738,8 @@ function StatSlots({
     close(true);
   }
   const windowName = chosenStat && parseStat(chosenStat) ? chosenStat : null;
+  // An average still waiting for solves says how many, not a bare dash.
+  const toGo = (name: StatId) => solvesToGo(name, stats.count);
   const inspect = (best: boolean) => {
     if (!windowName) return;
     close(true);
@@ -763,7 +770,13 @@ function StatSlots({
               <>
                 <span data-part="slot-name">{statLabel(name, words)}</span>{" "}
                 <span data-stat={name} data-record={records[name] || undefined}>
-                  {format(name, stats[name] ?? NaN)}
+                  {Number.isNaN(stats[name] ?? NaN) && toGo(name) !== null ? (
+                    <span data-part="to-go">
+                      {words.toGo(toGo(name) as number)}
+                    </span>
+                  ) : (
+                    format(name, stats[name] ?? NaN)
+                  )}
                 </span>
               </>
             );

@@ -218,6 +218,12 @@ export const ACTIONS: readonly ActionSpec[] = [
     keys: ["KeyF"],
     when: atRest,
   },
+  {
+    id: "view.fullscreen",
+    title: { en: "Full screen", ru: "Во весь экран" },
+    keys: ["Shift+KeyF"],
+    when: atRest,
+  },
   ...(["system", "dark", "light", "custom"] as const).map(
     (theme): ActionSpec => ({
       id: `theme.${theme}`,

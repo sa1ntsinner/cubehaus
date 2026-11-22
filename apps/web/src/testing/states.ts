@@ -107,6 +107,7 @@ export const namedStates = [
   "keys",
   "drills",
   "drills-oll",
+  "drills-white",
   "sizes-large",
   "sizes-small",
   "theme-custom",
@@ -149,6 +150,9 @@ export const namedStates = [
   "train-scramble",
   "train-review",
   "train-empty",
+  "train-white",
+  "train-f2l",
+  "train-f2l-drill",
 ] as const;
 
 export const eventStates = EVENTS.map(({ id }) => `event-${id}` as const);

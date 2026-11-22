@@ -228,6 +228,8 @@ export function parseSeed(search: string): Seed | undefined {
       recordCue: state !== "quiet-record",
       today: state === "today",
       sizes: sizesFor(state, params.get("sizes")),
+      // White on top for these shots; the rest keep the default, yellow on top.
+      holding: state.endsWith("-white") ? "UF" : "DF",
       precision: state === "wide-time" ? 3 : 2,
       inspection:
         state.startsWith("two-hand-") ||
@@ -240,7 +242,9 @@ export function parseSeed(search: string): Seed | undefined {
       training:
         state === "drill-line"
           ? { request: { kind: "easy-xcross", face: "U", length: 3 } }
-          : state === "drills" || state === "drill-none"
+          : state === "drills" ||
+              state === "drill-none" ||
+              state === "drills-white"
             ? { request: { kind: "pll", caseIds: [] } }
             : state === "drills-oll"
               ? { request: { kind: "oll", caseIds: [] } }
@@ -673,7 +677,8 @@ export async function openSeed(seed: Seed): Promise<DbState> {
 
 /**
  * The trainer as its shots show it: five PLL cases being learnt, due now, with a few
- * attempts each (Y slow and Jb missed twice, so Review has both kinds of weak case).
+ * attempts each (Y slow and Jb missed twice, so Review has both kinds of weak case), and
+ * three F2L cases.
  */
 async function seedTrainer(store: Store): Promise<void> {
   const { newCard, trainerSet } = await import("@cubehaus/algs");
@@ -708,6 +713,13 @@ async function seedTrainer(store: Store): Promise<void> {
         at: now - 86_400_000 + n++ * 60_000,
       });
     }
+  }
+  // Three F2L cases, for the slot's own shots.
+  const f2l = trainerSet("f2l");
+  for (const label of ["F2L 7", "F2L 13", "F2L 26"]) {
+    const caseId = f2l.find((c) => c.label === label)?.id ?? label;
+    const { card } = await newCard(caseId, now);
+    await store.trainer.putCase({ setId: "f2l", caseId, card, dueAt: now });
   }
 }
 

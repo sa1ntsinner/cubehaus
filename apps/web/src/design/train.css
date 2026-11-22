@@ -120,40 +120,91 @@ main[data-part="train"] button:active:not(:disabled) {
   padding: 0;
   list-style: none;
 }
-[data-part="train-case-list"] button {
+/* Each case: its picture opens it; under it the name with a checkbox, which puts it in
+   the drills or takes it out, one tap either way. */
+[data-part="train-case-list"] li {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--s1);
+}
+[data-part="train-case-list"] button {
+  display: grid;
+  place-items: center;
   width: 100%;
-  padding: var(--s2) var(--s1);
+  padding: var(--s2) var(--s1) var(--s1);
   border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--dim);
   transition: background-color 100ms ease;
 }
-[data-part="train-case-list"] button:hover {
-  background: var(--line);
-}
-[data-part="train-case-list"] button[data-learning] {
-  color: var(--ink);
-}
+[data-part="train-case-list"] button:hover,
 [data-part="train-case-list"] button[aria-current="true"] {
   background: var(--line);
-  color: var(--ink);
 }
 main[data-part="train"] [data-part="case-diagram"] {
   width: 60px;
   height: 60px;
   border-radius: 6px;
   background: var(--pz-body);
-  opacity: 0.55;
 }
-[data-part="train-case-list"]
-  :is([data-learning], [aria-current="true"])
-  [data-part="case-diagram"] {
-  opacity: 1;
+/* An F2L case draws the cube's own body (a hexagon), so no square ground behind it. */
+main[data-part="train"] [data-part="case-diagram"][data-shape="slot"] {
+  background: none;
+  border-radius: 0;
+}
+[data-part="train-pick"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 36px;
+  padding-inline: var(--s1);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--dim);
+  cursor: pointer;
+}
+[data-part="train-pick"]:has(input:checked) {
+  color: var(--ink);
+}
+[data-part="train-pick"] input {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid var(--gutter);
+  border-radius: 5px;
+  background: var(--ground);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+[data-part="train-pick"]:hover input {
+  border-color: var(--ink);
+}
+[data-part="train-pick"] input:checked {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+[data-part="train-pick"] input:checked::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border: solid var(--ground);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+[data-part="train-pick"] input:focus-visible {
+  outline: 2px solid var(--double);
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  [data-part="train-pick"] {
+    min-height: 44px;
+  }
 }
 
 [data-part="train-case"] {
@@ -192,14 +243,19 @@ main[data-part="train"]
   list-style: none;
 }
 [data-part="train-alg"] {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--s3);
   padding-block: var(--s2);
   font-family: var(--font-mono);
   font-size: 16px;
+  line-height: 1.45;
   color: var(--dim);
+}
+[data-part="train-auf"] {
+  margin-inline-end: 1.1ch;
+}
+[data-part="train-alg-foot"] {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
 }
 [data-part="train-alg"]:first-child {
   font-size: 19px;
@@ -208,18 +264,49 @@ main[data-part="train"]
 [data-part="train-auf"] {
   color: var(--gutter);
 }
-/* The space between triggers is wider than the one between moves; a trigger stays on
-   one line, and a wrapped line starts flush. */
+/* Moves sit close; between two groups (a trigger, or the moves between triggers) there is
+   a clear gap, about two spaces. A trigger never breaks across lines; the moves between
+   triggers may. The text keeps one real space between moves, so a copied algorithm reads
+   as one. */
 [data-part="train-moves"] {
-  word-spacing: 0.7ch;
+  word-spacing: -0.25ch;
 }
-[data-part="train-group"] {
+[data-part="train-gap"] {
+  padding-inline-end: 1.1ch;
+}
+[data-part="train-group"][data-trigger] {
   white-space: nowrap;
-  word-spacing: 0.1ch;
 }
 [data-part="train-count"] {
   font-size: 13px;
   color: var(--gutter);
+}
+[data-action="train-more"],
+[data-action="train-use"] {
+  min-height: 44px;
+  font-weight: 500;
+  color: var(--dim);
+}
+[data-action="train-use"] {
+  font-family: var(--font-ui);
+  font-size: 15px;
+}
+:is([data-action="train-more"], [data-action="train-use"]):hover {
+  color: var(--ink);
+}
+[data-action="train-more"]::after {
+  content: " ▸";
+  font-family: var(--font-mono);
+}
+[data-action="train-more"][aria-expanded="true"]::after {
+  content: " ▾";
+}
+[data-part="train-algs"][data-others] {
+  margin-top: 0;
+}
+[data-part="train-algs"][data-others] [data-part="train-alg"] {
+  font-size: 16px;
+  color: var(--dim);
 }
 [data-part="train-case-actions"] {
   margin: var(--s4) 0 0;
@@ -482,13 +569,13 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   main[data-part="train"] > nav {
     flex: 1 0 auto;
   }
+  /* Zero-sized, not removed: a screen reader still reads it as the page's heading. */
   main[data-part="train"] h1 {
     position: absolute;
-    width: 1px;
-    height: 1px;
+    width: 0;
+    height: 0;
     margin: 0;
     overflow: hidden;
-    clip-path: inset(50%);
     white-space: nowrap;
   }
   [data-part="train-bar"] {
@@ -502,6 +589,7 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
     margin: var(--s2) 0 0 calc(-1 * var(--s2));
   }
   main[data-part="train"] [data-part="train-drill"] {
+    box-sizing: border-box;
     flex-basis: calc(100% + 2 * var(--pad));
   }
   [data-part="train-learn"] {

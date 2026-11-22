@@ -16,6 +16,11 @@ import {
   type ProgressStat,
   progressEvents,
 } from "../progress-data";
+import {
+  progressMemoryKey,
+  recallProgress,
+  rememberProgress,
+} from "../progress-memory";
 import { createProgressReader, type ProgressModel } from "../progress-worker";
 import type { Text } from "../text";
 import { ProgressDistribution } from "./ProgressDistribution";
@@ -48,11 +53,25 @@ export function Progress({
   words: Text;
 }) {
   const labels = text.progress;
-  const [selection, setSelection] = useState("");
-  const [mode, setMode] = useState<ProgressScope["kind"]>("session");
-  const [folderId, setFolderId] = useState("");
-  const [eventOverride, setEventOverride] = useState<EventId>();
-  const [included, setIncluded] = useState<readonly string[]>();
+  // Opens on what was looked at last on this device, while it still exists.
+  const [recalled] = useState(() => {
+    let text: string | null = null;
+    try {
+      text = localStorage.getItem(progressMemoryKey);
+    } catch {}
+    return recallProgress(text, view.sessions, view.folders);
+  });
+  const [selection, setSelection] = useState(recalled?.selection ?? "");
+  const [mode, setMode] = useState<ProgressScope["kind"]>(
+    recalled?.mode ?? "session",
+  );
+  const [folderId, setFolderId] = useState(recalled?.folderId ?? "");
+  const [eventOverride, setEventOverride] = useState<EventId | undefined>(
+    recalled?.event,
+  );
+  const [included, setIncluded] = useState<readonly string[] | undefined>(
+    recalled?.included,
+  );
   const [stat, setStat] = useState<ProgressStat | null>(null);
   const [width, setWidth] = useState(sampleWidth);
   const [now] = useState(Date.now);
@@ -111,6 +130,23 @@ export function Progress({
       };
     return { kind: "session", id: selected.id, event };
   }, [activeFolder, event, included, mode, selected]);
+  // What is on show, as it resolved (the session and folder actually used), for next time.
+  const shownSession = selected?.id ?? "";
+  const shownFolder = activeFolder?.id ?? "";
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        progressMemoryKey,
+        rememberProgress({
+          mode,
+          selection: shownSession,
+          folderId: shownFolder,
+          event: mode === "session" ? undefined : event,
+          included,
+        }),
+      );
+    } catch {}
+  }, [mode, shownSession, shownFolder, event, included]);
   const request = useMemo(
     () => ({ scope, revision, stat, width, timeZone, now }),
     [scope, revision, stat, width, timeZone, now],

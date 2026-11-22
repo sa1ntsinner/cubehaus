@@ -1,5 +1,7 @@
+import { F2L_CASES, f2lState, f2lTurned } from "@cubehaus/scramble/f2l-state";
 import { lastLayerCases, stickersOf } from "@cubehaus/scramble/last-layer";
 import {
+  fromKey,
   type LastLayer,
   llKey,
   turnAfter,
@@ -12,7 +14,7 @@ import type { CaseSource } from "./candidates/types";
 import { collCases } from "./coll";
 import { collWords } from "./collwords";
 import { type Metrics, metricsOf, tidy } from "./metrics";
-import { caseOf, memberState, type SetId, verify } from "./verify";
+import { caseOf, memberState, type SetId, verify, verifyF2l } from "./verify";
 
 /**
  * Builds a set's shipped data from its candidates: each is verified (verify.ts), the
@@ -31,7 +33,7 @@ export type BuiltCase = {
   subsets: string[];
 };
 export type BuiltSet = {
-  set: SetId;
+  set: SetId | "f2l";
   candidates: number;
   rejected: { label: string; alg: string; reason: string }[];
   cases: BuiltCase[];
@@ -74,6 +76,11 @@ const PLL_GROUPS: Record<string, string> = {
  * usual first-look algorithms), then the seven corner cases with a cross (21 to 27).
  */
 const TWO_LOOK = [2, 44, 45, 21, 22, 23, 24, 25, 26, 27].map((n) => `OLL ${n}`);
+/**
+ * 2-look PLL: the corners first with T (two corners side by side) or Y (two across), then
+ * the edges with Ua, Ub, H or Z.
+ */
+const TWO_LOOK_PLL = ["T", "Y", "Ua", "Ub", "H", "Z"];
 
 function entriesOf(set: SetId): Entry[] {
   const { oll, pll } = lastLayerCases();
@@ -103,7 +110,7 @@ function entriesOf(set: SetId): Entry[] {
         key: c.id.slice(4),
         label: c.label,
         group: PLL_GROUPS[c.label] as string,
-        subsets: [],
+        subsets: TWO_LOOK_PLL.includes(c.label) ? ["2-look"] : [],
       }));
   throw new Error(`No entries for ${set} yet`);
 }
@@ -206,15 +213,26 @@ export async function buildSet(
       subsets: entry.subsets,
     });
   }
-  // A COLL description that two cases of one shape share tells them apart from nothing:
-  // both are left without one.
-  if (set === "coll")
+  // Two cases of one shape whose words read the same are told apart by one pair of
+  // corner stickers that match on one and on no twin; without such a pair, neither gets
+  // words.
+  if (set === "coll") {
+    const pictures = new Map(
+      cases.map((c) => [c, stickersOf(fromKey(c.state))] as const),
+    );
+    const first = new Map(cases.map((c) => [c, c.recognise?.en] as const));
     for (const c of cases) {
       const twins = cases.filter(
-        (o) => o.group === c.group && o.recognise?.en === c.recognise?.en,
+        (o) => o !== c && o.group === c.group && first.get(o) === first.get(c),
       );
-      if (twins.length > 1) for (const t of twins) t.recognise = null;
+      if (twins.length > 0)
+        c.recognise = collWords(
+          c.group as Parameters<typeof collWords>[0],
+          pictures.get(c) as string,
+          twins.map((o) => pictures.get(o) as string),
+        );
     }
+  }
   if (failing.length > 0)
     throw new Error(
       `${set}: explanations whose checks fail: ${failing.join(", ")}`,
@@ -238,4 +256,45 @@ export function render(built: BuiltSet): string {
     "",
   ];
   return lines.join("\n");
+}
+
+/**
+ * F2L's shipped data: every case's searched candidates verified (verifyF2l), ranked as the
+ * other sets are, the best three kept. The member is shown as the main algorithm expects it.
+ */
+export async function buildF2l(
+  searched: Readonly<Record<string, readonly string[]>>,
+): Promise<BuiltSet> {
+  const rejected: BuiltSet["rejected"] = [];
+  let candidates = 0;
+  const cases: BuiltCase[] = [];
+  for (const c of F2L_CASES) {
+    const kept: BuiltAlg[] = [];
+    for (const alg of [...new Set((searched[c.key] ?? []).map(tidy))]) {
+      candidates++;
+      const verdict = await verifyF2l(c.key, alg);
+      if (verdict.ok)
+        kept.push({ moves: alg, auf: verdict.auf, metrics: metricsOf(alg) });
+      else rejected.push({ label: c.label, alg, reason: verdict.reason });
+    }
+    kept.sort(
+      (a, b) =>
+        a.metrics.score - b.metrics.score ||
+        a.metrics.moves - b.metrics.moves ||
+        (a.moves < b.moves ? -1 : a.moves > b.moves ? 1 : 0),
+    );
+    const best = kept.slice(0, 3);
+    const base = best[0]?.auf ?? 0;
+    const shown = f2lTurned(f2lState(c.key), base);
+    cases.push({
+      id: c.id,
+      label: c.label,
+      group: c.group,
+      state: `${shown.corner}${shown.twist}${shown.edge}${shown.flip}`,
+      algs: best.map((a) => ({ ...a, auf: (a.auf - base + 4) % 4 })),
+      recognise: null,
+      subsets: [],
+    });
+  }
+  return { set: "f2l", candidates, rejected, cases };
 }

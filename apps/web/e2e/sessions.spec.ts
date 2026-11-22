@@ -894,7 +894,7 @@ test.describe("solve actions and input", () => {
     await action(page, "solve-delete").tap();
     await expect(timer(page)).toHaveAttribute("data-phase", "idle");
     await expect(rows(page)).toHaveCount(4);
-    await expect(stat(page, "ao5")).toBeEmpty();
+    await expect(stat(page, "ao5")).toHaveText("1 to go");
     await undo.tap();
     await expect(timer(page)).toHaveAttribute("data-phase", "idle");
     await expect(rows(page)).toHaveCount(5);

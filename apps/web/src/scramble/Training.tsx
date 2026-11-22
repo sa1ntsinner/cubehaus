@@ -1,4 +1,6 @@
+import type { Arrow } from "@cubehaus/algs";
 import type { Face } from "@cubehaus/cube";
+import { holdingFaces } from "@cubehaus/cube/holding";
 import type { TrainingBase, TrainingLL } from "@cubehaus/scramble";
 import {
   type LastLayerCase,
@@ -13,7 +15,11 @@ import type { TrainingProfile } from "./training-client";
  * that says a drill is on. A drill is not a WCA scramble; the line says so in words.
  */
 
-export type DrillKind = "official" | TrainingBase["kind"] | TrainingLL["kind"];
+/** The timer's drills: F2L cases are drilled in the trainer only. */
+export type DrillKind =
+  | "official"
+  | TrainingBase["kind"]
+  | Exclude<TrainingLL["kind"], "f2l">;
 
 /** The cross colours as cubers name them, by face in the scramble's orientation. */
 export const FACES: readonly Face[] = ["U", "D", "F", "B", "R", "L"];
@@ -39,8 +45,14 @@ export function CaseDiagram({
   stickers,
   orientationOnly,
   edgesOnTop = false,
+  faces,
+  arrows,
 }: {
+  /** PLL: which top piece goes where (`pllArrows`), drawn on the top face. */
+  arrows?: readonly Arrow[] | undefined;
   stickers: string;
+  /** The colour of each face as the person holds the cube (`holdingFaces`). */
+  faces?: Record<string, string> | undefined;
   orientationOnly: boolean;
   /** COLL: the edges' side stickers say nothing (only that they are oriented): grey. */
   edgesOnTop?: boolean;
@@ -51,14 +63,15 @@ export function CaseDiagram({
     edgesOnTop && [10, 13, 16, 19].includes(index)
       ? "grey"
       : (stickers[index] ?? "U");
+  const paint = (face: string) => `var(--pz-${faces?.[face] ?? face})`;
   const fill = (colour: string) =>
     colour === "grey"
       ? "var(--pz-grey)"
       : orientationOnly
         ? colour === "U"
-          ? "var(--pz-U)"
+          ? paint("U")
           : "var(--pz-grey)"
-        : `var(--pz-${colour})`;
+        : paint(colour);
   const cells: { x: number; y: number; w: number; h: number; c: string }[] = [];
   for (let i = 0; i < 9; i++)
     cells.push({
@@ -93,7 +106,188 @@ export function CaseDiagram({
           fill={fill(cell.c)}
         />
       ))}
+      {arrows && arrows.length > 0 && (
+        <g data-part="case-arrows" fill="var(--pz-body)">
+          {arrows.map((arrow) => (
+            <ArrowLine key={`${arrow.from}-${arrow.to}`} arrow={arrow} />
+          ))}
+        </g>
+      )}
     </svg>
+  );
+}
+
+/**
+ * An F2L case: the cube's top, front and right faces seen from above the front right
+ * corner, each sticker a parallelogram. `stickers` is 27 letters (f2l-state.ts): U row by
+ * row from the back left, then F and R row by row from the top left as each is seen from
+ * outside; `x` is a last-layer sticker that says nothing, drawn grey.
+ */
+export function SlotDiagram({
+  stickers,
+  faces,
+}: {
+  stickers: string;
+  faces?: Record<string, string> | undefined;
+}) {
+  // x to the right, y up, z towards the front; the cube spans 0–3 on each.
+  const cos = Math.cos(Math.PI / 6);
+  const project = (x: number, y: number, z: number) =>
+    [(x - z) * cos, (x + z) / 2 - y] as const;
+  type Corner = readonly [number, number, number];
+  const cells: { at: number; corners: Corner[] }[] = [];
+  for (let i = 0; i < 9; i++) {
+    const r = Math.floor(i / 3);
+    const c = i % 3;
+    cells.push({
+      at: i,
+      corners: [
+        [c, 3, r],
+        [c + 1, 3, r],
+        [c + 1, 3, r + 1],
+        [c, 3, r + 1],
+      ],
+    });
+    cells.push({
+      at: 9 + i,
+      corners: [
+        [c, 3 - r, 3],
+        [c + 1, 3 - r, 3],
+        [c + 1, 2 - r, 3],
+        [c, 2 - r, 3],
+      ],
+    });
+    cells.push({
+      at: 18 + i,
+      corners: [
+        [3, 3 - r, 3 - c],
+        [3, 3 - r, 2 - c],
+        [3, 2 - r, 2 - c],
+        [3, 2 - r, 3 - c],
+      ],
+    });
+  }
+  const inset = 0.86;
+  const points = (corners: Corner[]) => {
+    const flat = corners.map(([x, y, z]) => project(x, y, z));
+    const cx = flat.reduce((s, [px]) => s + px, 0) / 4;
+    const cy = flat.reduce((s, [, py]) => s + py, 0) / 4;
+    return flat
+      .map(
+        ([px, py]) =>
+          `${(cx + (px - cx) * inset).toFixed(3)},${(cy + (py - cy) * inset).toFixed(3)}`,
+      )
+      .join(" ");
+  };
+  const fill = (letter: string) =>
+    letter === "x" || !letter
+      ? "var(--pz-grey)"
+      : `var(--pz-${faces?.[letter] ?? letter})`;
+  // Corners of the drawing: the top's back and the faces' bottom points.
+  const [left] = project(0, 3, 3);
+  const [right] = project(3, 3, 0);
+  const [, top] = project(0, 3, 0);
+  const [, bottom] = project(3, 0, 3);
+  const pad = 0.1;
+  return (
+    <svg
+      data-part="case-diagram"
+      data-shape="slot"
+      viewBox={`${left - pad} ${top - pad} ${right - left + 2 * pad} ${bottom - top + 2 * pad}`}
+      aria-hidden="true"
+    >
+      <polygon
+        points={(
+          [
+            [0, 3, 0],
+            [3, 3, 0],
+            [3, 0, 0],
+            [3, 0, 3],
+            [0, 0, 3],
+            [0, 3, 3],
+          ] as const
+        )
+          .map(([x, y, z]) => project(x, y, z).join(","))
+          .join(" ")}
+        fill="var(--pz-body)"
+        stroke="var(--pz-body)"
+        strokeWidth={0.16}
+        strokeLinejoin="round"
+      />
+      {cells.map((cell) => {
+        const colour = fill(stickers[cell.at] as string);
+        return (
+          <polygon
+            key={cell.at}
+            points={points(cell.corners)}
+            fill={colour}
+            stroke={colour}
+            strokeWidth={0.1}
+            strokeLinejoin="round"
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+/** The centre of a top place, 0–8 row by row from the back left. */
+const centre = (place: number) => ({
+  x: 1.5 + (place % 3),
+  y: 1.5 + Math.floor(place / 3),
+});
+
+/**
+ * One arrow between two top places: a hairline with a small solid head, kept clear of the
+ * stickers' centres at both ends. An arrow between two neighbouring corners runs close to
+ * their side of the face, so it never crosses an edge piece's own arrow.
+ */
+function ArrowLine({ arrow }: { arrow: Arrow }) {
+  let a = centre(arrow.from);
+  let b = centre(arrow.to);
+  if (arrow.piece === "corner" && (a.x === b.x || a.y === b.y)) {
+    const out = 0.3;
+    if (a.x === b.x) {
+      const dx = a.x < 2.5 ? -out : out;
+      a = { ...a, x: a.x + dx };
+      b = { ...b, x: b.x + dx };
+    } else {
+      const dy = a.y < 2.5 ? -out : out;
+      a = { ...a, y: a.y + dy };
+      b = { ...b, y: b.y + dy };
+    }
+  }
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  const ux = (b.x - a.x) / length;
+  const uy = (b.y - a.y) / length;
+  const inset = 0.2;
+  const head = 0.24;
+  const wing = 0.11;
+  const tip = { x: b.x - ux * inset, y: b.y - uy * inset };
+  const tail = { x: a.x + ux * inset, y: a.y + uy * inset };
+  const headAt = (p: { x: number; y: number }, sx: number, sy: number) => {
+    const bx = p.x - sx * head;
+    const by = p.y - sy * head;
+    return `${p.x},${p.y} ${bx - sy * wing},${by + sx * wing} ${bx + sy * wing},${by - sx * wing}`;
+  };
+  const start = arrow.both
+    ? { x: tail.x + ux * head * 0.9, y: tail.y + uy * head * 0.9 }
+    : tail;
+  const end = { x: tip.x - ux * head * 0.9, y: tip.y - uy * head * 0.9 };
+  return (
+    <g>
+      <line
+        x1={start.x}
+        y1={start.y}
+        x2={end.x}
+        y2={end.y}
+        stroke="var(--pz-body)"
+        strokeWidth={0.065}
+        strokeLinecap="round"
+      />
+      <polygon points={headAt(tip, ux, uy)} />
+      {arrow.both && <polygon points={headAt(tail, -ux, -uy)} />}
+    </g>
   );
 }
 
@@ -119,11 +313,13 @@ const defaults = (kind: DrillKind, face: Face): TrainingProfile => {
 
 export function Training({
   profile,
+  holding,
   words,
   onChange,
   onClose,
 }: {
   profile: TrainingProfile;
+  holding: string;
   words: Text;
   onChange(profile: TrainingProfile): void;
   onClose(): void;
@@ -136,8 +332,12 @@ export function Training({
     onChange(next);
   };
   const request = draft.request;
-  const kind: DrillKind = request?.kind ?? "official";
-  const face: Face = request && "face" in request ? request.face : "U";
+  const kind: DrillKind =
+    !request || request.kind === "f2l" ? "official" : request.kind;
+  // A new cross drill is on the colour held at the bottom.
+  const faces = holdingFaces(holding);
+  const face: Face =
+    request && "face" in request ? request.face : (faces.D as Face);
   const [query, setQuery] = useState("");
   const catalogue = useMemo(() => lastLayerCases(), []);
   const kinds: DrillKind[] = [
@@ -303,6 +503,7 @@ export function Training({
                 >
                   <CaseDiagram
                     stickers={c.stickers}
+                    faces={faces}
                     orientationOnly={kind === "oll"}
                   />
                   <span>{c.label}</span>

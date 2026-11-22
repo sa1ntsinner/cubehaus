@@ -324,3 +324,10 @@ export function createSessionStats(
     },
   };
 }
+
+/** Solves still needed before an average has a value; null when it needs none. */
+export function solvesToGo(name: StatId, count: number): number | null {
+  const stat = parseStat(name);
+  if (!stat || count >= stat.n) return null;
+  return stat.n - count;
+}

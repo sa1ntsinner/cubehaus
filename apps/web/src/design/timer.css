@@ -360,6 +360,20 @@ main > [data-part="scramble"][data-ready="false"] {
   font-size: 15px;
   color: var(--gutter);
 }
+/* Words only once the wait is long enough to notice (a 3×3 scramble takes a tenth of a
+   second): hidden, then shown, with no motion. */
+main > [data-part="scramble"] [data-part="scramble-wait"] {
+  font-family: var(--font-mono);
+  animation: scramble-wait 700ms step-end both;
+}
+@keyframes scramble-wait {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
 main > [data-part="scramble"][data-ready="false"] button {
   color: var(--ink);
   text-decoration: underline;
@@ -1590,4 +1604,11 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button:hover {
     min-height: calc(2 * 44px);
     max-height: none;
   }
+}
+/* An average still short of solves: how many to go, quiet, in the stat's own place. */
+[data-stat] [data-part="to-go"] {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  font-weight: 400;
+  color: var(--gutter);
 }

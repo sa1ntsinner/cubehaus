@@ -43,6 +43,18 @@ export function groupMoves(alg: string): string[][] {
   return groups;
 }
 
+/** The groups, each marked when it is a finger trigger (so it stays on one line). */
+export function algGroups(
+  alg: string,
+): { moves: string[]; trigger: boolean }[] {
+  return groupMoves(alg).map((moves) => ({
+    moves,
+    trigger: TRIGGERS.some(
+      (t) => t.length === moves.length && t.every((m, k) => moves[k] === m),
+    ),
+  }));
+}
+
 /** The side faces in the order a y turn carries them. */
 const RING = ["F", "L", "B", "R"];
 

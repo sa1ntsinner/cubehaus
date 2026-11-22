@@ -1414,3 +1414,28 @@ test("trainer attempts stay apart from solves and survive a backup", async () =>
   ]);
   await other.close();
 });
+
+test("a case taken out and put back keeps its schedule", async () => {
+  const db = createNodeDb(":memory:");
+  await migrate(db);
+  const store = createStore(db);
+  await store.trainer.putCase({
+    setId: "pll",
+    caseId: "pll-T",
+    card: '{"reps":4}',
+    dueAt: 500,
+  });
+  await store.trainer.removeCase("pll", "pll-T");
+  expect(await store.trainer.cases("pll")).toEqual([]);
+  expect(await store.trainer.restoreCase("pll", "pll-T")).toBe(true);
+  const [back] = await store.trainer.cases("pll");
+  expect(back).toMatchObject({
+    caseId: "pll-T",
+    card: '{"reps":4}',
+    dueAt: 500,
+  });
+  // A case never added, or one in already, has nothing to bring back.
+  expect(await store.trainer.restoreCase("pll", "pll-Y")).toBe(false);
+  expect(await store.trainer.restoreCase("pll", "pll-T")).toBe(false);
+  await db.close();
+});

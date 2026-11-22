@@ -1,7 +1,7 @@
 import { formatAverage } from "@cubehaus/core";
 import { best, parseStat, statOf } from "@cubehaus/stats";
 import { expect, test } from "vitest";
-import { createSessionStats } from "./session-stats";
+import { createSessionStats, solvesToGo } from "./session-stats";
 
 const seconds = (count: number) =>
   Float64Array.from({ length: count }, (_, index) => (index + 1) * 1000);
@@ -60,4 +60,13 @@ test("ranked sessions update the current and historical windows after an edit an
   expect(series.stats().ao128).toBe(statOf(appended, stat));
   await series.change(201, true);
   expect(series.stats().ao128).toBe(statOf(appended.subarray(0, 201), stat));
+});
+
+test("an average with too few solves says how many are still to go", () => {
+  expect(solvesToGo("ao12", 4)).toBe(8);
+  expect(solvesToGo("ao5", 5)).toBeNull();
+  expect(solvesToGo("mo3", 0)).toBe(3);
+  expect(solvesToGo("ao100", 62)).toBe(38);
+  expect(solvesToGo("best", 0)).toBeNull();
+  expect(solvesToGo("mean", 0)).toBeNull();
 });

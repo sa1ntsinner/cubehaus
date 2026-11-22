@@ -255,6 +255,11 @@ export interface Store {
     putCase(entry: Omit<TrainerCase, "addedAt">): Promise<void>;
     /** Takes a case out of learning; its attempts stay. */
     removeCase(setId: string, caseId: string): Promise<void>;
+    /**
+     * Puts a case taken out back into learning with the schedule it had; false when
+     * there is none to bring back (never added, or in already).
+     */
+    restoreCase(setId: string, caseId: string): Promise<boolean>;
     addAttempt(attempt: TrainerAttempt): Promise<void>;
     /** Marks an attempt missed or not, with the grade that follows. */
     markAttempt(
@@ -1734,6 +1739,24 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
               params: [at, at, setId, caseId],
             },
           ]);
+        }),
+      restoreCase: (setId, caseId) =>
+        run(async () => {
+          const found = await db.all<{ one: number }>(
+            `SELECT 1 AS one FROM trainer_case
+              WHERE set_id = ? AND case_id = ? AND removed_at IS NOT NULL`,
+            [setId, caseId],
+          );
+          if (found.length === 0) return false;
+          const at = now();
+          await db.batch([
+            {
+              sql: `UPDATE trainer_case SET removed_at = NULL, added_at = ?, updated_at = ?
+                WHERE set_id = ? AND case_id = ?`,
+              params: [at, at, setId, caseId],
+            },
+          ]);
+          return true;
         }),
       addAttempt: (a) =>
         run(() =>

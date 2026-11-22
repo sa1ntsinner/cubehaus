@@ -9,6 +9,15 @@ import {
 } from "@cubehaus/cube";
 import { KPattern } from "cubing/kpuzzle";
 import { kpuzzle333, solve333 } from "./cubing";
+import {
+  f2lKey,
+  f2lOf,
+  f2lReady,
+  f2lState,
+  f2lTurned,
+  PAIR_CORNER,
+  PAIR_EDGE,
+} from "./f2l";
 import { classifyLL, memberOf } from "./last-layer-cases";
 import {
   type CubeLayout,
@@ -32,7 +41,7 @@ export type TrainingBase =
   | { kind: "edges-only" | "corners-only" | "two-gen" };
 /** Last-layer cases by ID (last-layer-cases.ts); one is drawn for each scramble. */
 export type TrainingLL = {
-  kind: "oll" | "pll" | "coll" | "ll";
+  kind: "oll" | "pll" | "coll" | "ll" | "f2l";
   caseIds: readonly string[];
 };
 export type TrainingResult = { scramble: string; caseId: string };
@@ -170,6 +179,37 @@ async function attemptOnce(
   request: TrainingBase | TrainingLL,
   rng: () => number,
 ): Promise<TrainingResult | null> {
+  if ("caseIds" in request && request.kind === "f2l") {
+    // The pair as the case, turned by a random U; the cross and the other three slots
+    // home; the last layer drawn at random, so it is scrambled too.
+    const id = request.caseIds[
+      Math.floor(rng() * request.caseIds.length)
+    ] as string;
+    const key = id.slice(4);
+    const pair = f2lTurned(f2lState(key), Math.floor(rng() * 4));
+    const home = (place: number) =>
+      [place, { piece: place, orientation: 0 }] as [
+        number,
+        { piece: number; orientation: number },
+      ];
+    const layout = randomLayout(
+      new Map([
+        ...[4, 5, 6, 7, 9, 10, 11].map(home),
+        [pair.edge, { piece: PAIR_EDGE, orientation: pair.flip }],
+      ]),
+      new Map([
+        ...[5, 6, 7].map(home),
+        [pair.corner, { piece: PAIR_CORNER, orientation: pair.twist }],
+      ]),
+      rng,
+    );
+    const scramble = await scrambleFor(layout);
+    const kpuzzle = await kpuzzle333();
+    const reached = kpuzzle.defaultPattern().applyAlg(scramble);
+    return f2lReady(reached) && f2lKey(f2lOf(reached)) === key
+      ? { scramble, caseId: id }
+      : null;
+  }
   if ("caseIds" in request) {
     // The case first, then a member of it with random U turns before and after.
     const id = request.caseIds[

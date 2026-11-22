@@ -29,6 +29,34 @@ test("loads at least 15 scramble moves within three seconds", async ({
     .toBeGreaterThanOrEqual(15);
 });
 
+test("the scramble line stays empty until the first scramble arrives", async ({
+  page,
+}) => {
+  // Every text the line shows from the first paint on.
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { seen: string[] }).seen = seen;
+    new MutationObserver(() => {
+      const line = document.querySelector('main > [data-part="scramble"]');
+      const text = line?.textContent?.trim() ?? "";
+      if (seen.at(-1) !== text) seen.push(text);
+    }).observe(document, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+  });
+  await page.reload();
+  await expect(page.locator('[data-part="scramble"]')).toHaveAttribute(
+    "data-ready",
+    "true",
+  );
+  const seen = await page.evaluate(
+    () => (window as unknown as { seen: string[] }).seen,
+  );
+  expect(seen.filter((text) => /No scramble|Retry/.test(text))).toEqual([]);
+});
+
 test("holds, readies, runs and stops using Space", async ({ page }) => {
   const timer = page.locator("main");
   await page.keyboard.down("Space");
@@ -214,7 +242,7 @@ test("dragging the mouse across the scramble does not start a solve", async ({
   page,
 }) => {
   const scramble = page.locator('[data-part="scramble"]');
-  await expect(scramble).not.toHaveText(/No scramble/);
+  await expect(scramble).toHaveAttribute("data-ready", "true");
   const box = await scramble.boundingBox();
   if (!box) throw new Error("scramble has no box");
   const phases = await recordPhases(page);

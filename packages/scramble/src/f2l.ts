@@ -1,0 +1,95 @@
+import { KPattern } from "cubing/kpuzzle";
+import { type F2lState, f2lKey, PAIR_CORNER, PAIR_EDGE } from "./f2l-state";
+
+/** The F2L pair on cubing's cube: read, checked and placed (f2l-state.ts has the cases). */
+export * from "./f2l-state";
+
+type Orbit = { pieces: number[]; orientation: number[] };
+type Data = { CORNERS: Orbit; EDGES: Orbit };
+
+const dataOf = (pattern: KPattern) => pattern.patternData as unknown as Data;
+
+/** Where the pair stands on a cube. */
+export function f2lOf(pattern: KPattern): F2lState {
+  const { CORNERS, EDGES } = dataOf(pattern);
+  const corner = CORNERS.pieces.indexOf(PAIR_CORNER);
+  const edge = EDGES.pieces.indexOf(PAIR_EDGE);
+  return {
+    corner,
+    twist: CORNERS.orientation[corner] as number,
+    edge,
+    flip: EDGES.orientation[edge] as number,
+  };
+}
+
+const home = (orbit: Orbit, place: number) =>
+  orbit.pieces[place] === place && orbit.orientation[place] === 0;
+
+/** The cross and the three other slots whole (centres as cubing keeps them, home). */
+export function f2lReady(pattern: KPattern): boolean {
+  const { CORNERS, EDGES } = dataOf(pattern);
+  return (
+    [4, 5, 6, 7, 9, 10, 11].every((place) => home(EDGES, place)) &&
+    [5, 6, 7].every((place) => home(CORNERS, place))
+  );
+}
+
+/** The first two layers whole, the pair included. */
+export const f2lSolved = (pattern: KPattern) =>
+  f2lReady(pattern) && f2lKey(f2lOf(pattern)) === null;
+
+/**
+ * A cube with the pair put where a state says, from a pattern whose pair is home; the pieces
+ * it displaces take the pair's places, and the last layer absorbs the twist, flip and swap
+ * parity so the cube stays one that turns can reach.
+ */
+export function placePair(pattern: KPattern, state: F2lState): KPattern {
+  const data = pattern.patternData as unknown as Data;
+  const corners = {
+    pieces: [...data.CORNERS.pieces],
+    orientation: [...data.CORNERS.orientation],
+  };
+  const edges = {
+    pieces: [...data.EDGES.pieces],
+    orientation: [...data.EDGES.orientation],
+  };
+  const swap = (orbit: Orbit, a: number, b: number) => {
+    if (a === b) return 0;
+    [orbit.pieces[a], orbit.pieces[b]] = [
+      orbit.pieces[b] as number,
+      orbit.pieces[a] as number,
+    ];
+    [orbit.orientation[a], orbit.orientation[b]] = [
+      orbit.orientation[b] as number,
+      orbit.orientation[a] as number,
+    ];
+    return 1;
+  };
+  let swaps = swap(corners, PAIR_CORNER, state.corner);
+  swaps += swap(edges, PAIR_EDGE, state.edge);
+  // An odd number of swaps: two other top edges trade places.
+  const free = [0, 1, 2, 3].filter((place) => place !== state.edge);
+  if (swaps % 2 === 1) swap(edges, free[0] as number, free[1] as number);
+  const twistBefore = corners.orientation[state.corner] as number;
+  corners.orientation[state.corner] = state.twist;
+  const flipBefore = edges.orientation[state.edge] as number;
+  edges.orientation[state.edge] = state.flip;
+  // The twist and flip added are taken back on a top place the pair does not use.
+  const spareCorner = [0, 1, 2, 3].find(
+    (place) => place !== state.corner,
+  ) as number;
+  corners.orientation[spareCorner] =
+    ((corners.orientation[spareCorner] as number) +
+      twistBefore -
+      state.twist +
+      6) %
+    3;
+  const spareEdge = free[2] as number;
+  edges.orientation[spareEdge] =
+    ((edges.orientation[spareEdge] as number) + flipBefore + state.flip) % 2;
+  return new KPattern(pattern.kpuzzle, {
+    ...pattern.patternData,
+    CORNERS: corners,
+    EDGES: edges,
+  });
+}

@@ -504,3 +504,22 @@ test("copies an older average with both dropped attempts and a clipboard fallbac
     "average-5",
   );
 });
+
+test("Shift+F puts the page in full screen and takes it out, listed in Keys", async ({
+  page,
+}) => {
+  await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
+  await page.keyboard.press("Shift+Slash");
+  await expect(
+    part(page, "keys-help").locator('[data-action-id="view.fullscreen"] kbd'),
+  ).toHaveAttribute("data-key", "Shift+KeyF");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Shift+KeyF");
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement !== null))
+    .toBe(true);
+  await page.keyboard.press("Shift+KeyF");
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement !== null))
+    .toBe(false);
+});

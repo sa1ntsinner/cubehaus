@@ -1,0 +1,555 @@
+/*
+ * Train: the progress view's column,
+ * way back and title; the set and the mode as words on one line; cases as the drill
+ * sheet's top views; an algorithm set as code, its triggers apart, each turn in its hue.
+ * No boxes. Colour only for a result: `pb` faster than the person's own median, a hollow
+ * `error` time for an attempt marked missed.
+ */
+
+main[data-part="train"] {
+  box-sizing: border-box;
+  width: min(960px, 100%);
+  margin: 0 auto;
+  --pad: var(--s5);
+  padding: var(--s7) var(--pad) var(--s8);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--ink);
+}
+main[data-part="train"] > nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--dim);
+}
+main[data-part="train"] > nav a::before {
+  content: "←";
+  margin-inline-end: var(--s2);
+  font-family: var(--font-mono);
+}
+main[data-part="train"] > nav a:hover {
+  color: var(--ink);
+}
+main[data-part="train"] h1 {
+  margin: var(--s5) 0 var(--s4);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.15;
+}
+/* The reset stays below every button rule after it. */
+:where(main[data-part="train"]) button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ---- the set and the mode ---- */
+[data-part="train-bar"] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--s6);
+  margin-inline: calc(-1 * var(--s2));
+}
+[data-part="train-sets"],
+[data-part="train-modes"],
+[data-part="train-filter"],
+[data-part="train-show"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--s2);
+  margin: 0;
+}
+:is(
+    [data-part="train-sets"],
+    [data-part="train-modes"],
+    [data-part="train-filter"],
+    [data-part="train-show"]
+  )
+  button {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: var(--s2);
+  border-radius: 6px;
+  color: var(--dim);
+  transition: color 120ms ease;
+}
+:is(
+    [data-part="train-sets"],
+    [data-part="train-modes"],
+    [data-part="train-filter"],
+    [data-part="train-show"]
+  )
+  button:hover {
+  color: var(--ink);
+}
+:is(
+    [data-part="train-sets"],
+    [data-part="train-modes"],
+    [data-part="train-filter"],
+    [data-part="train-show"]
+  )
+  button[aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--ink);
+}
+main[data-part="train"] button:focus-visible {
+  outline: 2px solid var(--double);
+  outline-offset: -2px;
+}
+main[data-part="train"] button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* ---- Learn: the cases, and the one open beside them ---- */
+[data-part="train-learn"] {
+  margin-top: var(--s5);
+}
+[data-part="train-filter"] {
+  margin: 0 0 var(--s2) calc(-1 * var(--s2));
+}
+[data-part="train-case-list"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-part="train-case-list"] button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  width: 100%;
+  padding: var(--s2) var(--s1);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--dim);
+  transition: background-color 100ms ease;
+}
+[data-part="train-case-list"] button:hover {
+  background: var(--line);
+}
+[data-part="train-case-list"] button[data-learning] {
+  color: var(--ink);
+}
+[data-part="train-case-list"] button[aria-current="true"] {
+  background: var(--line);
+  color: var(--ink);
+}
+main[data-part="train"] [data-part="case-diagram"] {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  background: var(--pz-body);
+  opacity: 0.55;
+}
+[data-part="train-case-list"]
+  :is([data-learning], [aria-current="true"])
+  [data-part="case-diagram"] {
+  opacity: 1;
+}
+
+[data-part="train-case"] {
+  margin-top: var(--s6);
+}
+[data-action="train-case-close"] {
+  display: none;
+}
+[data-part="train-case-head"] {
+  display: flex;
+  align-items: center;
+  gap: var(--s5);
+}
+main[data-part="train"]
+  [data-part="train-case-head"]
+  [data-part="case-diagram"] {
+  width: 120px;
+  height: 120px;
+  opacity: 1;
+}
+[data-part="train-case-head"] h2 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.15;
+}
+[data-part="train-recognise"] {
+  max-width: 46ch;
+  margin: var(--s4) 0 0;
+  line-height: 1.45;
+  color: var(--dim);
+}
+[data-part="train-algs"] {
+  margin: var(--s5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+[data-part="train-alg"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--s3);
+  padding-block: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--dim);
+}
+[data-part="train-alg"]:first-child {
+  font-size: 19px;
+  color: var(--ink);
+}
+[data-part="train-auf"] {
+  color: var(--gutter);
+}
+/* The space between triggers is wider than the one between moves; a trigger stays on
+   one line, and a wrapped line starts flush. */
+[data-part="train-moves"] {
+  word-spacing: 0.7ch;
+}
+[data-part="train-group"] {
+  white-space: nowrap;
+  word-spacing: 0.1ch;
+}
+[data-part="train-count"] {
+  font-size: 13px;
+  color: var(--gutter);
+}
+[data-part="train-case-actions"] {
+  margin: var(--s4) 0 0;
+}
+[data-part="train-case-actions"] button {
+  min-height: 44px;
+  font-weight: 600;
+}
+[data-part="train-case-actions"] [data-action="train-remove"] {
+  font-weight: 500;
+  color: var(--dim);
+}
+[data-part="train-case-actions"] [data-action="train-remove"]:hover {
+  color: var(--ink);
+}
+
+@media (min-width: 900px) {
+  [data-part="train-learn"][data-open] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: var(--s7);
+    align-items: start;
+  }
+  [data-part="train-learn"][data-open] [data-part="train-case"] {
+    position: sticky;
+    top: var(--s5);
+    margin-top: 0;
+  }
+}
+@media (max-width: 899px) {
+  [data-part="train-learn"][data-open] [data-part="train-cases"] {
+    display: none;
+  }
+  [data-part="train-learn"][data-open] [data-part="train-case"] {
+    margin-top: 0;
+  }
+  [data-action="train-case-close"] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-bottom: var(--s3);
+    color: var(--dim);
+  }
+  [data-action="train-case-close"]::before {
+    content: "‹";
+    margin-inline-end: var(--s2);
+    font-family: var(--font-mono);
+  }
+}
+
+/* ---- Drill and Review: one case at a time, in the middle ---- */
+[data-part="train-empty"] {
+  margin: var(--s6) 0 0;
+  max-width: 52ch;
+  color: var(--dim);
+}
+[data-part="train-drill"] {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 220px);
+  margin-inline: calc(-1 * var(--pad));
+  padding-inline: var(--pad);
+}
+/* The way of showing, at the drill's foot where it acts: remembered, so rarely touched. */
+[data-part="train-show"] {
+  justify-content: center;
+  margin: calc(-1 * var(--s3)) 0 0;
+  font-size: 14px;
+}
+[data-part="train-stage"] {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s5);
+  padding-block: var(--s6);
+  text-align: center;
+}
+main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
+  width: 200px;
+  height: 200px;
+  border-radius: 10px;
+  opacity: 1;
+}
+[data-part="train-scramble"] {
+  max-width: 24ch;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 1.1ch;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 27px;
+  line-height: 1.35;
+}
+[data-part="train-scramble"][data-ready="false"] {
+  font-size: 15px;
+  color: var(--gutter);
+}
+[data-part="train-time"] {
+  font-family: var(--font-solid);
+  font-size: clamp(64px, 11vw, 128px);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+}
+[data-phase="shown"] [data-part="train-time"] {
+  color: var(--gutter);
+}
+/* Held: the figures fill once the hold is long enough to start (HOLD_MS). */
+[data-phase="holding"] [data-part="train-time"] {
+  color: var(--gutter);
+  animation: train-ready 0s linear 300ms forwards;
+}
+@keyframes train-ready {
+  to {
+    color: var(--ink);
+  }
+}
+[data-part="train-time"][data-faster] {
+  color: var(--pb);
+}
+[data-part="train-time"][data-missed] {
+  color: transparent;
+  -webkit-text-stroke: 2.5px var(--error);
+}
+/* While the clock runs, only the time stays. */
+[data-part="train-drill"]
+  :is(
+    [data-part="train-show"],
+    [data-part="train-picture"],
+    [data-part="train-scramble"],
+    [data-part="train-hint"]
+  ) {
+  transition: opacity 140ms var(--ease);
+}
+[data-phase="running"]
+  :is(
+    [data-part="train-show"],
+    [data-part="train-picture"],
+    [data-part="train-scramble"],
+    [data-part="train-hint"]
+  ) {
+  opacity: 0;
+}
+[data-part="train-hint"],
+[data-part="train-numbers"] {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--gutter);
+}
+[data-part="train-hint"] [data-input="touch"] {
+  display: none;
+}
+@media (pointer: coarse) {
+  [data-part="train-hint"] [data-input="keys"],
+  [data-part="train-after"] [data-input="keys"] {
+    display: none;
+  }
+  [data-part="train-hint"] [data-input="touch"] {
+    display: inline;
+  }
+}
+[data-part="train-result"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+}
+[data-part="train-numbers"] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--s5);
+}
+[data-part="train-numbers"] b {
+  font-weight: 500;
+  color: var(--dim);
+}
+[data-part="train-answer"] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--s2) var(--s4);
+  margin: var(--s2) 0 0;
+  font-family: var(--font-mono);
+  font-size: 19px;
+}
+[data-part="train-label"] {
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+[data-part="train-result"] [data-part="train-recognise"] {
+  margin: 0;
+  text-align: center;
+}
+[data-part="train-after"] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 var(--s5);
+  margin: var(--s2) 0 0;
+}
+[data-part="train-after"] button {
+  min-width: 44px;
+  min-height: 44px;
+  font-weight: 600;
+}
+[data-part="train-after"] [data-action="train-missed"] {
+  font-weight: 500;
+  color: var(--dim);
+}
+[data-part="train-after"] [data-action="train-missed"]:hover,
+[data-part="train-after"] [data-action="train-missed"][aria-pressed="true"] {
+  color: var(--error);
+}
+[data-part="train-after"] [data-input="keys"] {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--gutter);
+}
+
+/* A phone, or any screen short on height: the title is said to screen readers only, the
+   sets join the way back at its right, and the modes take the one line under it. */
+@media (max-width: 699px), (max-height: 520px) {
+  main[data-part="train"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+  }
+  main[data-part="train"] > *,
+  [data-part="train-modes"] {
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+  main[data-part="train"] > nav {
+    flex: 1 0 auto;
+  }
+  main[data-part="train"] h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  [data-part="train-bar"] {
+    display: contents;
+  }
+  [data-part="train-sets"] {
+    flex-wrap: nowrap;
+    margin-inline-end: calc(-1 * var(--s2));
+  }
+  [data-part="train-modes"] {
+    margin: var(--s2) 0 0 calc(-1 * var(--s2));
+  }
+  main[data-part="train"] [data-part="train-drill"] {
+    flex-basis: calc(100% + 2 * var(--pad));
+  }
+  [data-part="train-learn"] {
+    margin-top: var(--s4);
+  }
+}
+/* Short on height (a phone on its side): the picture and the time share what is left. */
+@media (max-height: 520px) {
+  main[data-part="train"] {
+    padding-block: var(--s3) var(--s5);
+  }
+  [data-part="train-drill"] {
+    min-height: calc(100dvh - 120px);
+  }
+  main[data-part="train"]
+    [data-part="train-picture"]
+    [data-part="case-diagram"] {
+    width: 132px;
+    height: 132px;
+  }
+  [data-part="train-stage"] {
+    gap: var(--s2);
+    padding-block: 0 var(--s2);
+  }
+  [data-part="train-time"] {
+    font-size: 56px;
+  }
+  [data-part="train-show"] {
+    margin-top: calc(-1 * var(--s2));
+  }
+}
+/* A phone drilling: once stopped the picture steps back so the answer and the next press
+   fit. */
+@media (max-width: 699px) {
+  main[data-part="train"]
+    [data-phase="stopped"]
+    [data-part="train-picture"]
+    [data-part="case-diagram"] {
+    width: 112px;
+    height: 112px;
+  }
+  [data-phase="stopped"] [data-part="train-stage"] {
+    gap: var(--s3);
+    padding-block: var(--s4);
+  }
+}
+@media (max-width: 699px) {
+  main[data-part="train"] {
+    --pad: var(--s4);
+    padding: calc(var(--s4) + env(safe-area-inset-top)) var(--pad) var(--s7);
+  }
+  [data-part="train-drill"] {
+    min-height: calc(100dvh - 160px);
+  }
+  main[data-part="train"]
+    [data-part="train-picture"]
+    [data-part="case-diagram"] {
+    width: 160px;
+    height: 160px;
+  }
+  [data-part="train-scramble"] {
+    font-size: 16px;
+  }
+  [data-part="train-alg"]:first-child {
+    font-size: 17px;
+  }
+  [data-part="train-answer"] {
+    font-size: 16px;
+  }
+}

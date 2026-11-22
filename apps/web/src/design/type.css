@@ -1,0 +1,108 @@
+/*
+ * Type and the browser's own surfaces (DESIGN.md sections 3 and 5). Faces come only from the
+ * two font tokens; sizes from the type scale.
+ */
+
+:root {
+  font-size: 15px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--ground);
+}
+
+::selection {
+  background: var(--sel);
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--double);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+/* A click focuses the calendar and the trend for their arrow keys; only the keyboard rings. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Buttons and fields are words on the ground: no boxes, no fills. */
+button,
+select,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+a:hover {
+  color: var(--ink);
+}
+
+/* Figures never shift: every number in the app is tabular. */
+output,
+[data-stat],
+[data-part="solve-no"],
+[data-part="solve-time"],
+[data-part="solve-ao5"],
+[data-part="solve-ao12"] {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
+
+/* A custom theme's picture (theme.ts): fixed behind everything, under a veil of the ground
+   so the text keeps its contrast (checked against the picture's tones before it is used).
+   Sheets keep their opaque ground and cover it. */
+:root[data-image] body {
+  background: transparent;
+}
+:root[data-image] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--ground-image) center / cover no-repeat;
+  opacity: var(--image-strength, 0.2);
+  pointer-events: none;
+}

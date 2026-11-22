@@ -1,0 +1,317 @@
+import type { Face } from "@cubehaus/cube";
+import type { TrainingBase, TrainingLL } from "@cubehaus/scramble";
+import {
+  type LastLayerCase,
+  lastLayerCases,
+} from "@cubehaus/scramble/last-layer";
+import { useMemo, useState } from "react";
+import type { Text } from "../text";
+import type { TrainingProfile } from "./training-client";
+
+/**
+ * Drill scrambles for 3×3: the sheet that picks one, and the line under the scramble
+ * that says a drill is on. A drill is not a WCA scramble; the line says so in words.
+ */
+
+export type DrillKind = "official" | TrainingBase["kind"] | TrainingLL["kind"];
+
+/** The cross colours as cubers name them, by face in the scramble's orientation. */
+export const FACES: readonly Face[] = ["U", "D", "F", "B", "R", "L"];
+export const RANGES = { "easy-cross": 8, "easy-xcross": 6 } as const;
+
+/** What a search matches: the name, and for OLL the shape of the top edges. */
+function caseSearchText(c: LastLayerCase, words: Text): string {
+  if (c.kind !== "oll") return c.label;
+  const flipped = [0, 1, 2, 3].filter((e) => c.state.eo[e] === 1);
+  const shape =
+    flipped.length === 0
+      ? "cross"
+      : flipped.length === 4
+        ? "dot"
+        : (flipped[1] as number) - (flipped[0] as number) === 2
+          ? "line"
+          : "L";
+  return `${c.label} ${words.drill.group[shape]}`;
+}
+
+/** The top of the cube with its side stickers, as a cuber draws a last-layer case. */
+export function CaseDiagram({
+  stickers,
+  orientationOnly,
+  edgesOnTop = false,
+}: {
+  stickers: string;
+  orientationOnly: boolean;
+  /** COLL: the edges' side stickers say nothing (only that they are oriented): grey. */
+  edgesOnTop?: boolean;
+}) {
+  // stickers: U 0–8 row by row from the back left, then the top rows of F, R, B, L as
+  // each is seen from outside. Seen from above, B runs right to left, R and L top down.
+  const at = (index: number) =>
+    edgesOnTop && [10, 13, 16, 19].includes(index)
+      ? "grey"
+      : (stickers[index] ?? "U");
+  const fill = (colour: string) =>
+    colour === "grey"
+      ? "var(--pz-grey)"
+      : orientationOnly
+        ? colour === "U"
+          ? "var(--pz-U)"
+          : "var(--pz-grey)"
+        : `var(--pz-${colour})`;
+  const cells: { x: number; y: number; w: number; h: number; c: string }[] = [];
+  for (let i = 0; i < 9; i++)
+    cells.push({
+      x: 1 + (i % 3),
+      y: 1 + Math.floor(i / 3),
+      w: 1,
+      h: 1,
+      c: at(i),
+    });
+  const strip = 0.38;
+  for (let k = 0; k < 3; k++) {
+    cells.push({ x: 1 + k, y: 4, w: 1, h: strip, c: at(9 + k) }); // F
+    cells.push({ x: 4, y: 3 - k, w: strip, h: 1, c: at(12 + k) }); // R
+    cells.push({ x: 3 - k, y: 1 - strip, w: 1, h: strip, c: at(15 + k) }); // B
+    cells.push({ x: 1 - strip, y: 1 + k, w: strip, h: 1, c: at(18 + k) }); // L
+  }
+  const gap = 0.07;
+  return (
+    <svg
+      data-part="case-diagram"
+      viewBox={`${1 - strip - gap} ${1 - strip - gap} ${3 + 2 * (strip + gap)} ${3 + 2 * (strip + gap)}`}
+      aria-hidden="true"
+    >
+      {cells.map((cell) => (
+        <rect
+          key={`${cell.x},${cell.y}`}
+          x={cell.x + gap / 2}
+          y={cell.y + gap / 2}
+          width={cell.w - gap}
+          height={cell.h - gap}
+          rx={0.12}
+          fill={fill(cell.c)}
+        />
+      ))}
+    </svg>
+  );
+}
+
+const defaults = (kind: DrillKind, face: Face): TrainingProfile => {
+  switch (kind) {
+    case "official":
+      return { request: null };
+    case "easy-cross":
+      return { request: { kind, face, length: 4 } };
+    case "easy-xcross":
+      return { request: { kind, face, length: 3 } };
+    case "cross-solved":
+      return { request: { kind, face } };
+    case "oll":
+    case "pll":
+    case "coll":
+    case "ll":
+      return { request: { kind, caseIds: [] } };
+    default:
+      return { request: { kind } };
+  }
+};
+
+export function Training({
+  profile,
+  words,
+  onChange,
+  onClose,
+}: {
+  profile: TrainingProfile;
+  words: Text;
+  onChange(profile: TrainingProfile): void;
+  onClose(): void;
+}) {
+  const t = words.drill;
+  // The sheet shows each choice at once; the setting is saved behind it.
+  const [draft, setDraft] = useState(profile);
+  const change = (next: TrainingProfile) => {
+    setDraft(next);
+    onChange(next);
+  };
+  const request = draft.request;
+  const kind: DrillKind = request?.kind ?? "official";
+  const face: Face = request && "face" in request ? request.face : "U";
+  const [query, setQuery] = useState("");
+  const catalogue = useMemo(() => lastLayerCases(), []);
+  const kinds: DrillKind[] = [
+    "official",
+    "easy-cross",
+    "easy-xcross",
+    "cross-solved",
+    "edges-only",
+    "corners-only",
+    "two-gen",
+    "oll",
+    "pll",
+  ];
+  const cases =
+    kind === "oll" ? catalogue.oll : kind === "pll" ? catalogue.pll : [];
+  const chosen = new Set(
+    request && "caseIds" in request ? request.caseIds : [],
+  );
+  const shown = cases
+    .filter((c) => !c.label.endsWith("skip"))
+    .filter((c) =>
+      caseSearchText(c, words)
+        .toLowerCase()
+        .includes(query.trim().toLowerCase()),
+    );
+  const setCases = (ids: Iterable<string>) =>
+    change({
+      request: { kind: kind as "oll" | "pll", caseIds: [...ids] },
+    });
+
+  return (
+    <dialog
+      data-part="training"
+      data-no-timer
+      open
+      aria-label={t.title}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onClose();
+        }
+      }}
+    >
+      <button type="button" data-action="dialog-close" onClick={onClose}>
+        {words.timer}
+      </button>
+      <fieldset data-part="training-kinds">
+        <legend>{t.title}</legend>
+        {kinds.map((option) => (
+          <div key={option} data-kind={option}>
+            <label>
+              <input
+                type="radio"
+                name="drill"
+                value={option}
+                checked={kind === option}
+                autoFocus={kind === option}
+                onChange={() => change(defaults(option, face))}
+              />{" "}
+              {t.kind[option]}
+            </label>
+            {kind === option &&
+              request &&
+              "length" in request &&
+              (option === "easy-cross" || option === "easy-xcross") && (
+                <label data-part="training-length">
+                  {t.turns}{" "}
+                  <select
+                    data-action="training-length"
+                    value={request.length}
+                    onChange={(event) =>
+                      change({
+                        request: {
+                          ...request,
+                          length: Number(event.target.value),
+                        },
+                      })
+                    }
+                  >
+                    {Array.from(
+                      { length: RANGES[option] + 1 },
+                      (_, n) => n,
+                    ).map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            {kind === option && request && "face" in request && (
+              <label data-part="training-face">
+                {t.cross}{" "}
+                <select
+                  data-action="training-face"
+                  value={request.face}
+                  onChange={(event) =>
+                    change({
+                      request: { ...request, face: event.target.value as Face },
+                    })
+                  }
+                >
+                  {FACES.map((side) => (
+                    <option key={side} value={side}>
+                      {t.colour[side]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        ))}
+      </fieldset>
+      {(kind === "oll" || kind === "pll") && (
+        <section data-part="training-cases">
+          <p data-part="training-case-tools">
+            <input
+              type="search"
+              data-part="training-query"
+              aria-label={t.find}
+              placeholder={t.find}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />{" "}
+            <button
+              type="button"
+              data-action="training-all"
+              onClick={() =>
+                setCases(new Set([...chosen, ...shown.map((c) => c.id)]))
+              }
+            >
+              {t.all}
+            </button>{" "}
+            <button
+              type="button"
+              data-action="training-none"
+              onClick={() =>
+                setCases(
+                  [...chosen].filter((id) => !shown.some((c) => c.id === id)),
+                )
+              }
+            >
+              {t.none}
+            </button>
+          </p>
+          {chosen.size === 0 && (
+            <p data-part="training-empty" role="status">
+              {t.pickOne}
+            </p>
+          )}
+          <ul data-part="training-case-list">
+            {shown.map((c) => (
+              <li key={c.id} data-case-id={c.id}>
+                <button
+                  type="button"
+                  aria-pressed={chosen.has(c.id)}
+                  onClick={() => {
+                    const next = new Set(chosen);
+                    if (next.has(c.id)) next.delete(c.id);
+                    else next.add(c.id);
+                    setCases(next);
+                  }}
+                >
+                  <CaseDiagram
+                    stickers={c.stickers}
+                    orientationOnly={kind === "oll"}
+                  />
+                  <span>{c.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </dialog>
+  );
+}

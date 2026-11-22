@@ -1,0 +1,347 @@
+/*
+ * Fewest Moves and Multi-Blind entry (DESIGN.md section 13), in the large time's place.
+ * Fewest Moves: the attempt's clock set as the time, a word to start it, the solution on
+ * one underlined line, a word to check it. Multi-Blind: the counts and the time on one line.
+ * Fields are words on the ground with an underline; nothing is boxed.
+ */
+
+main > [data-part="entry"] {
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: var(--s4) var(--s5);
+  max-width: min(760px, 100%);
+}
+
+/* Multi-Blind keeps its timer: the entry goes under the stats instead of over the time, in
+   a row at least as tall as itself. */
+main:has(> output[data-part="time"]):has(> [data-part="entry"]) {
+  grid-template-rows:
+    auto minmax(0, 1fr) auto auto auto minmax(min-content, 1fr)
+    auto;
+}
+main:has(> output[data-part="time"]) > [data-part="entry"] {
+  grid-area: auto;
+  grid-row: 6;
+  grid-column: 2;
+  align-self: start;
+  justify-self: center;
+}
+
+/* Typed times: the field is the large time, in its face, nearly its size. */
+main
+  > [data-part="entry"]:not(
+    :has([data-part="fm-clock"], [data-part="cubes-solved"])
+  ) {
+  flex-direction: column;
+  align-items: center;
+}
+[data-part="entry"]:not(
+    :has([data-part="fm-clock"], [data-part="cubes-solved"])
+  )
+  label {
+  align-items: center;
+}
+[data-part="entry"]:not(
+    :has([data-part="fm-clock"], [data-part="cubes-solved"])
+  )
+  [data-part="entry-input"] {
+  width: 5ch;
+  font-family: var(--font-solid);
+  font-weight: 700;
+  font-size: min(9cqi, 18vh);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-align: center;
+  border-bottom-width: 2px;
+}
+[data-part="entry-input"]::placeholder {
+  color: var(--gutter);
+}
+
+/* ---- the Fewest Moves clock: the time's face and size ---- */
+[data-part="fm-clock"] {
+  flex-basis: 100%;
+  text-align: center;
+  font-family: var(--font-solid);
+  font-weight: 700;
+  font-size: min(15.5cqi, 30vh);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+[data-part="fm-clock"][data-warn="true"] {
+  color: var(--warn);
+}
+[data-part="fm-clock"][data-over="true"] {
+  color: var(--error);
+}
+[data-action="fm-start"] {
+  flex-basis: 100%;
+  margin-top: calc(-1 * var(--s2));
+  color: var(--dim);
+}
+[data-action="fm-start"]:hover:not(:disabled) {
+  color: var(--ink);
+}
+/* Once running, the word leaves but keeps its line, so nothing below moves. */
+[data-action="fm-start"]:disabled {
+  visibility: hidden;
+}
+/* Show scrambles acts only on a changed count; until then it is not there. */
+[data-action="entry-scrambles"]:disabled {
+  visibility: hidden;
+}
+
+/* ---- fields ---- */
+[data-part="entry"] label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  font-size: 13px;
+  color: var(--gutter);
+}
+[data-part="entry"] input {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: var(--s1) 0;
+  caret-color: var(--prime);
+  transition: border-color 120ms ease;
+}
+[data-part="entry"] input:focus {
+  outline: none;
+  border-bottom-color: var(--dim);
+}
+[data-part="entry"] input:disabled {
+  color: var(--dim);
+}
+[data-part="entry-input"] {
+  width: min(44ch, 72vw);
+}
+[data-part="cubes-attempted"],
+[data-part="cubes-solved"] {
+  width: 4ch;
+  text-align: center;
+  appearance: textfield;
+}
+[data-part="entry"] input::-webkit-inner-spin-button,
+[data-part="entry"] input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ---- the words that act ---- */
+[data-part="entry"] button {
+  padding: var(--s1) 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+[data-part="entry"] button:hover:not(:disabled) {
+  color: var(--prime);
+}
+
+/* ---- what the check says ---- */
+[data-part="entry-error"],
+[data-part="entry-feedback"] {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+[data-part="entry-error"] {
+  color: var(--error);
+}
+/* A typed time: what is wrong with it stands right under it, before Save. */
+[data-part="entry"]:not(
+    :has([data-part="fm-clock"], [data-part="cubes-solved"])
+  )
+  > [data-part="entry-error"] {
+  order: 1;
+}
+[data-part="entry"]:not(
+    :has([data-part="fm-clock"], [data-part="cubes-solved"])
+  )
+  > :is(button, [data-part="entry-feedback"]) {
+  order: 2;
+}
+
+/* ---- Multi-Blind: the two counts and the time on one line, each field as wide as what it
+   holds ("1:00:00.00" at most). Show scrambles appears under the count only while it can
+   act, so nothing beside the field being typed in moves. ---- */
+main > [data-part="entry"]:has([data-part="cubes-solved"]) {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  grid-template-areas:
+    "attempted solved time save cancel"
+    "scrambles scrambles scrambles scrambles scrambles"
+    "note note note note note";
+  justify-content: center;
+  justify-items: start;
+  align-items: end;
+  gap: var(--s3) var(--s5);
+}
+[data-part="entry"] label:has([data-part="cubes-attempted"]) {
+  grid-area: attempted;
+}
+[data-part="entry"] label:has([data-part="cubes-solved"]) {
+  grid-area: solved;
+}
+[data-part="entry"]:has([data-part="cubes-solved"])
+  label:has([data-part="entry-input"]) {
+  grid-area: time;
+}
+[data-part="entry"]:has([data-part="cubes-solved"]) [data-action="entry-save"] {
+  grid-area: save;
+}
+[data-part="entry"]:has([data-part="cubes-solved"]) button:not([data-action]) {
+  grid-area: cancel;
+}
+[data-part="entry"]:has([data-part="cubes-solved"])
+  [data-action="entry-scrambles"] {
+  grid-area: scrambles;
+}
+[data-part="entry"]:has([data-part="cubes-solved"])
+  [data-action="entry-scrambles"]:disabled {
+  display: none;
+}
+[data-part="entry"]:has([data-part="cubes-solved"])
+  :is([data-part="entry-error"], [data-part="entry-feedback"]) {
+  grid-area: note;
+  justify-self: center;
+}
+[data-part="entry"]:has([data-part="cubes-solved"]) [data-part="entry-input"] {
+  width: 10ch;
+  text-align: center;
+}
+
+@media (max-width: 699px) {
+  /* One column: Multi-Blind's entry takes the open row above the time, sized to it; the
+     file keeps at least its totals' height, as in every event. */
+  main:has(> output[data-part="time"]):has(> [data-part="entry"]) {
+    grid-template-rows:
+      auto auto auto auto auto auto minmax(min-content, 1fr)
+      auto auto;
+  }
+  main:has(> output[data-part="time"]) > [data-part="entry"] {
+    grid-row: 3;
+    grid-column: 1;
+    align-self: end;
+  }
+  [data-part="fm-clock"] {
+    font-size: 23vw;
+  }
+  [data-part="entry-input"] {
+    width: 100%;
+  }
+  [data-part="entry"] label:has([data-part="entry-input"]) {
+    flex-basis: 100%;
+  }
+  [data-part="entry"] button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  [data-part="entry"] input {
+    min-height: 44px;
+  }
+  /* Two counts, then the time with its words. */
+  main > [data-part="entry"]:has([data-part="cubes-solved"]) {
+    grid-template-columns: repeat(3, auto);
+    grid-template-areas:
+      "attempted solved solved"
+      "time save cancel"
+      "scrambles scrambles scrambles"
+      "note note note";
+  }
+  [data-part="entry"]:has([data-part="cubes-solved"])
+    [data-part="entry-input"] {
+    width: 10ch;
+  }
+}
+
+/* A short phone: Fewest Moves needs its clock, the solution and both words on screen with
+   the file's totals and the status line, so the scramble takes a fifth, the gaps close and
+   the picture stays out (timer.css, short phone). */
+@media (max-width: 699px) and (max-height: 740px) {
+  main > [data-part="scramble"][data-event="333fm"] {
+    --cap: 17dvh;
+  }
+  /* Before a result there is nothing to undo or mark; the row gives its height back. (No
+     timer runs here, so nothing above moves while timing.) */
+  main:has(> [data-part="entry"] [data-part="fm-clock"])
+    > [data-part="last-actions"]:not(:has(button:enabled)) {
+    display: none;
+  }
+  main:has(> [data-part="entry"] [data-part="fm-clock"])
+    > [data-part="scramble-picture"] {
+    display: none;
+  }
+  [data-part="fm-clock"] {
+    font-size: min(23vw, 10dvh);
+  }
+  main > [data-part="entry"]:has([data-part="fm-clock"]) {
+    row-gap: var(--s2);
+  }
+}
+
+/* A touch screen of any width (a phone on its side): fields and words a finger can take. */
+@media (pointer: coarse) {
+  [data-part="entry"] :is(input, button) {
+    min-height: 44px;
+  }
+  [data-part="entry"] button {
+    min-width: 44px;
+  }
+}
+
+/* A short window (a phone on its side): Fewest Moves' clock and Multi-Blind's time come
+   down in size and the fields close up, so the status line stays on screen. */
+@media (min-width: 700px) and (max-height: 500px) {
+  [data-part="fm-clock"] {
+    font-size: min(15.5cqi, 17vh);
+  }
+  main > [data-part="entry"]:has([data-part="fm-clock"]) {
+    row-gap: var(--s2);
+  }
+  /* The solution and the word that checks it share a line. */
+  main > [data-part="entry"]:has([data-part="fm-clock"]) label {
+    flex: 1 1 0;
+  }
+  main
+    > [data-part="entry"]:has([data-part="fm-clock"])
+    [data-part="entry-input"] {
+    width: 100%;
+  }
+  main:has(> [data-part="entry"] [data-part="cubes-solved"])
+    > output[data-part="time"] {
+    font-size: calc(min(15.5cqi, 16vh) * var(--size-time, 1));
+  }
+  main > [data-part="entry"]:has([data-part="cubes-solved"]) {
+    row-gap: var(--s1);
+    column-gap: var(--s3);
+  }
+  [data-part="entry"]:has([data-part="cubes-solved"])
+    [data-part="entry-input"] {
+    width: 8ch;
+  }
+}
+
+/* Multi-Blind's labels stay one line each, above their fields. */
+[data-part="entry"]:has([data-part="cubes-solved"]) label {
+  white-space: nowrap;
+}
+
+/* A phone: Fewest Moves reserves five scramble lines, so its clock, start word, solution
+   and check close up to keep the status line on a 390 × 844 screen. */
+@media (max-width: 699px) {
+  main > [data-part="entry"]:has([data-part="fm-clock"]) {
+    row-gap: var(--s2);
+  }
+}

@@ -1,0 +1,555 @@
+/*
+ * Progress, the calm view (DESIGN.md section 14): the sessions, one line of numbers, the
+ * trend as one line, the bests, the practice. No boxes, no legend; space and alignment
+ * group. Colour is kept for results: `pb` where it got faster, `warn` softened where slower.
+ */
+
+main[data-part="progress"] {
+  --column: 960px;
+  box-sizing: border-box;
+  width: min(var(--column), 100%);
+  margin: 0 auto;
+  padding: var(--s7) var(--s5) var(--s8);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+/* ---- the way back and the title, as in Settings ---- */
+main[data-part="progress"] > nav:first-child a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--dim);
+}
+main[data-part="progress"] > nav:first-child a::before {
+  content: "←";
+  margin-inline-end: var(--s2);
+  font-family: var(--font-mono);
+}
+main[data-part="progress"] > nav:first-child a:hover {
+  color: var(--ink);
+}
+main[data-part="progress"] h1 {
+  margin: var(--s5) 0 var(--s4);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.15;
+}
+main[data-part="progress"]
+  > :is([role="status"], [role="alert"], [data-part="db-state"]) {
+  margin: 0 0 var(--s4);
+  color: var(--dim);
+}
+main[data-part="progress"] > [role="alert"] {
+  color: var(--error);
+}
+
+/* ---- 1. the sessions: names, each with its count ---- */
+[data-part="progress-events"] {
+  display: flex;
+  gap: 0 var(--s5);
+  margin-inline: calc(-1 * var(--s2));
+  overflow-x: auto;
+  white-space: nowrap;
+}
+[data-part="progress-event"] {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: var(--s2);
+  color: var(--dim);
+  transition: color 120ms ease;
+}
+[data-part="progress-event"]:hover {
+  color: var(--ink);
+}
+[data-part="progress-event"][aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--ink);
+}
+[data-part="progress-event-count"] {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--gutter);
+}
+
+/* ---- 2. the numbers: the largest average, then how it moved ---- */
+[data-part="progress-now"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s6);
+  margin-top: var(--s6);
+}
+[data-part="progress-average-name"] {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--dim);
+  margin-inline-end: calc(-1 * var(--s6) + var(--s3));
+}
+[data-part="progress-average"] {
+  font-family: var(--font-solid);
+  font-weight: 700;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+[data-part="progress-deltas"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin: 0;
+}
+/* The figure first, its label after: `−0.42 30 d`. */
+[data-part="progress-deltas"] > div {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: baseline;
+  gap: var(--s2);
+}
+[data-part="progress-deltas"] dt {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--gutter);
+}
+[data-part="progress-deltas"] dd {
+  margin: 0;
+  font-weight: 600;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+[data-part="progress-deltas"] [data-sign="faster"] dd {
+  color: var(--pb);
+}
+[data-part="progress-deltas"] [data-sign="slower"] dd {
+  color: color-mix(in oklab, var(--warn) 75%, var(--dim));
+}
+:is([data-part="progress-needs"], [data-part="progress-empty"]) {
+  margin: var(--s6) 0 0;
+  font-size: 17px;
+  color: var(--dim);
+}
+
+/* ---- 3. the trend: one line that turns green as it gets faster ---- */
+[data-part="progress-trend"] {
+  position: relative;
+  height: 360px;
+  margin: var(--s5) 0 0;
+  border-radius: 6px;
+  outline: none;
+}
+[data-part="progress-trend"]:focus-visible {
+  outline: 1px solid var(--gutter);
+  outline-offset: var(--s2);
+}
+[data-part="progress-trend"] svg {
+  overflow: visible;
+  cursor: crosshair;
+}
+[data-part="progress-grid"] {
+  stroke: var(--line);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+[data-part="progress-axis"] {
+  fill: var(--gutter);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+[data-part="progress-line"] {
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  /* Drawn in once, left to right, as the solves went. */
+  animation: trend-draw 480ms var(--ease);
+}
+@keyframes trend-draw {
+  from {
+    clip-path: inset(-8px 100% -8px 0);
+  }
+  to {
+    clip-path: inset(-8px 0 -8px 0);
+  }
+}
+[data-stop="fast"] {
+  stop-color: var(--pb);
+}
+[data-stop="mid"] {
+  stop-color: color-mix(in oklab, var(--pb) 45%, var(--gutter));
+}
+[data-stop="slow"] {
+  stop-color: var(--gutter);
+}
+/* The best average: a ring on the line, in the colour of a record. */
+[data-part="progress-best"] {
+  fill: var(--ground);
+  stroke: var(--pb);
+  stroke-width: 2;
+  animation: trend-ring 160ms 360ms var(--ease) backwards;
+}
+@keyframes trend-ring {
+  from {
+    opacity: 0;
+  }
+}
+[data-part="progress-crosshair"] {
+  stroke: var(--gutter);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+[data-part="progress-cursor"] {
+  r: 4px;
+  fill: var(--ink);
+  stroke: var(--ground);
+  stroke-width: 2;
+}
+/* The readout stands at the top beside the crosshair, on the side with room. */
+[data-part="progress-readout"] {
+  position: absolute;
+  top: 0;
+  left: var(--x);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s1) var(--s2);
+  border-radius: 6px;
+  background: var(--ground);
+  white-space: nowrap;
+  pointer-events: none;
+  translate: var(--s3) 0;
+}
+[data-part="progress-trend"][data-side="end"] [data-part="progress-readout"] {
+  translate: calc(-100% - var(--s3)) 0;
+  text-align: end;
+}
+[data-part="progress-readout"][hidden] {
+  display: none;
+}
+[data-part="progress-readout-value"] {
+  font-weight: 600;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+[data-part="progress-readout-solve"] {
+  font-size: 13px;
+  color: var(--dim);
+}
+
+/* ---- 4 and 5. the bests and the practice: a label over each figure ---- */
+:is([data-part="progress-pbs"], [data-part="progress-practice-numbers"]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s4) var(--s7);
+  margin: 0;
+}
+:is([data-part="progress-pbs"], [data-part="progress-practice-numbers"]) dt {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--gutter);
+}
+:is([data-part="progress-pbs"], [data-part="progress-practice-numbers"]) dd {
+  margin: var(--s1) 0 0;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+[data-part="progress-pbs"] {
+  margin-top: var(--s7);
+}
+[data-part="progress-pbs"] data {
+  display: block;
+  color: var(--pb);
+}
+[data-part="progress-pbs"] time {
+  display: block;
+  margin-top: var(--s1);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--dim);
+}
+[data-part="progress-practice"] {
+  margin-top: var(--s7);
+}
+
+/* Days in greens: deeper, more solves that day. */
+[data-part="progress-calendar"] {
+  display: block;
+  margin-top: var(--s5);
+  overflow: visible;
+}
+[data-part="progress-calendar"] rect {
+  rx: 2px;
+  fill: var(--line);
+}
+[data-part="progress-calendar"] rect[data-level="1"] {
+  fill: color-mix(in oklab, var(--pb) 32%, var(--line));
+}
+[data-part="progress-calendar"] rect[data-level="2"] {
+  fill: color-mix(in oklab, var(--pb) 54%, var(--line));
+}
+[data-part="progress-calendar"] rect[data-level="3"] {
+  fill: color-mix(in oklab, var(--pb) 76%, var(--line));
+}
+[data-part="progress-calendar"] rect[data-level="4"] {
+  fill: var(--pb);
+}
+
+/* A picked day or month, and the one line about it. */
+[data-part="progress-calendar"],
+[data-part="progress-month"] {
+  cursor: pointer;
+  border-radius: 2px;
+}
+[data-part="progress-calendar"]:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+:is([data-part="progress-calendar"], [data-part="progress-month"])
+  rect[data-picked] {
+  stroke: var(--ink);
+  stroke-width: 1.5px;
+}
+[data-part="progress-month"] {
+  display: block;
+  margin-top: var(--s3);
+}
+[data-part="progress-month"] rect {
+  rx: 2px;
+  fill: var(--line);
+}
+[data-part="progress-month"] rect[data-level="1"] {
+  fill: color-mix(in oklab, var(--pb) 32%, var(--line));
+}
+[data-part="progress-month"] rect[data-level="2"] {
+  fill: color-mix(in oklab, var(--pb) 54%, var(--line));
+}
+[data-part="progress-month"] rect[data-level="3"] {
+  fill: color-mix(in oklab, var(--pb) 76%, var(--line));
+}
+[data-part="progress-month"] rect[data-level="4"] {
+  fill: var(--pb);
+}
+[data-part="progress-day"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--s4);
+  margin: var(--s3) 0 0;
+  font-variant-numeric: tabular-nums;
+}
+[data-part="progress-day"] > span:first-child {
+  color: var(--dim);
+}
+[data-part="progress-day"] small {
+  font-size: 13px;
+  color: var(--dim);
+}
+
+/* The spread of the results, folded away. */
+:is([data-part="progress-more"], [data-part="progress-target"]) {
+  margin-top: var(--s6);
+  color: var(--dim);
+}
+:is([data-part="progress-more"], [data-part="progress-target"]) summary {
+  min-height: 44px;
+  width: fit-content;
+  padding-block: var(--s2);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+[data-part="progress-distribution"] svg {
+  display: block;
+  margin-top: var(--s3);
+}
+[data-part="progress-distribution"] rect {
+  /* Lighter than the figures under it: the shape is read at a glance. */
+  fill: color-mix(in oklab, var(--gutter) 50%, var(--line));
+}
+[data-part="progress-distribution-axis"] {
+  display: flex;
+  justify-content: space-between;
+  margin: var(--s1) 0 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+[data-part="progress-distribution-dnf"] {
+  margin: var(--s2) 0 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is([data-part="progress-line"], [data-part="progress-best"]) {
+    animation: none;
+  }
+}
+
+@media (max-width: 699px) {
+  main[data-part="progress"] {
+    padding: var(--s5) var(--s4) var(--s7);
+  }
+  main[data-part="progress"] h1 {
+    margin-top: var(--s3);
+    font-size: 24px;
+  }
+  /* One line of sessions that scrolls sideways, the open one first in reach. */
+  [data-part="progress-events"] {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(-1 * var(--s4));
+    padding-inline: calc(var(--s4) - var(--s2));
+  }
+  [data-part="progress-event"] {
+    flex: none;
+    white-space: nowrap;
+  }
+  [data-part="progress-now"] {
+    margin-top: var(--s5);
+    column-gap: var(--s5);
+  }
+  [data-part="progress-average-name"] {
+    margin-inline-end: calc(-1 * var(--s5) + var(--s2));
+  }
+  [data-part="progress-average"] {
+    font-size: 44px;
+  }
+  [data-part="progress-deltas"] {
+    flex-basis: 100%;
+  }
+  [data-part="progress-trend"] {
+    height: 220px;
+  }
+  [data-part="progress-pbs"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: var(--s6);
+  }
+  [data-part="progress-practice"] {
+    margin-top: var(--s6);
+  }
+}
+
+/* The sessions' row fades at both edges it scrolls past, so a cut name reads as "more". */
+@media (max-width: 699px) {
+  [data-part="progress-events"] {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black var(--s3),
+      black calc(100% - var(--s6)),
+      transparent
+    );
+  }
+}
+
+[data-part="progress-scope"] {
+  margin-block: var(--s2) var(--s4);
+  color: var(--dim);
+}
+[data-part="progress-scope"] summary {
+  min-height: 44px;
+  width: fit-content;
+  padding-block: var(--s2);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+[data-part="progress-scope"] > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin-block-start: var(--s2);
+}
+[data-part="progress-scope"]:not([open]) > div {
+  display: none;
+}
+[data-part="progress-scope"] label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  max-width: 100%;
+}
+[data-part="progress-scope"] select,
+[data-part="progress-scope"] label {
+  min-height: 44px;
+}
+[data-part="progress-scope"] select {
+  min-width: 44px;
+  field-sizing: content;
+  padding-inline: var(--s2) 1.4em;
+  text-overflow: ellipsis;
+  color: var(--ink);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--gutter) 50%),
+    linear-gradient(135deg, var(--gutter) 50%, transparent 50%);
+  background-position:
+    right 0.5em center,
+    right 0.2em center;
+  background-size: 0.3em 0.3em;
+  background-repeat: no-repeat;
+}
+[data-part="progress-scope-count"] {
+  margin: var(--s3) 0;
+  color: var(--dim);
+  font-family: var(--font-mono);
+}
+
+/* A target time and the rough day it may first be beaten. */
+[data-part="progress-target"] {
+  margin-top: var(--s3);
+}
+[data-part="progress-target"] summary > span:first-child {
+  color: var(--ink);
+}
+[data-part="progress-target-answer"] {
+  margin-inline-start: var(--s2);
+}
+[data-part="progress-target-answer"][data-reason="estimate"] {
+  color: var(--pb);
+}
+[data-part="progress-target"][open] > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  margin-top: var(--s2);
+}
+[data-part="progress-target"] input {
+  width: 7ch;
+  min-height: 44px;
+  padding-inline: var(--s2);
+  box-sizing: border-box;
+  font: 600 17px var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+}
+[data-part="progress-target"] input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--ink);
+}
+[data-part="progress-target"] input[aria-invalid] {
+  border-bottom-color: var(--warn);
+}
+[data-part="progress-target-basis"] {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--s4);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+[data-part="progress-target-slope"][data-sign="faster"] {
+  color: var(--pb);
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "src/queue.ts",
+    "src/queue.test.ts",
+    "src/index.ts",
+    "src/index.test.ts",
+    "src/official.ts",
+    "src/official.test.ts"
+  ]
+}

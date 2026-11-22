@@ -1,0 +1,54 @@
+/*
+ * Input behaviour, not appearance. Owned by the engineer.
+ * The timing surface must not pan, zoom, select text or open the iOS
+ * long-press callout: each of these cancels a held touch with pointercancel.
+ */
+[data-timer-surface] {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  /* The surface takes every touch on the screen, not only those on its text. */
+  min-height: 100dvh;
+}
+
+/*
+ * A region that is not a timer input (bindTouch ignores it through
+ * isInteractive). touch-action is intersected with the ancestors up to the
+ * nearest scroll container, so pan-y only scrolls when this element, or a
+ * descendant, is itself the scrolling box.
+ */
+[data-no-timer] {
+  touch-action: pan-y;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+body {
+  margin: 0;
+}
+
+[data-part="solves"] {
+  max-height: 40dvh;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+[data-part="progress-trend"] > svg {
+  touch-action: pan-y;
+}
+
+/* A long press on a session's row opens its menu: no text selection or callout first. */
+[data-part="switch-list"] button {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* A long press on a line's time picks it: no text selection or callout first. */
+[data-action="solve-show"] {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}

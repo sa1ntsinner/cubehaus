@@ -1,0 +1,13 @@
+{
+  "name": "@cubehaus/core",
+  "version": "0.0.5",
+  "private": true,
+  "type": "module",
+  "license": "MPL-2.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

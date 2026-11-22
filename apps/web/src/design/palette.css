@@ -1,0 +1,247 @@
+/*
+ * The command palette (Mod+K) and the key list (?), DESIGN.md sections 10, 15 and 18. Both
+ * cover the screen on the ground colour like the session switch: no box, no shadow, a
+ * column of words. A key is written as it is printed (keys/label.ts), in mono `dim`: arrows
+ * and signs are thin strokes that `gutter` would leave below the contrast floor.
+ */
+
+dialog:is(
+  [data-part="palette"],
+  [data-part="keys-help"],
+  [data-part="training"]
+) {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  /* Room above the content for the way back, however short the window. */
+  padding: max(12vh, calc(44px + 2 * var(--s4))) var(--s5) var(--s7);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  animation: sheet-in 110ms var(--ease);
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+  }
+}
+
+dialog:is([data-part="palette"], [data-part="keys-help"]) kbd {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+/* The way back, top left of the column as in Settings and Progress; Esc does the same. */
+dialog:is(
+    [data-part="palette"],
+    [data-part="keys-help"],
+    [data-part="switch"],
+    [data-part="training"]
+  )
+  [data-action="dialog-close"] {
+  position: absolute;
+  top: max(var(--s4), calc(12vh - 44px - var(--s4)));
+  left: var(--close-left);
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+  color: var(--dim);
+}
+dialog:is(
+    [data-part="palette"],
+    [data-part="keys-help"],
+    [data-part="switch"],
+    [data-part="training"]
+  )
+  [data-action="dialog-close"]::before {
+  content: "←";
+  margin-inline-end: var(--s2);
+  font-family: var(--font-mono);
+}
+dialog:is(
+    [data-part="palette"],
+    [data-part="keys-help"],
+    [data-part="switch"],
+    [data-part="training"]
+  )
+  [data-action="dialog-close"]:hover {
+  color: var(--ink);
+}
+[data-part="palette"] {
+  --close-left: max(var(--s5), calc(50% - 280px));
+}
+[data-part="keys-help"] {
+  --close-left: max(var(--s5), calc(50% - 380px));
+}
+
+/* ---- the palette: a query line, then the actions that match ---- */
+[data-part="palette"] > * {
+  width: min(560px, 100%);
+  margin-inline: auto;
+}
+[data-part="palette"] {
+  --row: 40px;
+}
+/* The query is the first line of the list, after a prompt. */
+[data-part="palette-query"] {
+  display: block;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 0 var(--s3) 0 calc(var(--s3) + 1.4em);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  font-size: 19px;
+  caret-color: var(--prime);
+  outline: none;
+  appearance: none;
+}
+[data-part="palette"]::before {
+  content: "›";
+  position: absolute;
+  top: calc(max(12vh, calc(44px + 2 * var(--s4))) + 24px);
+  left: max(calc(var(--s5) + var(--s3)), calc(50% - 280px + var(--s3)));
+  translate: 0 -50%;
+  font-family: var(--font-mono);
+  font-size: 19px;
+  color: var(--gutter);
+  pointer-events: none;
+}
+[data-part="palette-query"]::placeholder {
+  color: var(--gutter);
+}
+[data-part="palette-query"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+[data-part="palette-results"] {
+  margin-block: var(--s2) 0;
+  padding: 0;
+  list-style: none;
+}
+[data-part="palette-results"] li {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  min-height: var(--row);
+  padding-inline: var(--s3);
+  border-radius: 6px;
+}
+[data-part="palette-results"] li[data-selected],
+[data-part="palette-results"] li:hover {
+  background: var(--line);
+}
+[data-part="palette-results"] button {
+  flex: 1;
+  min-height: var(--row);
+  text-align: left;
+  color: var(--dim);
+}
+[data-part="palette-results"] li[data-selected] button {
+  color: var(--ink);
+}
+[data-part="palette-results"] button:active {
+  transform: none;
+}
+
+/* ---- the key list: two columns of key and action on a wide screen ---- */
+[data-part="keys-help"] dl {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  columns: 2 300px;
+  column-gap: var(--s7);
+}
+[data-part="keys-help"] dl > div {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: var(--s4);
+  padding-block: 6px;
+  break-inside: avoid;
+}
+[data-part="keys-help"] dt {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 var(--s2);
+}
+[data-part="keys-help"] dd {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog:is(
+    [data-part="palette"],
+    [data-part="keys-help"],
+    [data-part="training"]
+  ) {
+    animation: none;
+  }
+}
+
+@media (max-width: 699px) {
+  dialog:is(
+    [data-part="palette"],
+    [data-part="keys-help"],
+    [data-part="training"]
+  ) {
+    padding: calc(var(--s4) + 44px + var(--s2)) var(--s4) var(--s6);
+  }
+  dialog:is(
+      [data-part="palette"],
+      [data-part="keys-help"],
+      [data-part="switch"],
+      [data-part="training"]
+    )
+    [data-action="dialog-close"] {
+    top: var(--s4);
+  }
+  dialog:is(
+    [data-part="palette"],
+    [data-part="keys-help"],
+    [data-part="training"]
+  ) {
+    --close-left: var(--s4);
+  }
+  [data-part="palette"]::before {
+    top: calc(var(--s4) + 44px + var(--s2) + 24px);
+    left: calc(var(--s4) + var(--s3));
+  }
+  [data-part="palette"] {
+    --row: 44px;
+  }
+}
+
+/* A touch screen of any width: rows a finger can take. */
+@media (pointer: coarse) {
+  [data-part="palette"] {
+    --row: 44px;
+  }
+}
+
+[data-part="keys-help"] > [data-action="commands-open"] {
+  position: absolute;
+  top: max(var(--s4), calc(12vh - 44px - var(--s4)));
+  right: var(--close-left);
+  min-height: 44px;
+  color: var(--dim);
+}
+[data-part="keys-help"] > [data-action="commands-open"]:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}

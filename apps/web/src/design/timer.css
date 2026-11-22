@@ -1,0 +1,1593 @@
+/*
+ * The timer screen, arrangement C (DESIGN.md sections 4, 7, 8, 11, 12): the scramble across
+ * the top, the result in the middle of the window with its two stats under it, a thin column
+ * of times on the right with the newest at its foot, the picture in the lower left corner,
+ * and the status line along the bottom. Selects the screen's data- hooks only.
+ */
+
+main[data-timer-surface],
+main:has(> [data-part="scramble"]) {
+  /* The list's size widens its column (and the empty one opposite, so the time stays
+     centred) only on a wide window: never past a fifth of it, never narrower than at
+     100 %, so the middle keeps room for the time. */
+  --side: max(
+    clamp(200px, 15vw, 260px) *
+    min(var(--size-times, 1), 1),
+    min(clamp(200px, 15vw, 260px) * var(--size-times, 1), 20vw)
+  );
+  position: relative;
+  box-sizing: border-box;
+  height: 100dvh;
+  /* A window too short for everything scrolls rather than clips. */
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: var(--side) minmax(0, 1fr) var(--side);
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "scramble scramble scramble"
+    ".        .        file"
+    ".        time     file"
+    ".        note     file"
+    ".        stats    file"
+    ".        .        file"
+    "status   status   actions";
+  column-gap: var(--s6);
+  row-gap: var(--s5);
+  padding: 36px var(--s6) var(--s5);
+  container-type: inline-size;
+  outline: none;
+}
+
+main[data-layout="times"] {
+  --side: max(
+    clamp(144px, 12vw, 220px) *
+    min(var(--size-times, 1), 1),
+    min(clamp(144px, 12vw, 220px) * var(--size-times, 1), 16vw)
+  );
+}
+
+main > [data-part="focus-history"] {
+  grid-area: file;
+  align-self: end;
+  justify-self: end;
+  display: flex;
+  gap: var(--s2);
+  color: var(--dim);
+  font: 500 18px var(--font-mono);
+}
+[data-part="focus-history"] button {
+  min-width: 44px;
+  min-height: 44px;
+}
+[data-part="focus-history"] button:hover:not(:disabled) {
+  color: var(--ink);
+}
+[data-part="focus-history"] button:disabled {
+  opacity: 0.35;
+}
+
+/* ---- the scramble ---- */
+/*
+ * Previous and next scramble bracket the scramble as it reads: ‹ in the margin before its
+ * first move, › right after its last. They belong to a pointer: they show while it is over
+ * the scramble or while one of them has the keyboard's focus, and take no room (› is a
+ * zero-width box whose glyph hangs past the last move), so nothing moves when they show. A
+ * touch screen swipes the scramble instead and never sees them. The glyphs are drawn by CSS
+ * so the scramble's text (copy, selection) stays the moves alone. Each target is 28 px wide
+ * and one scramble line tall (the line height is inherited in px).
+ */
+main > [data-part="scramble"] {
+  position: relative;
+}
+main > [data-part="scramble"] > [data-action^="scramble-"] {
+  height: max(28px, 1lh);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: clamp(20px, 0.7em, 30px);
+  color: var(--gutter);
+  opacity: 0;
+}
+main > [data-part="scramble"] > [data-action^="scramble-"]::before {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 100%;
+}
+/* Only between solves: while holding, inspecting or timing the scramble is not stepped. */
+main:not([data-phase="idle"], [data-phase="stopped"])
+  > [data-part="scramble"]
+  > [data-action^="scramble-"] {
+  visibility: hidden;
+}
+main > [data-part="scramble"] > [data-action="scramble-previous"] {
+  position: absolute;
+  top: 0;
+  left: -32px;
+}
+main > [data-part="scramble"] > [data-action="scramble-previous"]::before {
+  content: "‹";
+}
+main > [data-part="scramble"] > [data-action="scramble-next"] {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  vertical-align: top;
+}
+main > [data-part="scramble"] > [data-action="scramble-next"]::before {
+  content: "›";
+  position: absolute;
+  top: 0;
+  left: 4px;
+}
+/* Multi-Blind's cubes are blocks, so › would open a line of its own: it stands at the right
+   end of the last cube's line instead. */
+main
+  > [data-part="scramble"][data-event="333mbf"]
+  > [data-action="scramble-next"] {
+  position: absolute;
+  top: auto;
+  bottom: 0;
+  right: -32px;
+  width: 28px;
+}
+main
+  > [data-part="scramble"][data-event="333mbf"]
+  > [data-action="scramble-next"]::before {
+  position: static;
+}
+/* The global press scale would shift a zero-width box; the glyph gives instead. */
+main > [data-part="scramble"] > [data-action^="scramble-"]:active {
+  transform: none;
+}
+main > [data-part="scramble"] > [data-action^="scramble-"]:active::before {
+  scale: 0.9;
+}
+main > [data-part="scramble"]:hover > [data-action^="scramble-"],
+main
+  > [data-part="scramble"]:has(> [data-action^="scramble-"]:focus-visible)
+  > [data-action^="scramble-"] {
+  opacity: 1;
+}
+main > [data-part="scramble"] > [data-action^="scramble-"]:hover {
+  color: var(--ink);
+}
+/* The ring goes round the glyph's target, not the zero-width box. */
+main > [data-part="scramble"] > [data-action^="scramble-"]:focus-visible {
+  outline: none;
+}
+main
+  > [data-part="scramble"]
+  > [data-action^="scramble-"]:focus-visible::before {
+  outline: 2px solid var(--double);
+  outline-offset: -4px;
+  border-radius: 4px;
+}
+/* A narrow window with a mouse has no margin to hold them: both stand under the scramble's
+   right end, beside the picture, which keeps to the left. */
+@media (max-width: 699px) {
+  main > [data-part="scramble"] > [data-action^="scramble-"] {
+    position: absolute;
+    top: 100%;
+    left: auto;
+    width: 28px;
+    height: 28px;
+    font-size: 20px;
+  }
+  main > [data-part="scramble"] > [data-action^="scramble-"]::before {
+    position: static;
+  }
+  main > [data-part="scramble"] > [data-action="scramble-previous"] {
+    right: 28px;
+  }
+  main > [data-part="scramble"] > [data-action="scramble-next"],
+  main
+    > [data-part="scramble"][data-event="333mbf"]
+    > [data-action="scramble-next"] {
+    top: 100%;
+    bottom: auto;
+    right: 0;
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  main > [data-part="scramble"] > [data-action^="scramble-"] {
+    display: none;
+  }
+}
+/* Square-1: a turn pair and its slash break as one. */
+[data-part="move-unit"] {
+  white-space: nowrap;
+}
+
+/*
+ * Moves stand in fixed slots like code columns: a slot is the event's widest move plus the
+ * space after it, in whole ch, so every column lines up. The box is as wide as --per slots
+ * and centred; its lines start at its left edge. The size fills the width up to --max.
+ */
+main > [data-part="scramble"] {
+  grid-area: scramble;
+  justify-self: center;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: calc(var(--per-shown) * var(--slot) * 1ch);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  text-align: left;
+  /* Whole pixels: N lines and the reserved N lines are the same height to the pixel. */
+  line-height: round(1.35em, 1px);
+  /* One 3×3 scramble on one line at a laptop's width. */
+  --per: 21;
+  --slot: 3;
+  --max: 44px;
+  /* --lines: the lines the event reserves, the most its scrambles take at --per (measured);
+     the box keeps that height, so nothing below it moves from one scramble to the next.
+     Together they take at most 36 % of the height, so a short window (a phone on its side)
+     keeps the time on screen. */
+  --lines: 1;
+  /* The person's size (+ and −, 70–150 %): the letters scale by it, so a line holds that
+     much fewer (or more) moves and the box reserves the lines that then takes. At 100 %
+     both are the event's own. */
+  --per-shown: max(1, round(down, var(--per) / var(--size-scramble, 1), 1));
+  --lines-shown: round(up, var(--lines) * var(--per) / var(--per-shown), 1);
+  font-size: max(
+    var(--text-floor),
+    min(
+      var(--max) *
+      var(--size-scramble, 1),
+      100cqi /
+      (var(--per-shown) * var(--slot) * 0.6),
+      36vh /
+      (var(--lines-shown) * 1.35)
+    )
+  );
+  min-height: calc(var(--lines-shown) * 1lh);
+}
+main > [data-part="scramble"] [data-move] {
+  display: inline-block;
+  min-width: calc((var(--slot) - 1) * 1ch);
+}
+main > [data-part="scramble"][data-event="222"],
+main > [data-part="scramble"][data-event="skewb"] {
+  --per: 14;
+}
+/* Eleven moves and up to four tips. */
+main > [data-part="scramble"][data-event="pyram"] {
+  --per: 15;
+}
+/* 21 moves and up to two wide turns that are a character wider than a slot. */
+main > [data-part="scramble"][data-event="333bf"] {
+  --per: 24;
+}
+main > [data-part="scramble"]:is([data-event="333fm"], [data-event="fto"]) {
+  --per: 17;
+  --lines: 2;
+}
+main > [data-part="scramble"]:is([data-event="444"], [data-event="444bf"]) {
+  --per: 16;
+  --lines: 3;
+  --slot: 4;
+}
+main > [data-part="scramble"]:is([data-event="555"], [data-event="555bf"]) {
+  --per: 15;
+  --lines: 4;
+  --slot: 5;
+}
+/* The blindfolded orientation suffix can take one more line. */
+main > [data-part="scramble"][data-event="444bf"] {
+  --lines: 4;
+}
+main > [data-part="scramble"][data-event="555bf"] {
+  --lines: 5;
+}
+main > [data-part="scramble"][data-event="666"] {
+  --per: 16;
+  --lines: 5;
+  --slot: 5;
+}
+main > [data-part="scramble"][data-event="777"] {
+  --per: 17;
+  --lines: 6;
+  --slot: 5;
+}
+main > [data-part="scramble"][data-event="minx"] {
+  --per: 11;
+  --lines: 7;
+  --slot: 4;
+  --max: 30px;
+  line-height: round(1.5em, 1px);
+}
+main > [data-part="scramble"][data-event="clock"] {
+  --per: 8;
+  --lines: 2;
+  --slot: 6;
+}
+/* Square-1's turn pairs differ in length; they flow as text. */
+main > [data-part="scramble"][data-event="sq1"] {
+  --per: 7;
+  --lines: 3;
+  --slot: 8.2;
+}
+main > [data-part="scramble"][data-event="sq1"] [data-move] {
+  min-width: 0;
+}
+/* Multi-Blind: one 3×3 scramble with its orientation suffix per line, numbered in the
+   gutter like the file's lines; a line that wraps hangs under its cube's first move. */
+main > [data-part="scramble"][data-event="333mbf"] {
+  --per: 25;
+  --lines: 3;
+  --max: 19px;
+  line-height: round(1.6em, 1px);
+  max-width: calc((var(--per) * var(--slot) + 3) * 1ch);
+  counter-reset: cube;
+  /* As many lines as cubes: nothing to reserve. */
+  min-height: 0;
+}
+main > [data-part="scramble"][data-event="333mbf"] br {
+  display: none;
+}
+[data-part="cube-scramble"] {
+  display: block;
+  padding-inline-start: 3ch;
+  text-indent: -3ch;
+  counter-increment: cube;
+}
+[data-part="cube-scramble"]::before {
+  content: counter(cube);
+  display: inline-block;
+  width: 3ch;
+  text-indent: 0;
+  color: var(--gutter);
+}
+[data-part="cube-scramble"] [data-move] {
+  text-indent: 0;
+}
+/* What a move does, in its colour; a plain turn is ink. */
+[data-move="prime"] {
+  color: var(--prime);
+}
+[data-move="double"] {
+  color: var(--double);
+}
+[data-move="wide"] {
+  color: var(--wide);
+}
+[data-move="rotation"] {
+  color: var(--gutter);
+}
+main > [data-part="scramble"][data-ready="false"] {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--gutter);
+}
+main > [data-part="scramble"][data-ready="false"] button {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The picture, lower left: picture.css. */
+
+/* ---- the time ---- */
+main > output[data-part="time"],
+main > [data-part="entry"] {
+  grid-area: time;
+  justify-self: center;
+}
+main > output[data-part="time"][data-wide-time] {
+  --fit: calc((100cqi - 2 * var(--side) - 2 * var(--s6)) / 3.6);
+}
+main > output[data-part="time"] {
+  --hue: var(--ink);
+  --stroke: 2.5px;
+  font-family: var(--font-solid);
+  font-weight: 700;
+  /* Larger by the person's size (+ and −), but only as far as the middle column holds the
+     figures (--fit: its width over the figures' width in em); never smaller than at 100 %. */
+  --fit: calc((100cqi - 2 * var(--side) - 2 * var(--s6)) / 2.45);
+  font-size: min(
+    max(min(15.5cqi, 30vh), var(--fit)),
+    min(15.5cqi, 30vh) *
+    var(--size-time, 1)
+  );
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  /* The tracking also pulls the box in after the last digit; this gives it back, so the
+     box holds the whole last glyph (ink and hatching clip to it) and centres the figures. */
+  padding-inline-end: 0.035em;
+  white-space: nowrap;
+  color: var(--hue);
+  /* Its own layer: on a shared one Chrome reuses a raster tile and leaves a pixel column
+     of the wider "0.00" beside the narrower running "1". */
+  will-change: transform;
+}
+main > output[data-part="time"][data-penalty="plus2"] {
+  --hue: var(--warn);
+}
+main > output[data-part="time"][data-penalty="dnf"] {
+  --hue: var(--error);
+}
+main > output[data-part="time"][data-record]:where([data-penalty="ok"]) {
+  --hue: var(--pb);
+}
+/* Inspection: white to 8 s, yellow to 12 s, red after (DESIGN.md section 7). */
+main > output[data-part="time"][data-phase="inspecting"][data-band="warn"] {
+  --hue: var(--warn);
+}
+main > output[data-part="time"][data-phase="inspecting"][data-band="late"] {
+  --hue: var(--error);
+}
+/* From 15.00 the count is the price: +2 hatched warn, DNF hollow error. */
+main > output[data-part="time"][data-phase="inspecting"][data-penalty="plus2"] {
+  --hue: var(--warn);
+}
+main > output[data-part="time"][data-phase="inspecting"][data-penalty="dnf"] {
+  --hue: var(--error);
+}
+/* The empty zero of a session without solves. */
+main[data-phase="idle"]
+  > output[data-part="time"]:not([data-phase], [data-penalty]) {
+  --hue: var(--gutter);
+}
+
+/*
+ * Letter materials (DESIGN.md section 6), one meaning each. Hollow: not counted (DNF, the
+ * empty zero). Hatched: +2. Rising ink: held, arming.
+ */
+main
+  > output[data-part="time"]:is([data-penalty="dnf"], [data-penalty="plus2"]),
+main[data-phase="idle"]
+  > output[data-part="time"]:not([data-phase], [data-penalty]),
+main[data-phase="holding"] > output[data-part="time"] {
+  color: transparent;
+  -webkit-text-stroke: var(--stroke) var(--hue);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+main > output[data-part="time"][data-penalty="plus2"] {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--hue) 0 0.05em,
+    transparent 0.05em 0.13em
+  );
+}
+@property --rise {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+main[data-phase="holding"] > output[data-part="time"] {
+  background-image: linear-gradient(
+    to top,
+    var(--hue) var(--rise),
+    transparent var(--rise)
+  );
+  animation: time-rise 300ms linear forwards;
+}
+@keyframes time-rise {
+  to {
+    --rise: 100%;
+  }
+}
+
+/* ---- under the result: what a +2 adds to, what a DNF voids; for a past solve its number
+   and date; the solve's comment ---- */
+main > [data-part="time-under"] {
+  grid-area: note;
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: var(--s1);
+  max-width: min(44ch, 100%);
+  margin: calc(-1 * var(--s3)) 0 0;
+  text-align: center;
+}
+[data-part="time-under"] > p {
+  margin: 0;
+}
+[data-part="time-note"] {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  color: var(--dim);
+}
+[data-part="time-note"][data-kind="sum"] {
+  color: var(--warn);
+}
+[data-part="time-meta"] {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--gutter);
+}
+[data-part="time-comment"] {
+  font-size: 16px;
+  color: var(--dim);
+  overflow-wrap: anywhere;
+}
+/* C: the comment line becomes its field, the text where the comment stands. */
+[data-part="time-comment-input"] {
+  box-sizing: border-box;
+  width: min(36ch, 80vw);
+  padding: var(--s1) 0;
+  border: 0;
+  border-bottom: 1px solid var(--dim);
+  border-radius: 0;
+  background: none;
+  font-size: 16px;
+  color: var(--ink);
+  text-align: center;
+  caret-color: var(--prime);
+  outline: none;
+}
+[data-part="time-comment-input"]::placeholder {
+  color: var(--gutter);
+}
+/* Said to a screen reader only: why an action did nothing. */
+main > [data-part="time-status"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* An action that cannot apply: the figures give a short shake where they stand. */
+main > output[data-part="time"][data-feedback="unavailable"] {
+  animation: time-nudge 260ms var(--ease);
+}
+@keyframes time-nudge {
+  20% {
+    translate: -0.04em 0;
+  }
+  50% {
+    translate: 0.03em 0;
+  }
+  80% {
+    translate: -0.015em 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main > output[data-part="time"][data-feedback="unavailable"] {
+    animation: time-dim 260ms linear;
+  }
+  @keyframes time-dim {
+    50% {
+      opacity: 0.6;
+    }
+  }
+}
+
+/* ---- the two stats under the time ---- */
+main > [data-part="stats"] {
+  grid-area: stats;
+  justify-self: center;
+}
+[data-part="stats-now"] {
+  margin: 0;
+  display: flex;
+  gap: var(--s5);
+  font-family: var(--font-solid);
+  font-weight: 700;
+  /* Larger only as far as the middle column holds the slots on one line. */
+  font-size: min(
+    28px *
+    var(--size-averages, 1),
+    max(28px, (100cqi - 2 * var(--side) - 2 * var(--s6)) / 10.5)
+  );
+}
+[data-part="stats-now"] [data-part="slot-name"] {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: max(var(--text-floor), 0.68em);
+  color: var(--dim);
+  margin-right: 0.35em;
+}
+[data-part="stats-now"] [data-record] {
+  color: var(--pb);
+}
+main:is([data-layout="times"], [data-layout="focus"]) [data-part="stats-now"] {
+  --slot-block-margin: 0;
+  justify-content: center;
+  flex-wrap: wrap;
+  row-gap: var(--s2);
+}
+@media (max-width: 1100px) {
+  main:is([data-layout="times"], [data-layout="focus"])
+    [data-part="stats-now"] {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    gap: var(--s2) var(--s4);
+  }
+}
+/* A stat with too few solves still holds its place, as a quiet dash. */
+[data-stat]:empty::after {
+  content: "–";
+  color: var(--gutter);
+}
+
+/* ---- the file: a thin column of times, the newest at its foot ---- */
+main > [data-part="file"] {
+  grid-area: file;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: var(--s4);
+}
+[data-part="solves"] {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* The newest line is first in the markup and last on screen, as in a file; a reversed
+     scroller also starts at its end. */
+  display: flex;
+  flex-direction: column-reverse;
+  scrollbar-width: none;
+  /* Older lines fade into the file's top edge, so no line ever shows cut in half. The
+     fade stops above the newest line (--row, one line as measured, 32 px before it is), so
+     a list that short reads whole. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 min(var(--row, 32px), max(0px, 100% - var(--row, 32px)))
+  );
+}
+[data-part="solves"]::-webkit-scrollbar {
+  display: none;
+}
+/* The input file caps the list for touch scrolling; on a computer the column is the cap. */
+main > [data-part="file"] > [data-part="solves"] {
+  max-height: none;
+}
+[data-part="solves"] > li {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--s3);
+  padding: 2px var(--s2);
+  border-radius: 4px;
+  transition: background-color 100ms ease;
+}
+[data-part="solves"] > li:hover,
+[data-part="solves"] > li[data-shown] {
+  background: var(--line);
+}
+/* Picked lines (Shift or Mod with a click or an arrow) read as an editor's selection:
+   neighbours join into one block. The newest line is first in the markup and lowest on
+   screen, so the next sibling stands above. */
+[data-part="solves"] > li[data-selected] {
+  background: var(--sel);
+}
+[data-part="solves"] > li[data-selected]:has(+ li[data-selected]) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+[data-part="solves"] > li[data-selected] + li[data-selected] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+[data-part="solve-no"] {
+  font-family: var(--font-mono);
+  font-size: max(var(--text-floor), calc(14px * var(--size-times, 1)));
+  color: var(--gutter);
+}
+/* An empty session: how to start, as a comment where the first line will stand. */
+[data-part="solves-empty"] {
+  margin: 0;
+  padding: 2px var(--s2);
+  font-family: var(--font-mono);
+  font-size: max(var(--text-floor), calc(14px * var(--size-times, 1)));
+  line-height: 1.5;
+  color: var(--gutter);
+  text-wrap: balance;
+}
+@media (max-width: 699px) {
+  /* The phone's file is a centred column. */
+  [data-part="solves-empty"] {
+    text-align: center;
+  }
+}
+[data-part="solves-empty"] > [data-input="touch"] {
+  display: none;
+}
+/* Gone while the timer is busy: inspecting, held or running. */
+main:not([data-phase="idle"], [data-phase="stopped"])
+  [data-part="solves-empty"] {
+  visibility: hidden;
+}
+@media (hover: none), (pointer: coarse) {
+  [data-part="solves-empty"] > [data-input="keys"] {
+    display: none;
+  }
+  [data-part="solves-empty"] > [data-input="touch"] {
+    display: inline;
+  }
+}
+/* The time is the row's button: it shows that solve in the middle. */
+[data-action="solve-show"] {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  border-radius: 3px;
+}
+[data-part="solves"] [data-action="solve-show"]:active:not(:disabled) {
+  transform: none;
+}
+[data-part="solve-time"] {
+  font-family: var(--font-solid);
+  font-weight: 700;
+  font-size: max(var(--text-floor), calc(19px * var(--size-times, 1)));
+  letter-spacing: -0.01em;
+  color: var(--dim);
+  text-align: right;
+  white-space: nowrap;
+}
+/* The solve on show and the picked ones read in ink, unless a penalty colours them. */
+li:is([data-shown], [data-selected]) [data-part="solve-time"] {
+  color: var(--ink);
+}
+li[data-record]:where([data-penalty="ok"]) [data-part="solve-time"] {
+  color: var(--pb);
+}
+li[data-penalty="plus2"] [data-part="solve-time"] {
+  color: var(--warn);
+}
+li[data-penalty="dnf"] [data-part="solve-time"] {
+  color: var(--error);
+}
+/* The thin column keeps only times; the averages are the slots under the time. */
+[data-part="solves"] [data-part="solve-ao5"],
+[data-part="solves"] [data-part="solve-ao12"] {
+  display: none;
+}
+[data-part="solve-comment"] {
+  grid-column: 1 / -1;
+  font-size: max(var(--text-floor), calc(13px * var(--size-times, 1)));
+  color: var(--gutter);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-part="solves"] [data-action="comment-edit"] {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: max(var(--text-floor), calc(13px * var(--size-times, 1)));
+  color: var(--gutter);
+  opacity: 0;
+}
+[data-part="solves"] > li:hover [data-action="comment-edit"],
+[data-part="solves"] [data-action="comment-edit"]:focus-visible {
+  opacity: 1;
+}
+/* One picked line offers to part the session above it, where the comment word would be:
+   in the line's own gap, so the action row keeps one line in every language. */
+[data-part="solves"] [data-action="solve-split"] {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: start;
+  font-family: var(--font-solid);
+  font-weight: 700;
+  font-size: max(var(--text-floor), calc(13px * var(--size-times, 1)));
+  color: var(--dim);
+  white-space: nowrap;
+}
+[data-part="solves"] [data-action="solve-split"]:hover {
+  color: var(--ink);
+}
+[data-part="solves"] [data-action="comment-edit"]:hover {
+  color: var(--ink);
+}
+[data-part="comment-form"] {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s2) 0;
+  font-size: max(var(--text-floor), calc(13px * var(--size-times, 1)));
+}
+[data-part="comment-form"] label {
+  display: grid;
+  gap: var(--s1);
+  width: 100%;
+  color: var(--gutter);
+}
+[data-part="comment-form"] textarea {
+  min-height: 3lh;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: none;
+  padding: var(--s2);
+}
+[data-part="comment-form"] button {
+  color: var(--dim);
+}
+[data-part="comment-form"] button:hover {
+  color: var(--ink);
+}
+main > [data-part="file"] [data-action="solves-more"] {
+  font-size: max(var(--text-floor), calc(13px * var(--size-times, 1)));
+  color: var(--gutter);
+}
+main > [data-part="file"] [data-action="solves-more"]:hover {
+  color: var(--ink);
+}
+
+/* The totals at the foot of the file: best and mean; the rest stays for those who look. */
+[data-part="stats-totals"] {
+  margin: 0;
+  padding: var(--s3) var(--s2) 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 2px;
+}
+[data-part="stats-totals"] > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+[data-part="stats-totals"] > [data-quiet] {
+  display: none;
+}
+/* What the file has no room for (SolveList's fit). */
+main > [data-part="file"] [data-fit-hidden] {
+  display: none;
+}
+[data-part="stats-totals"] dt {
+  font-family: var(--font-mono);
+  font-size: max(var(--text-floor), calc(14px * var(--size-times, 1)));
+  color: var(--dim);
+}
+[data-part="stats-totals"] dd {
+  margin: 0;
+  font-family: var(--font-solid);
+  font-weight: 700;
+  font-size: max(var(--text-floor), calc(19px * var(--size-times, 1)));
+}
+[data-part="stats-totals"] dd[data-record] {
+  color: var(--pb);
+}
+
+/* ---- the newest solve's actions, under the file ---- */
+main > [data-part="last-actions"] {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: var(--s1) var(--s4);
+  font-family: var(--font-solid);
+  font-weight: 700;
+  font-size: 15px;
+}
+[data-part="last-actions"] button {
+  color: var(--dim);
+  white-space: nowrap;
+}
+[data-part="last-actions"] [data-action="penalty-plus2"]:hover:not(:disabled),
+[data-part="last-actions"][data-penalty="plus2"] [data-action="penalty-plus2"] {
+  color: var(--warn);
+}
+[data-part="last-actions"] [data-action="penalty-dnf"]:hover:not(:disabled),
+[data-part="last-actions"][data-penalty="dnf"] [data-action="penalty-dnf"] {
+  color: var(--error);
+}
+[data-part="last-actions"] button:hover:not(:disabled) {
+  color: var(--ink);
+}
+/* With lines picked the row is what can be done with them, with how many. With a
+   pointer, Esc or a plain click on a line drops the pick; a touch screen gets a ×. */
+[data-part="last-actions"][data-selecting] [data-action="solve-move"] {
+  color: var(--ink);
+}
+@media (hover: hover) {
+  [data-part="last-actions"] [data-action="selection-clear"] {
+    display: none;
+  }
+}
+/* "OK" appears only when there is a penalty to clear; Undo only when there is something to undo. */
+[data-part="last-actions"]:not([data-penalty="plus2"], [data-penalty="dnf"])
+  [data-action="penalty-ok"],
+[data-part="last-actions"] [data-action="undo"]:disabled {
+  display: none;
+}
+[data-part="last-actions"] button:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- the status line ---- */
+/* What does not fit wraps onto a second line, never under the first. */
+main > footer[data-part="status-line"] {
+  grid-area: status;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--s5);
+  row-gap: var(--s2);
+  min-width: 0;
+  font-size: 15px;
+  color: var(--dim);
+}
+[data-part="status-line"] > nav:last-child {
+  margin-left: auto;
+  display: flex;
+  gap: var(--s5);
+}
+[data-part="status-line"] > nav:last-child a:hover {
+  color: var(--ink);
+}
+[data-part="sessions"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s4);
+  max-width: 100%;
+}
+/* The open session's name: a word that opens the switch, cut with an ellipsis. */
+[data-action="session-switch"] {
+  display: block;
+  max-width: 24ch;
+  overflow: hidden;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* No session yet (the database is busy in another tab): no word, and no gap for it. */
+[data-action="session-switch"]:empty {
+  display: none;
+}
+[data-part="sessions"]:has(> [data-action="session-switch"]:empty) {
+  display: none;
+}
+[data-action="session-switch"]:enabled:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--gutter);
+  text-underline-offset: 0.25em;
+}
+/* Secondary controls wait until the pointer comes to the line (DESIGN.md section 1). */
+[data-part="status-line"] > label {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+[data-part="status-line"]:is(:hover, :focus-within) > label {
+  opacity: 1;
+}
+[data-part="status-line"] select:hover {
+  color: var(--ink);
+}
+[data-part="status-line"] > label {
+  display: flex;
+  gap: var(--s2);
+  align-items: baseline;
+}
+[data-part="status-line"] > label select {
+  color: var(--ink);
+}
+
+/* Physical hand keys stand just above the time while the keyboard mode is active. */
+main > [data-part="hand-keys"] {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
+  justify-self: center;
+  display: flex;
+  gap: var(--s4);
+  margin: 0;
+  font: 500 15px var(--font-mono);
+  color: var(--dim);
+}
+[data-part="hand-keys"] kbd {
+  font: inherit;
+}
+[data-part="hand-keys"] [data-held] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+@media (max-width: 699px) {
+  main > [data-part="hand-keys"] {
+    grid-column: 1;
+    grid-row: 3;
+  }
+}
+
+/* ---- while the solve is armed and running only the time stays ---- */
+/* Only faded: a touch anywhere, on a hidden control too, still reaches the input code and
+   stops the solve. */
+main[data-phase="running"] > :not(output[data-part="time"]),
+main[data-phase="ready"]
+  > :not(
+    output[data-part="time"],
+    [data-part="scramble"],
+    [data-part="hand-keys"]
+  ) {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+/* Held and armed, the scramble stays readable at 0.3 (DESIGN.md section 7). */
+main:is([data-phase="holding"], [data-phase="ready"]) > [data-part="scramble"] {
+  opacity: 0.3;
+  transition: opacity 140ms ease;
+}
+
+/* ---- phone: one column, the scramble first, the time and its stats centred, the file,
+   then the actions and the status line under the thumb ---- */
+@media (max-width: 699px) {
+  main[data-timer-surface],
+  main:has(> [data-part="scramble"]) {
+    grid-template-columns: minmax(0, 1fr);
+    /* The file takes three parts of the free height to the one above the time, and only
+       what is free: at large sizes it gives way (its totals, then itself, SolveList's fit)
+       so the actions and the status line always stay on the screen. */
+    grid-template-rows:
+      auto auto minmax(0, 1fr) auto auto auto minmax(0, 3fr)
+      auto auto;
+    grid-template-areas:
+      "scramble"
+      "picture"
+      "."
+      "time"
+      "note"
+      "stats"
+      "file"
+      "actions"
+      "status";
+    padding: var(--s5) var(--s4) var(--s3);
+    row-gap: var(--s3);
+  }
+  /* Moves per line on a phone (DESIGN.md section 4); the size follows, up to 40 px. The box
+     keeps --plines lines, the most the event's scrambles take here (measured). */
+  main > [data-part="scramble"] {
+    --per: 6;
+    --max: 40px;
+    --plines: 4;
+    /* A phone's line is as wide as the screen already: a larger size grows the letters
+       up to that width and keeps the line count, so the picture below never moves. */
+    --per-shown: var(--per);
+    justify-self: start;
+    min-height: calc(var(--plines) * 1lh);
+  }
+  main > [data-part="scramble"]:is([data-event="222"], [data-event="skewb"]) {
+    --plines: 2;
+  }
+  main > [data-part="scramble"]:is([data-event="pyram"], [data-event="clock"]) {
+    --plines: 3;
+  }
+  main > [data-part="scramble"][data-event="333fm"] {
+    --plines: 5;
+  }
+  main > [data-part="scramble"][data-event="fto"] {
+    --plines: 6;
+  }
+  main > [data-part="scramble"][data-event="444"] {
+    --plines: 8;
+  }
+  main
+    > [data-part="scramble"]:is(
+      [data-event="444bf"],
+      [data-event="555"],
+      [data-event="555bf"]
+    ) {
+    --plines: 9;
+  }
+  main > [data-part="scramble"][data-event="666"] {
+    --plines: 12;
+  }
+  main > [data-part="scramble"][data-event="777"] {
+    --plines: 15;
+  }
+  main > [data-part="scramble"][data-event="minx"] {
+    --plines: 7;
+  }
+  main > [data-part="scramble"][data-event="sq1"] {
+    --plines: 5;
+  }
+  main
+    > [data-part="scramble"]:is(
+      [data-event="222"],
+      [data-event="skewb"],
+      [data-event="pyram"],
+      [data-event="333bf"],
+      [data-event="333fm"],
+      [data-event="fto"],
+      [data-event="444"],
+      [data-event="444bf"],
+      [data-event="clock"]
+    ) {
+    --per: 6;
+  }
+  main
+    > [data-part="scramble"]:is(
+      [data-event="555"],
+      [data-event="555bf"],
+      [data-event="666"],
+      [data-event="777"]
+    ) {
+    --per: 7;
+  }
+  main > [data-part="scramble"][data-event="minx"] {
+    --max: 40px;
+  }
+  main > [data-part="scramble"][data-event="sq1"] {
+    --per: 4;
+  }
+  main > [data-part="scramble"][data-event="333mbf"] {
+    --per: 13;
+    --max: 12.5px;
+  }
+  main > output[data-part="time"] {
+    --stroke: 1.6px;
+    font-size: calc(23vw * var(--size-time, 1));
+  }
+  main > output[data-part="time"][data-wide-time] {
+    font-size: calc(17vw * var(--size-time, 1));
+  }
+  [data-part="stats-now"] {
+    font-size: calc(20px * var(--size-averages, 1));
+  }
+  main > [data-part="focus-history"] {
+    align-self: start;
+    justify-self: center;
+  }
+  main > [data-part="file"] {
+    justify-self: center;
+    width: min(300px, 100%);
+    max-height: 30dvh;
+    /* The room the whole lines leave stands above them, the newest at the foot. */
+    justify-content: flex-end;
+  }
+  main > [data-part="file"] > [data-part="solves"] {
+    /* Whole lines only: what the file leaves the list (--room, SolveList's fit) rounded
+       down to its lines, so no sliver of a line shows under the averages. */
+    max-height: round(down, min(30dvh, var(--room, 30dvh)), var(--row, 1px));
+    /* No line is cut here, so the one at the top is drawn whole and only dimmed, to say
+       there is more above, instead of fading to bits of letters. */
+    mask-image: linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0.3) 0,
+      #000 min(var(--row, 32px), max(0px, 100% - var(--row, 32px)))
+    );
+    /* Sized by the column, not by its rows: the file's least height is one whole line. */
+    contain: size;
+    min-height: var(--row, 32px);
+  }
+  main > [data-part="last-actions"] {
+    justify-content: center;
+    gap: 0 var(--s5);
+    font-size: 18px;
+  }
+  main > [data-part="last-actions"][data-selecting] {
+    column-gap: var(--s3);
+  }
+  /* Under the thumb: each word is a finger's target. */
+  [data-part="last-actions"] button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  [data-part="last-actions"] [data-action="penalty-plus2"] {
+    color: var(--warn);
+  }
+  [data-part="last-actions"] [data-action="penalty-dnf"] {
+    color: var(--error);
+  }
+  [data-part="last-actions"] [data-action="solve-delete"] {
+    color: var(--ink);
+  }
+  /* The entry mode is a setting; on a phone it lives only in Settings. */
+  [data-part="status-line"] > label {
+    display: none;
+  }
+}
+
+/* A short phone (an SE, a small Android): the scramble keeps to about a quarter of the
+   height, by the lines each event takes at the phone's moves per line (--plines), and the
+   gaps close, so the time, the file's totals, the actions and the status line stay on
+   screen. 6×6 and 7×7 take a third and leave out the picture, unreadable at this size. */
+@media (max-width: 699px) and (max-height: 740px) {
+  main[data-timer-surface],
+  main:has(> [data-part="scramble"]) {
+    padding-top: var(--s4);
+    row-gap: var(--s2);
+  }
+  main > [data-part="scramble"] {
+    --per: 7;
+    --plines: 3;
+    --cap: 26dvh;
+    font-size: max(
+      var(--text-floor),
+      min(
+        var(--max) *
+        var(--size-scramble, 1),
+        100cqi /
+        (var(--per-shown) * var(--slot) * 0.6),
+        var(--cap) /
+        (round(up, var(--plines) * var(--per) / var(--per-shown), 1) * 1.35)
+      )
+    );
+  }
+  main > [data-part="scramble"]:is([data-event="222"], [data-event="skewb"]) {
+    --plines: 2;
+  }
+  main > [data-part="scramble"]:is([data-event="pyram"], [data-event="clock"]) {
+    --plines: 3;
+  }
+  main > [data-part="scramble"][data-event="333bf"] {
+    --plines: 4;
+  }
+  main > [data-part="scramble"][data-event="333fm"] {
+    --plines: 5;
+  }
+  main > [data-part="scramble"][data-event="fto"] {
+    --plines: 6;
+  }
+  main > [data-part="scramble"][data-event="444"] {
+    --plines: 8;
+  }
+  main > [data-part="scramble"][data-event="444bf"] {
+    --plines: 9;
+  }
+  main > [data-part="scramble"]:is([data-event="555"], [data-event="555bf"]) {
+    --plines: 9;
+  }
+  main > [data-part="scramble"][data-event="minx"] {
+    --plines: 7;
+  }
+  main > [data-part="scramble"][data-event="sq1"] {
+    --plines: 5;
+  }
+  main > [data-part="scramble"]:is([data-event="666"], [data-event="777"]) {
+    --per: 8;
+    --cap: 37dvh;
+  }
+  main > [data-part="scramble"][data-event="666"] {
+    --plines: 10;
+  }
+  main > [data-part="scramble"][data-event="777"] {
+    --plines: 13;
+  }
+  main:has(> [data-part="scramble"]:is([data-event="666"], [data-event="777"]))
+    > [data-part="scramble-picture"] {
+    display: none;
+  }
+  main > output[data-part="time"] {
+    font-size: calc(min(23vw, 12dvh) * var(--size-time, 1));
+  }
+}
+
+/* A short window (a phone on its side): tighter rows, so the status line stays on screen. */
+@media (min-width: 700px) and (max-height: 500px) {
+  main[data-timer-surface],
+  main:has(> [data-part="scramble"]) {
+    row-gap: var(--s3);
+    padding-top: var(--s4);
+    padding-bottom: var(--s3);
+  }
+  main > output[data-part="time"],
+  [data-part="fm-clock"] {
+    font-size: min(
+      max(min(15.5cqi, 24vh), var(--fit, 0px)),
+      min(15.5cqi, 24vh) *
+      var(--size-time, 1)
+    );
+  }
+}
+
+/* A Multi-Blind result is written `3/3 24:30`, twice the length of a time: the same face at
+   about two thirds of the size, so it stays inside its column. */
+main > output[data-part="time"][data-result-kind="multi"] {
+  --fit: calc((100cqi - 2 * var(--side) - 2 * var(--s6)) / 4.8);
+  font-size: min(
+    max(min(10cqi, 20vh), var(--fit)),
+    min(10cqi, 20vh) *
+    var(--size-time, 1)
+  );
+}
+@media (max-width: 699px) {
+  main > output[data-part="time"][data-result-kind="multi"] {
+    font-size: calc(14vw * var(--size-time, 1));
+  }
+}
+
+/* A touch screen: the word that asks for a new scramble when one failed is a finger's target. */
+@media (pointer: coarse) {
+  main > [data-part="scramble"] > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    vertical-align: middle;
+  }
+}
+
+/* A very short phone (320 × 568): the file keeps its newest line and its first total; the
+   other totals are in Progress. */
+@media (max-width: 699px) and (max-height: 600px) {
+  main > [data-part="file"] {
+    gap: var(--s2);
+  }
+  [data-part="stats-totals"] > div:not(:first-child) {
+    display: none;
+  }
+}
+
+/* The stat choices read like an editor's completion list. */
+main > [data-part="stats"] {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+[data-part="stats-now"] > button[data-slot] {
+  min-width: 44px;
+  min-height: 44px;
+  margin-block: var(--slot-block-margin, -6px);
+  overflow-wrap: anywhere;
+}
+[data-part="stats-now"] > button[data-slot]:hover [data-part="slot-name"] {
+  text-decoration: underline;
+}
+[data-part="stat-picker"] {
+  position: absolute;
+  z-index: 5;
+  inset-inline-start: 50%;
+  inset-block-start: calc(100% + var(--s4));
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: min(320px, calc(100vw - 32px));
+  max-height: var(--picker-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--ground);
+  padding: var(--s1) var(--s2);
+  font: 500 15px var(--font-ui);
+  color: var(--ink);
+}
+[data-part="stat-picker"][data-side="above"] {
+  inset-block-start: auto;
+  inset-block-end: calc(100% + var(--s4));
+}
+main [data-part="stat-picker"] button[data-stat-choice] {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  color: var(--dim);
+}
+[data-stat-choice] + [data-stat-choice] {
+  margin-block-start: var(--s2);
+}
+[data-stat-choice]:hover {
+  background: var(--line);
+}
+[data-stat-choice] span:last-child {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+[data-part="custom-stat"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-block-start: var(--s2);
+}
+[data-part="stat-picker"] [data-part="custom-stat"] label {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--dim);
+}
+[data-part="custom-stat"] input {
+  width: 5ch;
+  min-height: 44px;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  border-bottom: 1px solid var(--dim);
+}
+main [data-part="stat-picker"] [data-part="custom-stat"] button {
+  min-height: 44px;
+}
+[data-part="custom-stat"] [role="alert"] {
+  color: var(--error);
+}
+/* The list covers nothing half-way: what it would overlap steps out of its way. */
+main[data-stat-picker-open]
+  > :is(output[data-part="time"], [data-part="scramble"]) {
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+@media (max-width: 699px) {
+  /* The slots' targets reach into the row gap, never past it into the file. */
+  [data-part="stats-now"] > button[data-slot] {
+    margin-block: var(--slot-block-margin, calc(-1 * var(--s2)));
+  }
+  main[data-stat-picker-open] > [data-part="file"] {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  main[data-stat-picker-open] > [data-part="scramble-picture"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+@media (max-width: 360px) {
+  [data-part="stat-picker"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: var(--s2);
+  }
+  [data-stat-choice] + [data-stat-choice] {
+    margin-block-start: 0;
+  }
+  [data-part="stat-picker"] [data-part="custom-stat"] {
+    grid-column: 1 / -1;
+    margin-block-start: 0;
+  }
+}
+
+/* ---- R: a past scramble timed again. Whose it is, then every attempt on it in time
+   order, like lines of the file: the result in its file face, the time of day in the
+   gutter, the best in `pb`, the attempt on show on the line fill. ---- */
+main > [data-part="time-under"] > [data-part="time-meta"] > button {
+  min-height: 32px;
+  padding: 0 var(--s1);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--dim);
+}
+main > [data-part="time-under"] > [data-part="time-meta"] > button:hover {
+  color: var(--ink);
+}
+[data-part="time-under"]
+  [data-part="time-meta"]
+  > [data-action="repeat-leave"] {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  line-height: 1;
+}
+[data-part="attempts"] {
+  position: relative;
+  display: grid;
+  justify-items: stretch;
+  max-height: calc(6 * 30px);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  list-style: none;
+}
+[data-part="time-under"] [data-part="attempts"] > li > button {
+  display: grid;
+  grid-template-columns: 7ch 13ch;
+  align-items: baseline;
+  align-content: center;
+  column-gap: var(--s4);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 var(--s2);
+  border-radius: 4px;
+  transition: background-color 100ms var(--ease);
+}
+[data-part="time-under"] [data-part="attempts"] > li > button:hover,
+[data-part="attempts"] > li[data-shown] > button {
+  background: var(--line);
+}
+[data-part="attempt-result"] {
+  font-family: var(--font-solid);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  color: var(--dim);
+  text-align: right;
+  white-space: nowrap;
+}
+[data-part="attempt-at"] {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--gutter);
+  text-align: left;
+  white-space: nowrap;
+}
+[data-part="attempts"] > li[data-shown] [data-part="attempt-result"] {
+  color: var(--ink);
+}
+[data-part="attempts"]
+  > li[data-best]:where([data-penalty="ok"])
+  [data-part="attempt-result"] {
+  color: var(--pb);
+}
+[data-part="attempts"] > li[data-penalty="plus2"] [data-part="attempt-result"] {
+  color: var(--warn);
+}
+[data-part="attempts"] > li[data-penalty="dnf"] [data-part="attempt-result"] {
+  color: var(--error);
+}
+/* The file's line of a solve with repeats says how many attempts its scramble had. */
+[data-part="solves"] [data-part="solve-repeats"] {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  font-family: var(--font-mono);
+  font-size: max(var(--text-floor), calc(13px * var(--size-times, 1)));
+  color: var(--gutter);
+}
+/* A long practice of one scramble scrolls inside the list; an edge fades only while more
+   attempts lie past it, so a cut line reads as "more". */
+[data-part="attempts"][data-more-above] {
+  mask-image: linear-gradient(to bottom, transparent, #000 24px);
+}
+[data-part="attempts"][data-more-below] {
+  mask-image: linear-gradient(to top, transparent, #000 24px);
+}
+[data-part="attempts"][data-more-above][data-more-below] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent
+  );
+}
+@media (pointer: coarse) {
+  main > [data-part="time-under"] > [data-part="time-meta"] > button,
+  [data-part="time-under"] [data-part="attempts"] > li > button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  /* A tablet, or a phone on its side: six finger-sized lines where the height has them. */
+  [data-part="attempts"] {
+    max-height: min(6 * 44px, 30dvh);
+  }
+}
+/* A phone: the file steps away while a scramble is repeated (its lines are not what is
+   practised), and the attempts take its room, the solve's own result first, down to two
+   lines on a short screen; the actions and the status line stay on it. */
+@media (max-width: 699px) {
+  main:has(> [data-part="time-under"][data-repeat]) {
+    grid-template-rows:
+      auto auto minmax(0, 1fr) auto minmax(
+        calc(3 * 44px + var(--s1)),
+        max-content
+      )
+      auto 0 auto auto;
+  }
+  main:has(> [data-part="time-under"][data-repeat]) > [data-part="file"] {
+    display: none;
+  }
+  main > [data-part="time-under"][data-repeat] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 0;
+  }
+  main > [data-part="time-under"][data-repeat] > * {
+    flex-shrink: 0;
+  }
+  main > [data-part="time-under"][data-repeat] > [data-part="attempts"] {
+    flex-shrink: 1;
+    min-height: calc(2 * 44px);
+    max-height: none;
+  }
+}

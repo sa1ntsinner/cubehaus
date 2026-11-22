@@ -1,0 +1,154 @@
+/*
+ * The status line's messages and, on a phone, the one row under the thumb (DESIGN.md
+ * sections 5 and 10). The session's name opens the switch (switch.css).
+ */
+
+/* ---- messages: what happened, in a few words ---- */
+:is([data-part="db-state"], [data-part="notice"], [data-part="update"]) {
+  margin: 0;
+  color: var(--dim);
+}
+[data-part="db-state"]:is([data-kind="failed"], [data-kind="unsaved"]) {
+  color: var(--error);
+}
+[data-part="notice"] {
+  animation: notice-in 140ms ease;
+}
+@keyframes notice-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-part="notice"] {
+    animation: none;
+  }
+}
+:is([data-part="update"], [data-part="db-state"][data-kind="unsaved"]) button {
+  margin-inline-start: var(--s2);
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+/* ---- the line's other words: Keys beside Progress, and 15″ while inspection is on ---- */
+[data-part="status-line"] > nav:last-child button:hover,
+[data-action="inspection-toggle"]:hover {
+  color: var(--ink);
+}
+[data-action="inspection-toggle"] {
+  font-family: var(--font-mono);
+  color: var(--dim);
+}
+/* They are disabled only while a solve starts; they keep their look, so nothing flickers
+   during a hold. */
+[data-part="status-line"] > nav:last-child button:disabled,
+[data-action="inspection-toggle"]:disabled {
+  opacity: 1;
+}
+@media (max-width: 699px), (hover: none) {
+  /* Desktop only (DESIGN.md section 5): a touch screen has no keys to list, and Settings
+     switches inspection. */
+  [data-action="inspection-toggle"],
+  [data-part="status-line"] > nav:last-child [data-action="keys"] {
+    display: none;
+  }
+}
+
+/* A wide touch screen (a tablet, a phone on its side): one status row as on a phone, and
+   every word is a finger's target. */
+@media (hover: none) and (min-width: 700px) {
+  /* The entry mode is a setting; without a pointer it lives in Settings, as on a phone. */
+  [data-part="status-line"] > label {
+    display: none;
+  }
+  [data-part="status-line"] :is(select, a, button),
+  main > [data-part="last-actions"] button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  main > [data-part="last-actions"] {
+    flex-wrap: nowrap;
+    column-gap: var(--s2);
+    white-space: nowrap;
+  }
+  main > [data-part="last-actions"] button {
+    flex: none;
+    justify-content: center;
+    min-width: 44px;
+  }
+  /* The rule above makes every word a box; 15″ stays a desktop word (section 5). */
+  main > [data-part="status-line"] > [data-action="inspection-toggle"] {
+    display: none;
+  }
+  /* The name stays a block, so a long one ends in an ellipsis. */
+  [data-part="status-line"] [data-action="session-switch"] {
+    display: block;
+    line-height: 44px;
+  }
+  main > footer[data-part="status-line"],
+  [data-part="sessions"] {
+    align-items: center;
+  }
+}
+
+@media (max-width: 699px) {
+  /* One row: the session at the left, giving way with an ellipsis, and Algorithms,
+     Progress and Settings at the right; a message takes a line above it. Every word is a finger's
+     target. */
+  main > footer[data-part="status-line"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--s3);
+    row-gap: 0;
+  }
+  [data-part="status-line"]
+    > :is([data-part="db-state"], [data-part="notice"], [data-part="update"]) {
+    order: -1;
+    grid-column: 1 / -1;
+    padding-bottom: var(--s1);
+    font-size: 14px;
+  }
+  [data-part="sessions"] {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0;
+    min-width: 0;
+  }
+  /* With no session the empty cell keeps the links at the right. */
+  [data-part="sessions"]:has(> [data-action="session-switch"]:empty) {
+    display: flex;
+  }
+  /* 18 px under the thumb; a name longer than eight letters keeps the line's 15. */
+  [data-action="session-switch"] {
+    flex: 0 1 auto;
+    min-width: 0;
+    min-height: 44px;
+    max-width: 15ch;
+    font-size: 18px;
+    line-height: 44px;
+  }
+  [data-action="session-switch"][data-long] {
+    font-size: 15px;
+  }
+  [data-part="status-line"] > nav:last-child {
+    gap: var(--s4);
+  }
+  [data-part="status-line"] > nav:last-child a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* The narrowest phones: the name gets the room the gaps gave. Each word is still wider
+   than a finger, so 8 px between them keeps the targets apart. */
+@media (max-width: 360px) {
+  [data-part="status-line"] > nav:last-child {
+    gap: var(--s2);
+  }
+}

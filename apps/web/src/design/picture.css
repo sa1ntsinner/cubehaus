@@ -1,0 +1,194 @@
+/*
+ * The scramble picture (DESIGN.md sections 12 and 15): a stickerless speed cube laid open.
+ * Bright tiles on a dark core that shows in the seams; colours from the --pz-* set. The
+ * drawing carries no colour of its own: every fill comes from here, through its data- hooks.
+ */
+
+/* ---- where it sits: the lower left corner on a computer, above the status row whatever
+   its height; a wide puzzle runs on past the side column into the empty middle ---- */
+main > [data-part="scramble-picture"] {
+  grid-column: 1;
+  grid-row: 4 / 7;
+  align-self: end;
+  justify-self: start;
+  height: calc(min(216px, 24vh) * var(--size-picture, 1));
+  margin: 0;
+}
+[data-part="scramble-picture"] > [data-action="picture-enlarge"] {
+  display: block;
+  height: 100%;
+  padding: 0;
+}
+/* The global press scale would move the whole corner; the drawing answers instead. */
+[data-part="scramble-picture"]
+  > [data-action="picture-enlarge"]:active:not(:disabled) {
+  transform: none;
+}
+[data-part="scramble-picture"] svg[data-part="picture-drawing"] {
+  display: block;
+  height: 100%;
+  width: auto;
+  overflow: visible;
+  transform-origin: 0 100%;
+  transition: transform 200ms var(--ease);
+}
+[data-action="picture-enlarge"]:hover svg[data-part="picture-drawing"] {
+  transform: scale(1.03);
+}
+[data-action="picture-enlarge"]:active svg[data-part="picture-drawing"] {
+  transform: scale(0.99);
+  transition-duration: 80ms;
+}
+
+/* ---- the core and the tiles ---- */
+[data-part="picture-body"] {
+  fill: var(--pz-body);
+}
+/* Other puzzles: every facelet grows by half a seam in the core's colour, so it shows as a rim. */
+g[data-part="picture-body"] {
+  stroke: var(--pz-body);
+  stroke-linejoin: round;
+}
+[data-sticker] {
+  fill: var(--c);
+  transition: fill 240ms ease var(--d, 0ms);
+  animation: picture-tile-in 320ms ease var(--d, 0ms) backwards;
+}
+/* A picture that arrives lights up from the core in a sweep from the upper left; one that is
+   already there changes colour in place in the same sweep. */
+@keyframes picture-tile-in {
+  from {
+    fill: var(--pz-body);
+  }
+}
+[data-part="picture-sheen"] {
+  pointer-events: none;
+}
+[data-part="picture-sheen"] > * {
+  animation: none;
+  transition: none;
+}
+[data-sticker="U"] {
+  --c: var(--pz-U);
+}
+[data-sticker="F"] {
+  --c: var(--pz-F);
+}
+[data-sticker="R"] {
+  --c: var(--pz-R);
+}
+[data-sticker="B"] {
+  --c: var(--pz-B);
+}
+[data-sticker="L"] {
+  --c: var(--pz-L);
+}
+[data-sticker="D"] {
+  --c: var(--pz-D);
+}
+[data-sticker="purple"] {
+  --c: var(--pz-purple);
+}
+[data-sticker="cream"] {
+  --c: var(--pz-cream);
+}
+[data-sticker="sky"] {
+  --c: var(--pz-sky);
+}
+[data-sticker="lime"] {
+  --c: var(--pz-lime);
+}
+[data-sticker="pink"] {
+  --c: var(--pz-pink);
+}
+[data-sticker="grey"] {
+  --c: var(--pz-grey);
+}
+
+/* ---- the clock: white dials with dark hands in front, dark dials with white hands behind ---- */
+[data-part="clock-face"] {
+  fill: var(--pz-body);
+}
+[data-part="clock-dial"] {
+  fill: var(--pz-U);
+}
+[data-part="clock-hand"] {
+  fill: var(--pz-body);
+}
+[data-part="clock-dial"][data-side="back"] {
+  fill: var(--pz-dial);
+}
+[data-part="clock-hand"][data-side="back"] {
+  fill: var(--pz-U);
+}
+[data-part="clock-twelve"] {
+  fill: var(--pz-D);
+}
+[data-part="clock-pin"] {
+  fill: none;
+  stroke: var(--pz-dial);
+}
+[data-part="clock-pin"][data-up="true"] {
+  fill: var(--pz-D);
+  stroke: var(--pz-D);
+}
+
+/* ---- pointing along the scramble: the picture follows at once, later moves fade ---- */
+[data-stepping] [data-sticker],
+[data-part="picture-zoom-box"] [data-sticker] {
+  transition-duration: 90ms;
+  transition-delay: 0ms;
+}
+[data-part="scramble"] [data-move] {
+  transition: opacity 90ms ease;
+}
+[data-part="scramble"][data-upto] [data-after] {
+  opacity: 0.28;
+}
+
+/* ---- enlarged: the page's ground covers everything but the scramble ---- */
+[data-part="picture-zoom"] {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+}
+[data-part="picture-veil"] {
+  background: var(--ground);
+}
+[data-part="picture-zoom-box"] {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+[data-part="picture-zoom-box"] svg[data-part="picture-drawing"] {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+[data-part="picture-zoom-box"] [data-sticker] {
+  animation: none;
+}
+main > [data-part="scramble"][data-over-zoom] {
+  position: relative;
+  z-index: 10;
+}
+
+/* ---- phone: under the scramble, left-aligned, 88 px high ---- */
+@media (max-width: 699px) {
+  main > [data-part="scramble-picture"] {
+    grid-area: picture;
+    height: calc(88px * var(--size-picture, 1));
+  }
+}
+/* A short phone: smaller, still a finger's target to enlarge (timer.css, short phone). */
+@media (max-width: 699px) and (max-height: 740px) {
+  main > [data-part="scramble-picture"] {
+    height: calc(64px * var(--size-picture, 1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sticker] {
+    transition: fill 120ms linear;
+    animation: none;
+  }
+}

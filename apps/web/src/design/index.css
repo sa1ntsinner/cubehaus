@@ -1,0 +1,109 @@
+@import "./tokens.css";
+@import "./type.css";
+@import "./timer.css";
+@import "./picture.css";
+@import "./entry.css";
+@import "./settings.css";
+@import "./palette.css";
+@import "./training.css";
+@import "./average-detail.css";
+@import "./switch.css";
+@import "./status.css";
+@import "./progress.css";
+
+@font-face {
+  font-family: "Roboto";
+  src: url("/fonts/roboto.woff2") format("woff2");
+  font-weight: 400 600;
+  font-display: swap;
+}
+
+/* Average advance of English and Russian UI labels (text.ts) in Roboto 400 against Arial.
+   Liberation Sans and Arimo share Arial's metrics, so the same values hold on Linux.
+   Vertical overrides use the web face's hhea metrics divided by size-adjust. */
+@font-face {
+  font-family: "Roboto Fallback";
+  src:
+    local("Arial"), local("ArialMT"), local("Liberation Sans"),
+    local("LiberationSans"), local("Arimo");
+  font-weight: 400 600;
+  size-adjust: 100.65%;
+  ascent-override: 92.17%;
+  descent-override: 24.26%;
+  line-gap-override: 0%;
+}
+
+/* Roboto at 700 as a static instance with overlaps removed: outlines drawn with
+   -webkit-text-stroke stay clean. Every figure is 0.5737 em, so no patch is needed. */
+@font-face {
+  font-family: "Roboto Solid";
+  src: url("/fonts/roboto-solid.woff2") format("woff2");
+  font-weight: 700;
+  font-display: block;
+}
+
+/* Match each advance used in a time: tabular digits, decimal and colon. */
+@font-face {
+  font-family: "Roboto Solid Fallback";
+  src:
+    local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"),
+    local("LiberationSans-Bold"), local("Arimo Bold"), local("Arimo-Bold");
+  font-weight: 700;
+  unicode-range: U+30-39;
+  size-adjust: 103.16%;
+  ascent-override: 89.93%;
+  descent-override: 23.67%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Roboto Solid Fallback";
+  src:
+    local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"),
+    local("LiberationSans-Bold"), local("Arimo Bold"), local("Arimo-Bold");
+  font-weight: 700;
+  unicode-range: U+2E;
+  size-adjust: 104.39%;
+  ascent-override: 88.87%;
+  descent-override: 23.39%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Roboto Solid Fallback";
+  src:
+    local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"),
+    local("LiberationSans-Bold"), local("Arimo Bold"), local("Arimo-Bold");
+  font-weight: 700;
+  unicode-range: U+3A;
+  size-adjust: 84.6%;
+  ascent-override: 109.66%;
+  descent-override: 28.86%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geistmono.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono Fallback";
+  src:
+    local("Courier New"), local("CourierNewPSMT"), local("Liberation Mono"),
+    local("LiberationMono"), local("Cousine");
+  font-weight: 400 600;
+  size-adjust: 99.98%;
+  ascent-override: 100.52%;
+  descent-override: 29.51%;
+  line-gap-override: 0%;
+}
+
+:root {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-feature-settings: "tnum" 1;
+}

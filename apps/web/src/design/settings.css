@@ -1,0 +1,641 @@
+/*
+ * Settings (DESIGN.md sections 17 and 20): a calm list, the name on the left in `dim`, the
+ * choice on the right in `ink`, one line each. No boxes; a row under the pointer gets the
+ * file's line fill. The way back sits above the title, where the eye starts.
+ */
+
+[data-part="settings"] {
+  box-sizing: border-box;
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: var(--s7) var(--s5) var(--s8);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--ink);
+}
+[data-part="settings"] h1 {
+  margin: var(--s5) 0 var(--s6);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.15;
+}
+[data-action="settings-close"] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--dim);
+}
+[data-action="settings-close"]::before {
+  content: "←";
+  margin-inline-end: var(--s2);
+  font-family: var(--font-mono);
+}
+[data-action="settings-close"]:hover {
+  color: var(--ink);
+}
+
+[data-part="settings"] ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-part="settings"] li {
+  position: relative;
+  /* The name and its choice share a line when they fit; otherwise the choice takes the next
+     one, still on the right, and the name keeps its words together. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  column-gap: var(--s5);
+  min-height: 44px;
+  margin-inline: calc(-1 * var(--s3));
+  padding-inline: var(--s3);
+  border-radius: 6px;
+  transition: background-color 120ms ease;
+}
+[data-part="settings"] li:hover:has(select:enabled) {
+  background: var(--line);
+}
+/* The name opens its choice too: it is as tall as a finger. */
+[data-part="settings"] label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--dim);
+  cursor: pointer;
+}
+/* The choice reads as a word; the chevron says it opens. */
+[data-part="settings"] select {
+  margin-inline-start: auto;
+  /* As wide as the chosen word, not the longest one, so a short choice stays on its
+     name's line. */
+  field-sizing: content;
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline-end: 1.4em;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: right;
+  text-align-last: right;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--gutter) 50%),
+    linear-gradient(135deg, var(--gutter) 50%, transparent 50%);
+  /* The chevron's tip ends on the column's edge, where the Data rows' words end. */
+  background-position:
+    right 0.3em center,
+    right 0 center;
+  background-size: 0.3em 0.3em;
+  background-repeat: no-repeat;
+  background-position-y: calc(50% + 0.05em);
+}
+[data-part="settings"] select:disabled {
+  color: var(--gutter);
+  cursor: default;
+}
+/* The native list of choices follows the theme. */
+[data-part="settings"] option {
+  color: var(--ink);
+  background: var(--ground);
+}
+
+/* Data: the same rows; the action on the right reads as a word, like a choice. */
+[data-part="settings"] h2 {
+  margin: var(--s7) 0 var(--s3);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--dim);
+}
+[data-part="data"] li > span {
+  color: var(--dim);
+}
+[data-part="data"]
+  :is(button, [data-action="backup-restore"], [data-action="import-file"]) {
+  display: inline-flex;
+  align-items: center;
+  /* Every word ends on the column's right edge, short or long. */
+  justify-content: flex-end;
+  margin-inline-start: auto;
+  /* Room inside the focus ring; the word itself still ends on the column's edge. */
+  padding-inline: var(--s2);
+  margin-inline-end: calc(-1 * var(--s2));
+  min-width: 44px;
+  min-height: 44px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+[data-part="data"] li:hover:has(:is(button, input):enabled) {
+  background: var(--line);
+}
+[data-part="data"] button:disabled,
+:is([data-action="backup-restore"], [data-action="import-file"]):has(
+  input:disabled
+) {
+  color: var(--gutter);
+  cursor: default;
+}
+/* The file field stays in the page for the keyboard and screen readers, out of sight. */
+:is([data-action="backup-restore"], [data-action="import-file"]) input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+:is([data-action="backup-restore"], [data-action="import-file"]):has(
+  input:focus-visible
+) {
+  outline: 2px solid var(--double);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+[data-part="data-result"] {
+  min-height: 1.5em;
+  margin: var(--s3) 0 0;
+  color: var(--dim);
+}
+
+/* What the chosen files will add, before anything is written: their sessions as a plain
+   table (name, puzzle, solves in mono), what stays out in `warn`, then go ahead or not. */
+[data-part="import-preview"] {
+  margin-top: var(--s4);
+  animation: preview-in 160ms var(--ease);
+}
+@keyframes preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+[data-part="settings"] [data-part="import-sessions"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--s5);
+}
+[data-part="settings"] [data-part="import-sessions"] li {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: baseline;
+  min-height: 32px;
+  padding-block: var(--s1);
+}
+[data-part="import-sessions"] li > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-part="import-sessions"] li > span:nth-child(2) {
+  color: var(--dim);
+}
+[data-part="import-sessions"] li > span:last-child {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  color: var(--dim);
+}
+/* A CubeTime file names no puzzle: its row is a name to edit, on the hairline every field
+   has, and the puzzle as a choice like the settings above. */
+[data-action="import-session-name"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: var(--s1) 0;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  caret-color: var(--prime);
+  text-overflow: ellipsis;
+  transition: border-color 120ms ease;
+}
+[data-action="import-session-name"]::placeholder {
+  color: var(--gutter);
+}
+[data-action="import-session-name"]:hover:enabled {
+  border-bottom-color: var(--gutter);
+}
+[data-action="import-session-name"]:focus {
+  outline: none;
+  border-bottom-color: var(--dim);
+}
+[data-action="import-session-name"]:invalid {
+  border-bottom-color: var(--warn);
+}
+/* A phone zooms into a field set smaller than 16px. */
+@media (pointer: coarse) {
+  [data-action="import-session-name"] {
+    font-size: 16px;
+  }
+}
+:is(
+  [data-part="import-here"],
+  [data-part="import-penalized"],
+  [data-part="import-csv-penalties"],
+  [data-part="import-csv-zone"]
+) {
+  margin: var(--s3) 0 0;
+  color: var(--dim);
+}
+[data-part="import-issue"] {
+  margin: var(--s3) 0 0;
+  color: var(--warn);
+}
+/* The words line up with the list; the padding gives the focus ring room around them. */
+[data-part="import-actions"] {
+  display: flex;
+  gap: var(--s3);
+  margin: var(--s4) 0 0 calc(-1 * var(--s2));
+}
+[data-part="import-actions"] button {
+  min-height: 44px;
+  padding-inline: var(--s2);
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 140ms var(--ease);
+}
+[data-part="import-actions"] button:active:enabled {
+  transform: scale(0.96);
+}
+[data-part="import-actions"] [data-action="import-cancel"]:not(:only-child) {
+  font-weight: 500;
+  color: var(--dim);
+}
+[data-part="import-actions"] button:hover:enabled {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+[data-part="import-actions"] button:focus-visible {
+  outline: 2px solid var(--double);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+[data-part="import-actions"] button:disabled {
+  color: var(--gutter);
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-part="import-preview"] {
+    animation: none;
+  }
+}
+
+@media (max-width: 699px) {
+  [data-part="settings"] {
+    padding: var(--s5) var(--s4) var(--s7);
+  }
+  [data-part="settings"] h1 {
+    margin: var(--s3) 0 var(--s5);
+    font-size: 24px;
+  }
+  [data-part="settings"] li {
+    padding-block: var(--s1);
+  }
+}
+
+/*
+ * Shortcuts: one more row of the list, `Shortcuts` with `Change` at the right edge, which
+ * opens the commands in place and turns into `Done`. While open, that row stays at the top of
+ * the window on the ground, so Done is always in reach. Every command is a row: its name in
+ * `dim`, its keys in mono `ink` at the right edge (a press records the next key, written like
+ * a field with the caret in it), then `Unbind`, which waits for the pointer or the focus on a
+ * computer and is always there on a touch screen. A clash or refusal is a line in `error`
+ * under the row it is about; a cancel is the same line in `dim`.
+ */
+[data-part="keymap"] ul + ul {
+  margin-top: var(--s4);
+}
+/* The words at the right edge read like the Data rows': one word, the edge kept. */
+[data-part="keymap"]
+  :is(
+    [data-action="keymap-toggle"],
+    [data-action="commands-open"],
+    [data-action="keyboard-reset"]
+  ) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-inline: auto calc(-1 * var(--s2));
+  padding-inline: var(--s2);
+  min-width: 44px;
+  min-height: 44px;
+  font-weight: 500;
+  color: var(--ink);
+}
+[data-part="keymap"] li > span:first-child {
+  color: var(--dim);
+}
+[data-part="keymap"] li:hover:has(> :is(a, button:enabled)) {
+  background: var(--line);
+}
+[data-part="keymap"] button:disabled {
+  color: var(--gutter);
+  opacity: 1;
+}
+[data-part="keymap"][data-open] > ul:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ground);
+}
+[data-part="keymap"][data-open] [data-setting="keymap"]:hover {
+  background: var(--line);
+}
+/* Heard, not seen: the line under the row shows the same words. */
+[data-part="keymap-notice"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+[data-part="keymap-list"][hidden] {
+  display: none;
+}
+/* One grid for every command, so the keys and Unbind stand in columns down the list. */
+[data-part="settings"] [data-part="bindings"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--s3);
+}
+[data-part="settings"] [data-part="bindings"] li {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+}
+[data-part="binding-name"] {
+  padding-block: var(--s2);
+}
+[data-binding] [data-action="binding-change"] {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: var(--s2);
+  margin-inline-end: calc(-1 * var(--s2));
+  text-align: end;
+  color: var(--ink);
+}
+[data-part="binding-keys"] {
+  font: 500 14px var(--font-mono);
+  overflow-wrap: anywhere;
+}
+[data-binding]
+  [data-action="binding-change"][data-unbound]
+  [data-part="binding-keys"] {
+  font: 400 15px var(--font-ui);
+  color: var(--gutter);
+}
+/* Recording: the place for the key reads as a field with the caret in it. */
+[data-binding][data-capturing]
+  [data-action="binding-change"]
+  [data-part="binding-keys"] {
+  font: 400 15px var(--font-ui);
+  color: var(--dim);
+  text-decoration: underline 1px var(--dim);
+  text-underline-offset: 5px;
+}
+[data-binding] [data-action="binding-remove"] {
+  justify-self: end;
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: var(--s2);
+  font-weight: 500;
+  color: var(--dim);
+}
+[data-binding] [data-action="binding-remove"]:hover:enabled {
+  color: var(--ink);
+}
+/* Nothing to unbind: the word keeps its room but is not there. */
+[data-binding] [data-action="binding-remove"]:disabled {
+  visibility: hidden;
+}
+/* A pointer: the keys end on the column's edge and Unbind waits beside them for the pointer
+   or the focus. A touch screen has no hover, so Unbind always stands, last in the row. */
+@media (hover: hover) and (pointer: fine) {
+  [data-binding] [data-action="binding-remove"] {
+    opacity: 0;
+  }
+  [data-binding]:is(:hover, :focus-within) [data-action="binding-remove"] {
+    opacity: 1;
+  }
+}
+@media not ((hover: hover) and (pointer: fine)) {
+  [data-binding] [data-action="binding-change"] {
+    grid-column: 2;
+    grid-row: 1;
+    margin-inline-end: 0;
+  }
+  [data-binding] [data-action="binding-remove"] {
+    grid-column: 3;
+    grid-row: 1;
+    margin-inline-end: calc(-1 * var(--s2));
+  }
+}
+/* A long chord wraps in its own column rather than squeezing every name on a phone. */
+@media (max-width: 699px) {
+  [data-part="binding-keys"] {
+    max-width: 6.5em;
+  }
+}
+[data-part="binding-notice"] {
+  grid-column: 1 / -1;
+  margin: 0 0 var(--s2);
+  color: var(--error);
+}
+[data-part="binding-notice"][data-kind="note"] {
+  color: var(--dim);
+}
+[data-setting="keyboard-reset"] {
+  flex-wrap: wrap;
+}
+[data-setting="keyboard-reset"] [data-part="binding-notice"] {
+  flex-basis: 100%;
+}
+
+[data-action="reset-averages"] {
+  min-height: 44px;
+  margin-block: var(--s2);
+}
+
+/* Scrambles (3×3 sessions): the drill in `dim`, then Change at the right edge like the Data
+   rows' words; it opens the drill sheet. */
+li[data-setting="training"] > span:first-child {
+  color: var(--dim);
+}
+[data-part="training-choice"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s4);
+  margin-inline-start: auto;
+  color: var(--dim);
+}
+[data-action="training-open"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-inline-end: calc(-1 * var(--s2));
+  padding-inline: var(--s2);
+  min-width: 44px;
+  min-height: 44px;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+}
+[data-setting="training"]:hover {
+  background: var(--line);
+}
+
+[data-action="reset-sizes"],
+[data-action="theme-reset-colours"] {
+  min-height: 44px;
+  margin-block: var(--s2);
+}
+
+/* Custom theme (DESIGN.md section 2): each colour as its hex in mono and a small swatch at
+   the right edge, the picture and the file as words like the Data rows. */
+/* Desktop backups: the Data list's rows; a value (the folder, the newest copy's time) in
+   mono `dim` before its action, a long folder cut from the left so its end shows. */
+[data-part="backups"] li > span:first-child {
+  color: var(--dim);
+}
+[data-part="backups"] button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-inline-start: auto;
+  padding-inline: var(--s2);
+  margin-inline-end: calc(-1 * var(--s2));
+  min-width: 44px;
+  min-height: 44px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+[data-part="backups"] li:hover:has(button:enabled) {
+  background: var(--line);
+}
+:is([data-part="backups"], [data-part="backup-confirm"]) button:disabled {
+  color: var(--gutter);
+  cursor: default;
+}
+[data-part="backup-value"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s4);
+  min-width: 0;
+  max-width: 100%;
+  margin-inline-start: auto;
+}
+[data-part="backup-value"] output {
+  overflow: hidden;
+  min-width: 0;
+  max-width: 34ch;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--dim);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+[data-setting="backup-folder"] output {
+  direction: rtl;
+}
+[data-setting="backup-folder"] output span {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+[data-part="backup-confirm"] {
+  margin: var(--s3) 0 0;
+  color: var(--ink);
+}
+[data-part="backup-confirm"] button {
+  min-height: 44px;
+  padding-inline: var(--s2);
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+[data-part="theme-colour"],
+[data-part="theme-picture-actions"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-inline-start: auto;
+}
+[data-part="theme-colour"] output {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--dim);
+}
+[data-part="theme-colour"]:has(input[data-weak]) output {
+  color: var(--error);
+}
+[data-part="theme-editor"] li > span:first-child {
+  color: var(--dim);
+}
+[data-part="theme-editor"] li:hover:has(:is(select, input, button):enabled) {
+  background: var(--line);
+}
+[data-part="theme-editor"] input[type="color"] {
+  box-sizing: border-box;
+  inline-size: 44px;
+  block-size: 44px;
+  margin-inline-end: calc(-1 * var(--s3));
+  padding: 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+[data-part="theme-editor"] input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+[data-part="theme-editor"] input[type="color"]::-webkit-color-swatch {
+  border: 1px solid var(--gutter);
+  border-radius: 4px;
+}
+[data-part="theme-editor"] input[type="color"]::-moz-color-swatch {
+  border: 1px solid var(--gutter);
+  border-radius: 4px;
+}
+[data-part="theme-editor"] input[type="color"]:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+[data-part="theme-picture-actions"] :is(button, label) {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: var(--s2);
+  margin-inline-end: calc(-1 * var(--s2));
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+[data-part="theme-picture-actions"] label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+[data-part="theme-picture-actions"] label:has(input:focus-visible) {
+  outline: 2px solid var(--double);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+[data-part="theme-picture-actions"] label:has(input:disabled),
+[data-part="theme-picture-actions"] button:disabled {
+  color: var(--gutter);
+  cursor: default;
+}
+[data-part="theme-status"] {
+  min-height: 1.4em;
+  margin: var(--s2) 0 0;
+  color: var(--error);
+}

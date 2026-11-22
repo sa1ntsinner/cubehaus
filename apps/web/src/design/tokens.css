@@ -1,0 +1,72 @@
+:root {
+  --font-ui: "Roboto", "Roboto Fallback", sans-serif;
+  --font-solid: "Roboto Solid", "Roboto Solid Fallback", sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+  --font-below: 0.118em;
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  /* The least size any text is drawn at, whatever the person's sizes (+ and −). */
+  --text-floor: 11px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #000000;
+  --ink: #ffffff;
+  --dim: #c2cad3;
+  --gutter: #8a96a3;
+  --line: #171b20;
+  --sel: rgb(167 167 255 / 0.27);
+  --prime: #ffb878;
+  --double: #9ccbff;
+  --wide: #c8b0f7;
+  --warn: #f0bd4a;
+  --error: #ff8f9a;
+  --pb: #8ff09a;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ground: #ffffff;
+  --ink: #000000;
+  --dim: #424a53;
+  --gutter: #5f6873;
+  --line: #f0f2f4;
+  --sel: rgb(84 174 255 / 0.28);
+  --prime: #8f3700;
+  --double: #0349a0;
+  --wide: #6331bd;
+  --warn: #735000;
+  --error: #ad1420;
+  --pb: #116329;
+}
+
+/* The puzzle's own colours (DESIGN.md section 12): the same in both themes but the white
+   and the core, which settle a little into a dark page. */
+:root {
+  --pz-U: #ffffff;
+  --pz-F: #14c05a;
+  --pz-R: #ee2a2e;
+  --pz-B: #1f6cff;
+  --pz-L: #ff8a00;
+  --pz-D: #ffe000;
+  --pz-body: #1d1e21;
+  --pz-dial: #45474d;
+  --pz-purple: #8d3cf2;
+  --pz-cream: #f2dcae;
+  --pz-sky: #5ec6ff;
+  --pz-lime: #a6e22e;
+  --pz-pink: #ff6fc6;
+  --pz-grey: #9b9ea4;
+}
+:root[data-theme="dark"] {
+  --pz-U: #f4f4f1;
+  --pz-body: #202124;
+}

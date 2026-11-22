@@ -1,0 +1,19 @@
+{
+  "name": "@cubehaus/importers",
+  "version": "0.0.5",
+  "private": true,
+  "type": "module",
+  "license": "MPL-2.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@cubehaus/core": "workspace:0.0.5"
+  },
+  "devDependencies": {
+    "@cubehaus/storage": "workspace:0.0.5"
+  }
+}

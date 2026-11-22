@@ -1,0 +1,22 @@
+{
+  "name": "@cubehaus/scramble",
+  "version": "0.0.5",
+  "private": true,
+  "type": "module",
+  "license": "MPL-2.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cubing": "./src/cubing.ts",
+    "./training": "./src/training.ts",
+    "./last-layer": "./src/last-layer-cases.ts",
+    "./last-layer-state": "./src/last-layer.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.browser.json"
+  },
+  "dependencies": {
+    "@cubehaus/core": "workspace:*",
+    "@cubehaus/cube": "workspace:*",
+    "cubing": "0.66.1"
+  }
+}

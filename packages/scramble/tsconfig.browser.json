@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": [
+    "src/cubing.ts",
+    "src/training.ts",
+    "src/training.test.ts",
+    "src/training-state.ts",
+    "src/last-layer.ts",
+    "src/last-layer.test.ts",
+    "src/last-layer-cases.ts",
+    "src/fewest.test.ts",
+    "src/generate.test.ts",
+    "src/shapes.ts",
+    "src/pyraminx.ts",
+    "src/pyraminx.test.ts"
+  ]
+}

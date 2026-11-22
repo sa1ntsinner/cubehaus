@@ -1,0 +1,523 @@
+/*
+ * The session switch (S, or a tap on the session's name), DESIGN.md section 10. It covers
+ * the screen on the ground colour like the palette: the way back, the query line, then one
+ * column of sessions, each with its last result at the right, then the puzzles that have
+ * no session yet. A row is a word on the ground; the one Enter takes sits on the `line`
+ * fill. Desktop rows are ui 19, phone rows ui 22 (section 4).
+ */
+
+dialog[data-part="switch"] {
+  --row: 44px;
+  --lead: 1.1em;
+  --close-left: max(var(--s5), calc(50% - 280px));
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  /* Room above the content for the way back, however short the window. */
+  padding: max(12vh, calc(44px + 2 * var(--s4))) var(--s5) var(--s7);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 19px;
+  animation: sheet-in 110ms var(--ease);
+}
+dialog[data-part="switch"]:not([open]) {
+  display: none;
+}
+/* On a touch screen the sheet holds focus itself; it needs no ring. */
+dialog[data-part="switch"]:focus-visible {
+  outline: none;
+}
+/* The sheet is its own ground: nothing shows through around it. */
+dialog[data-part="switch"]::backdrop {
+  background: var(--ground);
+}
+dialog[data-part="switch"] > :not([data-action="dialog-close"]) {
+  flex: none;
+  box-sizing: border-box;
+  width: min(560px, 100%);
+  margin-inline: auto;
+}
+
+/* ---- the query: the first line of the column, after a prompt ---- */
+[data-part="switch-find"] {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  height: 48px;
+  padding-inline: var(--s3);
+  border-bottom: 1px solid var(--line);
+  cursor: text;
+}
+[data-part="switch-find"] > span {
+  flex: none;
+  width: var(--lead);
+  font-family: var(--font-mono);
+  color: var(--gutter);
+  text-align: center;
+}
+[data-part="switch-query"] {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  caret-color: var(--prime);
+  outline: none;
+  appearance: none;
+}
+[data-part="switch-query"]::placeholder {
+  color: var(--gutter);
+}
+[data-part="switch-query"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+/* In the archive or the trash the line names it, and is the way back: ‹ where › stood. */
+p[data-part="switch-find"] {
+  margin-block: 0;
+  cursor: auto;
+}
+[data-action="switch-back"] {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  height: 100%;
+  margin-inline-start: calc(-1 * var(--s3));
+  padding-inline: var(--s3);
+  font-weight: 600;
+  color: var(--ink);
+}
+[data-action="switch-back"] > span {
+  width: var(--lead);
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--gutter);
+  text-align: center;
+}
+[data-action="switch-back"]:hover > span {
+  color: var(--ink);
+}
+
+/* ---- the rows ---- */
+[data-part="switch-list"] {
+  margin-block: var(--s2) 0;
+  padding: 0;
+  list-style: none;
+}
+/* A row's words share one baseline; a long name grows the row downward. */
+[data-part="switch-list"] > li {
+  display: flex;
+  align-items: baseline;
+  min-height: var(--row);
+  border-radius: 6px;
+}
+[data-part="switch-list"] > li[data-selected] {
+  background: var(--line);
+}
+/* Picked sessions (Shift or Mod with a click or an arrow) read as an editor's selection,
+   as in the file of solves: neighbours join into one block. */
+[data-part="switch-list"] > li[data-picked] {
+  background: var(--sel);
+}
+[data-part="switch-list"] > li[data-picked]:has(+ li[data-picked]) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+[data-part="switch-list"] > li[data-picked] + li[data-picked] {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+[data-action="switch-pick"] {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  column-gap: var(--s2);
+  min-height: var(--row);
+  box-sizing: border-box;
+  /* One line sits on the row's middle. */
+  padding: calc((var(--row) - 1.25em) / 2) var(--s3);
+  border-radius: 6px;
+  color: var(--dim);
+  text-align: start;
+  line-height: 1.25;
+}
+[data-part="switch-list"] button:active:not(:disabled) {
+  transform: none;
+}
+[data-action="switch-pick"]:focus-visible {
+  outline-offset: -2px;
+}
+li[data-selected] > [data-action="switch-pick"],
+li[data-picked] > [data-action="switch-pick"],
+li[data-current] > [data-action="switch-pick"] {
+  color: var(--ink);
+}
+/* The lead column: a dot on the open session, a plus on a row that makes one. */
+[data-action="switch-pick"]::before {
+  content: "";
+  flex: none;
+  width: var(--lead);
+  font-family: var(--font-mono);
+  color: var(--gutter);
+  text-align: center;
+}
+li:is([data-row="event"], [data-row="create"])
+  > [data-action="switch-pick"]::before {
+  content: "+";
+}
+li[data-current] > [data-action="switch-pick"]::before {
+  content: "•";
+  color: var(--ink);
+}
+/* The archive and the trash lead in. */
+li[data-row="view"] > [data-action="switch-pick"]::before {
+  content: "›";
+}
+/* A long name wraps between its words, in its own column; the result keeps its place at
+   the right. Only a word wider than the row breaks. */
+[data-part="switch-label"],
+[data-part="switch-note"] {
+  flex: 0 1 auto;
+  overflow-wrap: break-word;
+}
+[data-part="switch-note"] {
+  min-width: 0;
+}
+li[data-current] [data-part="switch-label"] {
+  font-weight: 600;
+}
+/* Matched letters keep the row's face and gain a hairline under them. */
+[data-part="switch-label"] mark {
+  background: none;
+  color: var(--ink);
+  text-decoration: underline 1px var(--gutter);
+  text-underline-offset: 0.2em;
+}
+[data-part="switch-note"] {
+  font-size: 15px;
+  color: var(--gutter);
+}
+[data-part="switch-last"] {
+  flex: none;
+  margin-inline-start: auto;
+  padding-inline-start: var(--s4);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--gutter);
+  white-space: nowrap;
+}
+
+/* ---- folders: a name with ▸ closed or ▾ open in the lead column, its count at the right;
+   its sessions stand one column in ---- */
+li[data-row="folder"] > [data-action="switch-pick"]::before {
+  content: "▾";
+  scale: 0.7;
+}
+li[data-row="folder"][data-collapsed="true"]
+  > [data-action="switch-pick"]::before {
+  content: "▸";
+}
+/* A closed folder holding the open session shows that it does. */
+li[data-row="folder"][data-current] > [data-action="switch-pick"]::before {
+  color: var(--ink);
+}
+/* In the trash the highlighted row shows what picking it does. */
+li[data-row="trashed"][data-selected] > [data-action="switch-pick"]::before {
+  content: "↩";
+  color: var(--dim);
+}
+[data-part="switch-count"] {
+  flex: none;
+  margin-inline-start: auto;
+  padding-inline-start: var(--s4);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--gutter);
+}
+li[data-depth="1"] > [data-action="switch-pick"] {
+  padding-inline-start: calc(var(--s3) + var(--lead) + var(--s2));
+}
+
+/* ---- the archive and the trash: two rows after the sessions, apart from them and from
+   the puzzles, that lead in ---- */
+li:not([data-row="view"]) + li[data-row="view"],
+li[data-row="view"] + li[data-row="event"] {
+  margin-top: var(--s4);
+}
+/* Rows with no actions keep the column of the dots, so counts and times line up with the
+   results above them. */
+li:is([data-row="view"], [data-row="trashed"]) > [data-action="switch-pick"] {
+  padding-inline-end: calc(var(--s3) + 40px);
+}
+/* How long the trash keeps a row, at the right where a result stands. */
+[data-part="switch-left"] {
+  flex: none;
+  margin-inline-start: auto;
+  padding-inline-start: var(--s4);
+  font-size: 15px;
+  color: var(--gutter);
+  white-space: nowrap;
+}
+/* The lead column in the rows' own size (1.1 × 19px), so the words line up with names. */
+[data-part="switch-foot"] {
+  margin-block: var(--s4) 0;
+  padding-inline: calc(var(--s3) + 21px + var(--s2)) var(--s3);
+  font-size: 15px;
+  color: var(--gutter);
+}
+
+/* ---- moving a row: it stays in place, faded, while a line shows where it lands, or a
+   ring the row it will join ---- */
+dialog[data-part="switch"][data-dragging] {
+  cursor: grabbing;
+}
+dialog[data-part="switch"][data-dragging] [data-part="switch-list"] > li {
+  background: none;
+}
+[data-part="switch-list"] > li[data-lifted] {
+  opacity: 0.45;
+}
+[data-part="switch-list"] > li[data-drop="before"] {
+  box-shadow: inset 0 2px 0 var(--ink);
+  border-radius: 0;
+}
+[data-part="switch-list"] > li[data-drop="after"] {
+  box-shadow: inset 0 -2px 0 var(--ink);
+  border-radius: 0;
+}
+dialog[data-part="switch"][data-dragging]
+  [data-part="switch-list"]
+  > li[data-drop="on"] {
+  background: var(--line);
+  box-shadow: inset 0 0 0 1px var(--dim);
+}
+
+/* After an order change: one line at the foot of the screen, with its undo, on the ground
+   over the list, which leaves room for it. Sessions picked together get the same line,
+   with where they can go. */
+:is([data-part="switch-undo"], [data-part="switch-picked"]) {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin: 0 auto;
+  /* The words start where the row names do and end where the results do. */
+  padding: var(--s2) calc(40px + var(--s3))
+    calc(var(--s2) + env(safe-area-inset-bottom))
+    calc(var(--s3) + 21px + var(--s2));
+  border-top: 1px solid var(--line);
+  background: var(--ground);
+  font-size: 15px;
+  color: var(--dim);
+  animation: sheet-in 110ms var(--ease);
+}
+dialog[data-part="switch"]:has(
+  > :is([data-part="switch-undo"], [data-part="switch-picked"])
+) {
+  padding-bottom: calc(var(--s7) + 52px);
+}
+:is([data-action="switch-undo"], [data-action="switch-merge-picked"]) {
+  min-height: 36px;
+  font-weight: 600;
+  color: var(--ink);
+}
+/* Esc drops the pick where there are keys; a finger gets the cross. */
+[data-action="switch-picked-clear"] {
+  min-width: 44px;
+  min-height: 36px;
+  font-size: 20px;
+  color: var(--dim);
+}
+@media (hover: hover) {
+  [data-action="switch-picked-clear"] {
+    display: none;
+  }
+}
+
+/* A new session's event, a word that steps to the next one (Tab in the query). */
+[data-action="switch-event"] {
+  flex: none;
+  align-self: flex-start;
+  height: var(--row);
+  padding-inline: var(--s3);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--dim);
+}
+[data-action="switch-event"]:hover {
+  color: var(--ink);
+}
+@media (hover: hover) {
+  li[data-selected] > [data-action="switch-event"]::after {
+    content: " ⇥";
+    color: var(--gutter);
+  }
+}
+
+/* The session's actions: three dots at the row's end, and its two words in place of the
+   result while open. */
+[data-action="switch-more"] {
+  --dot: radial-gradient(circle, currentColor 0 1.5px, transparent 2px);
+  flex: none;
+  align-self: flex-start;
+  width: 40px;
+  height: var(--row);
+  color: var(--gutter);
+  background:
+    var(--dot) calc(50% - 6px) 50% / 5px 5px no-repeat,
+    var(--dot) 50% 50% / 5px 5px no-repeat,
+    var(--dot) calc(50% + 6px) 50% / 5px 5px no-repeat;
+  opacity: 0;
+}
+li:is([data-selected], :hover, :focus-within, [data-menu])
+  > [data-action="switch-more"] {
+  opacity: 1;
+}
+[data-action="switch-more"]:hover,
+[data-action="switch-more"][aria-expanded="true"] {
+  color: var(--ink);
+}
+/* An open menu takes the line under its row's name: the actions do not fit beside a long
+   name (five of them in Russian). Its words start where the name does; the lead is in the
+   row's em, so the menu keeps the row's size and its words set their own. */
+[data-part="switch-list"] > li[data-menu] {
+  flex-wrap: wrap;
+}
+[data-part="switch-menu"] {
+  order: 1;
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--s5);
+  box-sizing: border-box;
+  min-height: var(--row);
+  padding: 0 var(--s3) 0 calc(var(--s3) + var(--lead) + var(--s2));
+  animation: sheet-in 110ms var(--ease);
+}
+[data-part="switch-menu"] > button {
+  min-height: var(--row);
+  font-size: 15px;
+  color: var(--dim);
+}
+[data-part="switch-menu"] > button:hover {
+  color: var(--ink);
+}
+[data-part="switch-menu"] > [data-action="switch-delete"] {
+  color: var(--error);
+}
+
+/* Renaming in place: the row becomes its field, the text where the name stood. */
+[data-part="switch-rename"] {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--row);
+  box-sizing: border-box;
+  padding: 0 var(--s3) 0 calc(var(--s3) + var(--lead) + var(--s2));
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-weight: 600;
+  caret-color: var(--prime);
+  outline: none;
+}
+li[data-depth="1"] > [data-part="switch-rename"] {
+  padding-inline-start: calc(var(--s3) + 2 * (var(--lead) + var(--s2)));
+}
+li[data-renaming] {
+  box-shadow: inset 0 -1px 0 var(--dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog[data-part="switch"],
+  [data-part="switch-menu"],
+  [data-part="switch-undo"],
+  [data-part="switch-picked"] {
+    animation: none;
+  }
+}
+
+/* Without a pointer every row is a finger's target. The dots stand on the open session and
+   on the highlighted one; a long press opens any session's menu. */
+@media (hover: none) {
+  dialog[data-part="switch"] {
+    --row: 48px;
+  }
+  [data-action="switch-more"] {
+    width: 48px;
+  }
+  li:is([data-row="view"], [data-row="trashed"]) > [data-action="switch-pick"] {
+    padding-inline-end: calc(var(--s3) + 48px);
+  }
+  :is(
+    [data-action="switch-undo"],
+    [data-action="switch-merge-picked"],
+    [data-action="switch-picked-clear"]
+  ) {
+    min-height: 44px;
+  }
+  li:is([data-current], [data-selected], [data-menu])
+    > [data-action="switch-more"] {
+    opacity: 1;
+  }
+}
+
+/* A phone: the column stands at the foot of the screen, under the thumb, while it fits;
+   once the query is touched it goes to the top, clear of the keyboard, and stays. */
+@media (max-width: 699px) {
+  dialog[data-part="switch"] {
+    --row: 52px;
+    --close-left: var(--s4);
+    padding: calc(var(--s4) + 44px + var(--s2)) var(--s4)
+      calc(var(--s4) + env(safe-area-inset-bottom));
+    font-size: 22px;
+  }
+  [data-part="switch-find"] {
+    height: 52px;
+  }
+  :is([data-part="switch-undo"], [data-part="switch-picked"]) {
+    padding-inline: calc(var(--s4) + var(--s3) + 24px + var(--s2))
+      calc(var(--s4) + 48px + var(--s3));
+  }
+  dialog[data-part="switch"]:not([data-searching]) > [data-part="switch-find"] {
+    margin-top: auto;
+  }
+  [data-part="switch-last"],
+  [data-part="switch-note"],
+  [data-part="switch-foot"],
+  [data-part="switch-left"] {
+    font-size: 16px;
+  }
+  [data-part="switch-foot"] {
+    padding-inline-start: calc(var(--s3) + 24px + var(--s2));
+  }
+  /* On a phone the actions stand one a line, each a finger tall. */
+  [data-part="switch-menu"] {
+    flex-direction: column;
+    align-items: stretch;
+    padding-bottom: var(--s2);
+  }
+  [data-part="switch-menu"] > button {
+    min-height: 44px;
+    font-size: 16px;
+    text-align: start;
+  }
+}

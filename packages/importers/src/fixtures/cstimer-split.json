@@ -1,0 +1,10 @@
+{
+  "session1": [
+    [[2000, 12345, 7000], "R U R' U'", "x", 1700000000],
+    [[0, 9000], "R"]
+  ],
+  "session2": [],
+  "properties": {
+    "sessionData": "{\"1\":{\"name\":\"Split\",\"opt\":{\"scrType\":\"333\",\"phases\":2}},\"2\":{\"name\":\"Empty\",\"opt\":{\"scrType\":\"444wca\"}}}"
+  }
+}

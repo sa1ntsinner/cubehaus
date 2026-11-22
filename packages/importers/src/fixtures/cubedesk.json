@@ -1,0 +1,21 @@
+{
+  "sessions": [
+    { "id": "A", "name": "Practice", "order": 0 },
+    { "id": "B", "name": "Practice", "order": 1 }
+  ],
+  "solves": [
+    {
+      "id": "x",
+      "session_id": "B",
+      "cube_type": "333",
+      "time": 14.345,
+      "raw_time": 12.345,
+      "started_at": 1700000000123,
+      "plus_two": true,
+      "dnf": false,
+      "scramble": "R",
+      "notes": "r",
+      "from_timer": true
+    }
+  ]
+}

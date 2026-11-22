@@ -1,0 +1,201 @@
+/*
+ * Drill scrambles (L, or Change on the drill line), DESIGN.md sections 7 and 10. The sheet
+ * covers the screen like the palette: the way back, the drills as one column of choices,
+ * and for OLL and PLL a search line and the cases as small top views. A picked case is
+ * shown in full on the `line` fill; the others step back. No colour but the stickers'.
+ */
+
+[data-part="training"] {
+  --close-left: max(var(--s5), calc(50% - 380px));
+  --row: 40px;
+}
+[data-part="training"] > :not([data-action="dialog-close"]) {
+  box-sizing: border-box;
+  width: min(760px, 100%);
+  margin-inline: auto;
+}
+
+/* ---- the drills ---- */
+[data-part="training-kinds"] {
+  margin-block: 0;
+  padding: 0;
+  border: 0;
+}
+[data-part="training-kinds"] legend {
+  margin-bottom: var(--s3);
+  padding: 0;
+  font-size: 19px;
+  font-weight: 500;
+}
+[data-part="training-kinds"] > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--s5);
+  min-height: var(--row);
+}
+[data-part="training-kinds"] label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--row);
+  color: var(--dim);
+}
+[data-part="training-kinds"] > div > label:first-child:has(:checked) {
+  color: var(--ink);
+}
+[data-part="training-kinds"] input[type="radio"] {
+  accent-color: var(--ink);
+  margin: 0;
+}
+[data-part="training-kinds"] select {
+  color: var(--ink);
+}
+
+/* ---- the cases ---- */
+[data-part="training-cases"] {
+  margin-top: var(--s5);
+}
+[data-part="training-case-tools"] {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+[data-part="training-query"] {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 15px;
+  caret-color: var(--prime);
+  outline: none;
+  appearance: none;
+}
+[data-part="training-query"]::placeholder {
+  color: var(--gutter);
+}
+[data-part="training-query"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+[data-part="training-case-tools"] button {
+  min-height: 44px;
+  color: var(--dim);
+}
+[data-part="training-case-tools"] button:hover {
+  color: var(--ink);
+}
+[data-part="training-empty"] {
+  margin: var(--s3) 0 0;
+  color: var(--dim);
+}
+[data-part="training-case-list"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--s2);
+  margin: var(--s3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+[data-part="training-case-list"] button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  width: 100%;
+  padding: var(--s2) var(--s1);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--gutter);
+}
+[data-part="training-case-list"] button:hover {
+  color: var(--dim);
+}
+[data-part="training-case-list"] button[aria-pressed="true"] {
+  background: var(--line);
+  color: var(--ink);
+}
+[data-part="training-case-list"] button:active {
+  transform: none;
+}
+[data-part="case-diagram"] {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  background: var(--pz-body);
+  opacity: 0.4;
+}
+[aria-pressed="true"] > [data-part="case-diagram"] {
+  opacity: 1;
+}
+
+@media (max-width: 699px), (pointer: coarse) {
+  [data-part="training"] {
+    --row: 44px;
+  }
+}
+
+/* ---- the drill line under the scramble: what is drilled, its change and its cross ---- */
+main > [data-part="drill"] {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  justify-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  column-gap: var(--s3);
+  margin: 0;
+  font: 400 14px var(--font-ui);
+  color: var(--dim);
+  text-align: center;
+}
+main > [data-part="drill"] button {
+  min-height: 32px;
+  color: var(--dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+main > [data-part="drill"] button:hover {
+  color: var(--ink);
+}
+[data-part="drill-solution"] {
+  flex-basis: 100%;
+  font: 500 16px var(--font-mono);
+  color: var(--ink);
+}
+[data-part="drill-solution"]:is([data-state="searching"], [data-state="none"]) {
+  font: 400 14px var(--font-ui);
+  color: var(--gutter);
+}
+[data-part="drill-solution"][data-state="failed"] {
+  font: 400 14px var(--font-ui);
+  color: var(--dim);
+}
+/* The free row above the time is at least as tall as the drill line and its answer, so
+   a short window pushes the time down rather than under them. */
+main[data-timer-surface]:has(> [data-part="drill"]),
+main:has(> [data-part="scramble"]):has(> [data-part="drill"]) {
+  grid-template-rows:
+    auto minmax(min-content, 1fr) auto auto auto minmax(0, 1fr)
+    auto;
+}
+@media (max-width: 699px) {
+  main > [data-part="drill"] {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  /* The same on a phone, where the free row is the third. */
+  main[data-timer-surface]:has(> [data-part="drill"]),
+  main:has(> [data-part="scramble"]):has(> [data-part="drill"]) {
+    grid-template-rows:
+      auto auto minmax(min-content, 1fr) auto auto auto minmax(min-content, 3fr)
+      auto auto;
+  }
+}

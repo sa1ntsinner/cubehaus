@@ -1,0 +1,15 @@
+{
+  "session10": [],
+  "session2": [[[4000, 18870], "R U2", "", 1700000100]],
+  "session1": [
+    [[0, 10510], "R U", "", 1700000000],
+    [[2000, 11200], "F R", "", 1700000001],
+    [[-1, 12345], "F U", "", 1700000002],
+    [[0, 13110], "L U", "Practice", 1700000003],
+    [[0, 14440], "U R", "", 1700000004],
+    [[0, 14440], "U R", "", 1700000004]
+  ],
+  "properties": {
+    "sessionData": "{\"1\":{\"name\":\"CubeTime Export - Practice\",\"scrType\":\"333\"},\"2\":{\"name\":\"CubeTime Export - OH practice\",\"scrType\":\"333\"},\"10\":{\"name\":\"CubeTime Export - Two\",\"scrType\":\"222so\"}}"
+  }
+}

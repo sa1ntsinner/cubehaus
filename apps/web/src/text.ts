@@ -122,6 +122,9 @@ const en = {
     picture: "Picture",
     scramble: "Scramble",
     nothing: "Nothing to drill yet. Add cases in Learn.",
+    drillAll: "Drill every case",
+    mine: "Mine",
+    everyCase: "All",
     noWeak:
       "No weak cases yet. A case comes here once it is slow against the others or missed twice in five.",
     noAlg: "No algorithm yet.",
@@ -802,6 +805,9 @@ const ru: Text = {
     picture: "Картинка",
     scramble: "Скрамбл",
     nothing: "Отрабатывать пока нечего. Добавьте случаи в «Учить».",
+    drillAll: "Отрабатывать все случаи",
+    mine: "Мои",
+    everyCase: "Все",
     noWeak:
       "Слабых случаев пока нет. Случай попадает сюда, когда он медленнее остальных или в пяти попытках дважды с ошибкой.",
     noAlg: "Алгоритма пока нет.",

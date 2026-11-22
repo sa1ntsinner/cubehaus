@@ -1,0 +1,10 @@
+name: Idea
+description: Something the timer should do, or do better
+labels: [idea]
+body:
+  - type: textarea
+    attributes:
+      label: What would you like?
+      description: A sentence is enough. Say what you were doing when you missed it.
+    validations:
+      required: true

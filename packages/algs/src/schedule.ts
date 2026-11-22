@@ -168,3 +168,29 @@ export function weakCases(
     .sort((a, b) => b.ratio - a.ratio || (a.id < b.id ? -1 : 1))
     .map((w) => w.id);
 }
+
+/**
+ * One round through a whole set, for drilling every case and not only those added: the
+ * person's due cards first (earliest first), then the weak cases, then the rest in the
+ * order `shuffle` gives. Each case once; the case just drilled does not open the round.
+ */
+export function roundOf(
+  cards: readonly Queued[],
+  caseIds: readonly string[],
+  weak: readonly string[],
+  now: number,
+  last: string | null,
+  shuffle: (ids: readonly string[]) => string[],
+): string[] {
+  const known = new Set(caseIds);
+  const due = cards
+    .filter((c) => known.has(c.caseId) && c.dueAt <= now)
+    .sort((a, b) => a.dueAt - b.dueAt || (a.caseId < b.caseId ? -1 : 1))
+    .map((c) => c.caseId);
+  const first = new Set(due);
+  for (const id of weak) if (known.has(id)) first.add(id);
+  const round = [...first, ...shuffle(caseIds.filter((id) => !first.has(id)))];
+  if (round.length > 1 && round[0] === last)
+    round.push(round.shift() as string);
+  return round;
+}

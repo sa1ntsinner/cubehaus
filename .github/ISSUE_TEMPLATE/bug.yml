@@ -1,0 +1,14 @@
+name: Bug
+description: Something is broken or looks wrong
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: What you did, what you saw, what you expected. A screenshot helps.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Browser and device
+      placeholder: Safari on iPhone 15, Chrome on Windows

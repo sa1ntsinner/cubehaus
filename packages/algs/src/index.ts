@@ -38,6 +38,7 @@ export {
   nextCase,
   recall,
   review,
+  roundOf,
   weakCases,
 } from "./schedule";
 export { groupMoves, recolour, turnScramble } from "./show";

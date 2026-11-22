@@ -159,3 +159,34 @@ test("review drills only the cases missed twice", async ({ page }) => {
     await page.keyboard.press("Space");
   }
 });
+
+test("every case of a set can be drilled without adding any", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(sessionButton(page)).toBeEnabled();
+  await page.goto("/#/train/oll/drill");
+  await expect(part(page, "train-empty")).toBeVisible();
+  await action(page, "train-drill-all").click();
+  await attempt(page);
+  await expect(part(page, "train-label")).toHaveText(/^OLL \d+$/);
+  await page.keyboard.press("Space");
+  await attempt(page);
+
+  // The choice is the set's and stays; nothing was added to the person's own cases.
+  await page.reload();
+  await expect(
+    page.locator('[data-action="train-pool"][data-pool="all"]'),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/#/train/pll/drill");
+  await expect(part(page, "train-empty")).toBeVisible();
+  await page.goto("/#/train/oll/learn");
+  await expect(
+    part(page, "train-case-list").locator("button[data-learning]"),
+  ).toHaveCount(0);
+
+  // Back to the person's own: nothing to drill.
+  await page.goto("/#/train/oll/drill");
+  await page.locator('[data-action="train-pool"][data-pool="mine"]').click();
+  await expect(part(page, "train-empty")).toBeVisible();
+});

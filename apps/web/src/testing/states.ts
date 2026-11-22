@@ -148,6 +148,7 @@ export const namedStates = [
   "train-result",
   "train-scramble",
   "train-review",
+  "train-empty",
 ] as const;
 
 export const eventStates = EVENTS.map(({ id }) => `event-${id}` as const);

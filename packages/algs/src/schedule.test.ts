@@ -6,6 +6,7 @@ import {
   nextCase,
   recall,
   review,
+  roundOf,
   weakCases,
 } from "./schedule";
 
@@ -82,5 +83,29 @@ describe("schedule", () => {
     attempts.push(attempt("E", 1000, at++), attempt("E", 1000, at++, true));
     attempts.push(attempt("E", 1000, at++, true));
     expect(weakCases(attempts, ["A", "B", "C", "D", "E"])).toEqual(["E", "D"]);
+  });
+});
+
+describe("the whole set", () => {
+  it("a round of the whole set puts due and weak cases first, the rest shuffled", () => {
+    const now = 1000;
+    const queued = [
+      { caseId: "T", dueAt: 900, recall: 0.5 },
+      { caseId: "Y", dueAt: 5000, recall: 0.9 },
+      { caseId: "Ua", dueAt: 800, recall: 0.4 },
+    ];
+    const all = ["Aa", "Ab", "E", "T", "Y", "Ua", "Ub", "H", "Z"];
+    const reversed = (ids: readonly string[]) => [...ids].reverse();
+    const round = roundOf(queued, all, ["H", "Y"], now, null, reversed);
+    // Due earliest first, then weak, then the rest in the shuffle's order.
+    expect(round).toEqual(["Ua", "T", "H", "Y", "Z", "Ub", "E", "Ab", "Aa"]);
+    // Every case once.
+    expect(new Set(round).size).toBe(all.length);
+    // The case just drilled does not open the next round.
+    const after = roundOf(queued, all, ["H", "Y"], now, "Ua", reversed);
+    expect(after[0]).toBe("T");
+    expect(after).toContain("Ua");
+    expect(roundOf([], ["Aa"], [], now, "Aa", reversed)).toEqual(["Aa"]);
+    expect(roundOf([], [], [], now, null, reversed)).toEqual([]);
   });
 });

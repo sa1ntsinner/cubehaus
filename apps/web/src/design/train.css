@@ -276,6 +276,20 @@ main[data-part="train"]
   max-width: 52ch;
   color: var(--dim);
 }
+[data-part="train-empty"] p {
+  margin: 0;
+}
+[data-part="train-empty"] [data-action="train-drill-all"] {
+  min-height: 44px;
+  margin-top: var(--s2);
+  font-weight: 600;
+  color: var(--ink);
+}
+[data-part="train-pool"],
+[data-part="train-view"] {
+  display: flex;
+  gap: 0 var(--s2);
+}
 [data-part="train-drill"] {
   display: flex;
   flex-direction: column;
@@ -286,6 +300,7 @@ main[data-part="train"]
 /* The way of showing, at the drill's foot where it acts: remembered, so rarely touched. */
 [data-part="train-show"] {
   justify-content: center;
+  column-gap: var(--s5);
   margin: calc(-1 * var(--s3)) 0 0;
   font-size: 14px;
 }
@@ -304,6 +319,10 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   height: 200px;
   border-radius: 10px;
   opacity: 1;
+}
+[data-part="train-empty"] [data-part="train-show"] {
+  justify-content: flex-start;
+  margin: var(--s2) 0 0 calc(-1 * var(--s2));
 }
 [data-part="train-scramble"] {
   max-width: 24ch;

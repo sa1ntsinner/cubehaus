@@ -9,10 +9,12 @@ import {
   recall,
   recolour,
   review,
+  roundOf,
   type SetId,
   type TrainerCaseData,
   trainerSet,
   turnScramble,
+  weakCases,
 } from "@cubehaus/algs";
 import { formatTime, newId } from "@cubehaus/core";
 import type { TrainerAttempt, TrainerCase } from "@cubehaus/storage";
@@ -53,6 +55,7 @@ import "../input/train-behavior.css";
  */
 const SETS: readonly SetId[] = ["pll", "oll", "coll"];
 const showKey = "trainer.show";
+const poolKey = (set: SetId) => `trainer.pool.${set}`;
 type Mode = "learn" | "drill" | "review";
 const MODES: readonly Mode[] = ["learn", "drill", "review"];
 type App = ReturnType<typeof createAppState>;
@@ -132,6 +135,8 @@ export function Train({
   const [attempts, setAttempts] = useState<TrainerAttempt[]>([]);
   // How the drill shows a case: remembered, changed at the drill's foot.
   const [byPicture, setByPicture] = useState<boolean | null>(null);
+  // Drill the person's own cases, or the whole set: remembered per set.
+  const [whole, setWhole] = useState<boolean | null>(null);
   const ru = view.settings.language === "ru";
 
   useEffect(() => {
@@ -140,17 +145,20 @@ export function Train({
     if (!store) {
       setRows([]);
       setByPicture(true);
+      setWhole(false);
       return;
     }
     void Promise.all([
       store.cases(set),
       store.attempts(set),
       stored?.get(showKey) ?? null,
-    ]).then(([c, a, show]) => {
+      stored?.get(poolKey(set)) ?? null,
+    ]).then(([c, a, show, pool]) => {
       if (stale) return;
       setRows(c);
       setAttempts(a);
       setByPicture(show !== "scramble");
+      setWhole(pool === "all");
     });
     return () => {
       stale = true;
@@ -209,7 +217,8 @@ export function Train({
           ))}
         </p>
       </div>
-      {rows === null || byPicture === null ? null : mode === "learn" ? (
+      {rows === null || byPicture === null || whole === null ? null : mode ===
+        "learn" ? (
         <Learn
           key={set}
           set={set}
@@ -231,7 +240,7 @@ export function Train({
         />
       ) : (
         <Practice
-          key={`${set}/${mode}`}
+          key={`${set}/${mode}/${whole}`}
           set={set}
           review={mode === "review"}
           cases={cases}
@@ -241,6 +250,11 @@ export function Train({
           ru={ru}
           precision={view.settings.precision}
           byPicture={byPicture}
+          whole={whole}
+          onWhole={(next) => {
+            setWhole(next);
+            void stored?.set(poolKey(set), next ? "all" : "mine");
+          }}
           onShow={(picture) => {
             setByPicture(picture);
             void stored?.set(showKey, picture ? "picture" : "scramble");
@@ -417,8 +431,9 @@ type Shown = {
 type Saved = {
   attempt: TrainerAttempt;
   before: TrainerAttempt[];
-  /** The card before this attempt, so marking it missed reviews it again. */
-  card: string;
+  /** The card before this attempt, so marking it missed reviews it again; none for a
+   * case drilled with the whole set but not added. */
+  card: string | null;
 };
 
 // Test hooks only: `?test-turn=0` shows every case unturned and in its own colours.
@@ -426,6 +441,19 @@ const pinnedTurn =
   import.meta.env.VITE_TEST_HOOKS === "1"
     ? new URLSearchParams(location.search).get("test-turn")
     : null;
+
+/** The ids in random order (test builds with `?test-turn` keep them in order). */
+const shuffle = (ids: readonly string[]): string[] => {
+  const out = [...ids];
+  if (pinnedTurn !== null) return out;
+  for (let i = out.length - 1; i > 0; i--) {
+    const value = new Uint32Array(1);
+    crypto.getRandomValues(value);
+    const j = (value[0] as number) % (i + 1);
+    [out[i], out[j]] = [out[j] as string, out[i] as string];
+  }
+  return out;
+};
 
 const random4 = () => {
   if (pinnedTurn !== null) return Number(pinnedTurn) % 4;
@@ -446,6 +474,8 @@ function Practice({
   precision,
   byPicture,
   onShow,
+  whole,
+  onWhole,
   onSaved,
 }: {
   app: App;
@@ -459,6 +489,8 @@ function Practice({
   precision: 2 | 3;
   byPicture: boolean;
   onShow(picture: boolean): void;
+  whole: boolean;
+  onWhole(whole: boolean): void;
   onSaved(rows: TrainerCase[], attempts: TrainerAttempt[]): void;
 }) {
   const t = words.train;
@@ -479,11 +511,17 @@ function Practice({
   const live = useRef({ rows, attempts });
   live.current = { rows, attempts };
 
-  const pool = useMemo(() => {
-    const ids = rows.map((r) => r.caseId);
-    return onlyWeak ? reviewPool(attempts, ids) : ids;
+  const ids = useMemo(
+    () => (whole ? cases.map((c) => c.id) : rows.map((r) => r.caseId)),
+    [whole, cases, rows],
+  );
+  const pool = useMemo(
+    () => (onlyWeak ? reviewPool(attempts, ids) : ids),
     // Review follows the attempts: a case leaves once it is no longer weak.
-  }, [onlyWeak, rows, attempts]);
+    [onlyWeak, ids, attempts],
+  );
+  // The whole set is drilled in rounds: due and weak cases first, then the rest shuffled.
+  const round = useRef<string[]>([]);
 
   useEffect(
     () => () => {
@@ -499,6 +537,25 @@ function Practice({
       let id: string | null;
       if (onlyWeak) {
         id = reviewCase(pool, last, Math.random());
+      } else if (whole) {
+        if (round.current.length === 0) {
+          const queued = await Promise.all(
+            current.map(async (r) => ({
+              caseId: r.caseId,
+              dueAt: r.dueAt,
+              recall: await recall(r.card, now),
+            })),
+          );
+          round.current = roundOf(
+            queued,
+            pool,
+            weakCases(live.current.attempts, pool),
+            now,
+            last,
+            shuffle,
+          );
+        }
+        id = round.current.shift() ?? null;
       } else {
         const queued = await Promise.all(
           current.map(async (r) => ({
@@ -548,7 +605,7 @@ function Practice({
         scramble: turnScramble(result.scramble, colour),
       });
     },
-    [byPicture, onlyWeak, pool, set, moveDrill],
+    [byPicture, onlyWeak, whole, pool, set, moveDrill],
   );
 
   // A new sitting, or the way of showing changed: the first case.
@@ -583,7 +640,8 @@ function Practice({
     (result: NonNullable<Drill["result"]>, at: number) => {
       if (!shown || !store) return;
       const row = live.current.rows.find((r) => r.caseId === shown.caseId);
-      if (!row) return;
+      // A case not added is drilled with the whole set: its attempt is kept, no card.
+      if (!row && !whole) return;
       const before = [...live.current.attempts];
       const grade = gradeOf(result.execMs, false, before, shown.caseId);
       const attempt: TrainerAttempt = {
@@ -601,15 +659,17 @@ function Practice({
       };
       writes.current = (async () => {
         await store.addAttempt(attempt);
-        const scheduled = await review(row.card, grade, at);
-        await store.putCase({ setId: set, caseId: row.caseId, ...scheduled });
-        const done = { attempt, before, card: row.card };
+        if (row) {
+          const scheduled = await review(row.card, grade, at);
+          await store.putCase({ setId: set, caseId: row.caseId, ...scheduled });
+        }
+        const done = { attempt, before, card: row?.card ?? null };
         setSaved(done);
         onSaved(await store.cases(set), [...before, attempt]);
         return done;
       })();
     },
-    [shown, store, set, byPicture, onSaved],
+    [shown, store, set, byPicture, whole, onSaved],
   );
 
   const toggleMissed = useCallback(() => {
@@ -623,12 +683,14 @@ function Practice({
         ? "again"
         : gradeOf(done.attempt.execMs, false, done.before, done.attempt.caseId);
       await store.markAttempt(done.attempt.id, { missed: now, grade });
-      const scheduled = await review(done.card, grade, done.attempt.at);
-      await store.putCase({
-        setId: set,
-        caseId: done.attempt.caseId,
-        ...scheduled,
-      });
+      if (done.card !== null) {
+        const scheduled = await review(done.card, grade, done.attempt.at);
+        await store.putCase({
+          setId: set,
+          caseId: done.attempt.caseId,
+          ...scheduled,
+        });
+      }
       onSaved(await store.cases(set), await store.attempts(set));
       return done;
     });
@@ -701,11 +763,50 @@ function Practice({
     step({ type, at: event.timeStamp });
   };
 
+  const poolChoice = (
+    <span data-part="train-pool">
+      <button
+        type="button"
+        data-action="train-pool"
+        data-pool="mine"
+        aria-pressed={!whole}
+        disabled={drill.phase !== "shown"}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => onWhole(false)}
+      >
+        {t.mine}
+      </button>
+      <button
+        type="button"
+        data-action="train-pool"
+        data-pool="all"
+        aria-pressed={whole}
+        disabled={drill.phase !== "shown"}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => onWhole(true)}
+      >
+        {t.everyCase}
+      </button>
+    </span>
+  );
+
   if (pool.length === 0)
     return (
-      <p data-part="train-empty" role="status">
-        {onlyWeak ? t.noWeak : t.nothing}
-      </p>
+      <div data-part="train-empty" role="status">
+        <p>{onlyWeak ? t.noWeak : t.nothing}</p>
+        {!whole && !onlyWeak && (
+          <p>
+            <button
+              type="button"
+              data-action="train-drill-all"
+              onClick={() => onWhole(true)}
+            >
+              {t.drillAll}
+            </button>
+          </p>
+        )}
+        {onlyWeak && <p data-part="train-show">{poolChoice}</p>}
+      </div>
     );
 
   const c = shown ? cases.find((x) => x.id === shown.caseId) : undefined;
@@ -804,24 +905,27 @@ function Practice({
         )}
         {drill.phase !== "stopped" && (
           <p data-part="train-show" data-no-drill>
-            <button
-              type="button"
-              aria-pressed={byPicture}
-              disabled={drill.phase !== "shown"}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => onShow(true)}
-            >
-              {t.picture}
-            </button>
-            <button
-              type="button"
-              aria-pressed={!byPicture}
-              disabled={drill.phase !== "shown"}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => onShow(false)}
-            >
-              {t.scramble}
-            </button>
+            {poolChoice}
+            <span data-part="train-view">
+              <button
+                type="button"
+                aria-pressed={byPicture}
+                disabled={drill.phase !== "shown"}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => onShow(true)}
+              >
+                {t.picture}
+              </button>
+              <button
+                type="button"
+                aria-pressed={!byPicture}
+                disabled={drill.phase !== "shown"}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => onShow(false)}
+              >
+                {t.scramble}
+              </button>
+            </span>
           </p>
         )}
       </div>

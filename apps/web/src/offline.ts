@@ -39,6 +39,30 @@ export function watchOffline(
       state = next;
       onChange(next);
     }
+    quietUpdate();
+  }
+
+  // A new version is taken without a word when nobody can be mid-solve: the page is in
+  // the background, or it has only just opened and nothing has been pressed yet. Otherwise
+  // the status line offers it (`Update`).
+  let touched = false;
+  function quietUpdate() {
+    if (typeof document === "undefined" || !registration?.waiting || applying)
+      return;
+    if (!document.hidden && touched) return;
+    applying = registration.waiting;
+    applying.postMessage("SKIP_WAITING");
+  }
+  if (typeof window !== "undefined") {
+    const touch = () => {
+      touched = true;
+    };
+    window.addEventListener("keydown", touch, { once: true, capture: true });
+    window.addEventListener("pointerdown", touch, {
+      once: true,
+      capture: true,
+    });
+    document.addEventListener("visibilitychange", quietUpdate);
   }
 
   // A controller change alone can also come from an update in another tab.

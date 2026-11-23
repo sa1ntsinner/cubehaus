@@ -52,7 +52,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "H shape: two opposite colours in front, two opposite colours at the back.",
-      "ru": "Форма H: два противоположных цвета спереди, два противоположных цвета сзади."
+      "ru": "Форма H: противоположные цвета спереди и сзади."
     },
     "subsets": []
   },
@@ -104,7 +104,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "H shape: two neighbouring colours on the right, two neighbouring colours on the left.",
-      "ru": "Форма H: два соседних цвета справа, два соседних цвета слева."
+      "ru": "Форма H: соседние цвета справа и слева."
     },
     "subsets": []
   },
@@ -156,7 +156,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "H shape: headlights in front, two opposite colours at the back.",
-      "ru": "Форма H: фары спереди, два противоположных цвета сзади."
+      "ru": "Форма H: фары спереди, противоположные цвета сзади."
     },
     "subsets": []
   },
@@ -208,7 +208,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "H shape: headlights on the right, headlights on the left.",
-      "ru": "Форма H: фары справа, фары слева."
+      "ru": "Форма H: фары справа и слева."
     },
     "subsets": []
   },
@@ -260,7 +260,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Pi shape: two opposite colours on the right.",
-      "ru": "Форма Пи: два противоположных цвета справа."
+      "ru": "Форма Пи: противоположные цвета справа."
     },
     "subsets": []
   },
@@ -312,7 +312,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Pi shape: two neighbouring colours at the back.",
-      "ru": "Форма Пи: два соседних цвета сзади."
+      "ru": "Форма Пи: соседние цвета сзади."
     },
     "subsets": []
   },
@@ -416,7 +416,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Pi shape: two opposite colours at the back.",
-      "ru": "Форма Пи: два противоположных цвета сзади."
+      "ru": "Форма Пи: противоположные цвета сзади."
     },
     "subsets": []
   },
@@ -468,7 +468,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Pi shape: two neighbouring colours on the right.",
-      "ru": "Форма Пи: два соседних цвета справа."
+      "ru": "Форма Пи: соседние цвета справа."
     },
     "subsets": []
   },
@@ -572,7 +572,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "U shape: two neighbouring colours on the right, headlights at the back, two neighbouring colours on the left.",
-      "ru": "Форма U: два соседних цвета справа, фары сзади, два соседних цвета слева."
+      "ru": "Форма U: фары сзади, соседние цвета справа и слева."
     },
     "subsets": []
   },
@@ -624,7 +624,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "U shape: two opposite colours on the right, headlights at the back, two opposite colours on the left.",
-      "ru": "Форма U: два противоположных цвета справа, фары сзади, два противоположных цвета слева."
+      "ru": "Форма U: фары сзади, противоположные цвета справа и слева."
     },
     "subsets": []
   },
@@ -676,7 +676,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "U shape: two neighbouring colours in front, two neighbouring colours on the right, two neighbouring colours on the left.",
-      "ru": "Форма U: два соседних цвета спереди, два соседних цвета справа, два соседних цвета слева."
+      "ru": "Форма U: соседние цвета спереди, справа и слева."
     },
     "subsets": []
   },
@@ -728,7 +728,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "U shape: two opposite colours in front, two opposite colours on the right, two opposite colours on the left.",
-      "ru": "Форма U: два противоположных цвета спереди, два противоположных цвета справа, два противоположных цвета слева."
+      "ru": "Форма U: противоположные цвета спереди, справа и слева."
     },
     "subsets": []
   },
@@ -780,7 +780,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "U shape: two neighbouring colours on the right, two neighbouring colours at the back, two neighbouring colours on the left.",
-      "ru": "Форма U: два соседних цвета справа, два соседних цвета сзади, два соседних цвета слева."
+      "ru": "Форма U: соседние цвета справа, сзади и слева."
     },
     "subsets": []
   },
@@ -832,7 +832,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "U shape: two neighbouring colours in front, two opposite colours on the right, two neighbouring colours at the back.",
-      "ru": "Форма U: два соседних цвета спереди, два противоположных цвета справа, два соседних цвета сзади."
+      "ru": "Форма U: противоположные цвета справа, соседние цвета спереди и сзади."
     },
     "subsets": []
   },
@@ -884,7 +884,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "T shape: headlights on the right, two opposite colours on the left.",
-      "ru": "Форма T: фары справа, два противоположных цвета слева."
+      "ru": "Форма T: фары справа, противоположные цвета слева."
     },
     "subsets": []
   },
@@ -936,7 +936,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "T shape: headlights on the right, headlights on the left.",
-      "ru": "Форма T: фары справа, фары слева."
+      "ru": "Форма T: фары справа и слева."
     },
     "subsets": []
   },
@@ -988,7 +988,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "T shape: two neighbouring colours on the right, two neighbouring colours on the left; the back right corner's right sticker matches the front left corner's left one.",
-      "ru": "Форма T: два соседних цвета справа, два соседних цвета слева; наклейка заднего правого угла справа совпадает по цвету с наклейкой переднего левого слева."
+      "ru": "Форма T: соседние цвета справа и слева; наклейки заднего правого угла справа и переднего левого слева одного цвета."
     },
     "subsets": []
   },
@@ -1040,7 +1040,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "T shape: two neighbouring colours on the right, two neighbouring colours on the left; the front right corner's front sticker matches the front left corner's left one.",
-      "ru": "Форма T: два соседних цвета справа, два соседних цвета слева; наклейка переднего правого угла спереди совпадает по цвету с наклейкой переднего левого слева."
+      "ru": "Форма T: соседние цвета справа и слева; наклейки переднего правого угла спереди и переднего левого слева одного цвета."
     },
     "subsets": []
   },
@@ -1092,7 +1092,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "T shape: two opposite colours in front, two opposite colours at the back.",
-      "ru": "Форма T: два противоположных цвета спереди, два противоположных цвета сзади."
+      "ru": "Форма T: противоположные цвета спереди и сзади."
     },
     "subsets": []
   },
@@ -1144,7 +1144,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "T shape: headlights in front, two opposite colours at the back.",
-      "ru": "Форма T: фары спереди, два противоположных цвета сзади."
+      "ru": "Форма T: фары спереди, противоположные цвета сзади."
     },
     "subsets": []
   },
@@ -1196,7 +1196,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "L shape: two neighbouring colours in front, two neighbouring colours on the left.",
-      "ru": "Форма L: два соседних цвета спереди, два соседних цвета слева."
+      "ru": "Форма L: соседние цвета спереди и слева."
     },
     "subsets": []
   },
@@ -1248,7 +1248,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "L shape: two opposite colours in front, two neighbouring colours on the right.",
-      "ru": "Форма L: два противоположных цвета спереди, два соседних цвета справа."
+      "ru": "Форма L: противоположные цвета спереди, соседние цвета справа."
     },
     "subsets": []
   },
@@ -1313,7 +1313,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "L shape: two neighbouring colours in front, two opposite colours on the left.",
-      "ru": "Форма L: два соседних цвета спереди, два противоположных цвета слева."
+      "ru": "Форма L: противоположные цвета слева, соседние цвета спереди."
     },
     "subsets": []
   },
@@ -1365,7 +1365,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "L shape: two neighbouring colours on the right, two opposite colours at the back; the front left corner's front sticker matches the back right corner's right one.",
-      "ru": "Форма L: два соседних цвета справа, два противоположных цвета сзади; наклейка переднего левого угла спереди совпадает по цвету с наклейкой заднего правого справа."
+      "ru": "Форма L: противоположные цвета сзади, соседние цвета справа; наклейки переднего левого угла спереди и заднего правого справа одного цвета."
     },
     "subsets": []
   },
@@ -1417,7 +1417,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "L shape: two neighbouring colours on the right, two opposite colours at the back; the front right corner's right sticker matches the back left corner's back one.",
-      "ru": "Форма L: два соседних цвета справа, два противоположных цвета сзади; наклейка переднего правого угла справа совпадает по цвету с наклейкой заднего левого сзади."
+      "ru": "Форма L: противоположные цвета сзади, соседние цвета справа; наклейки переднего правого угла справа и заднего левого сзади одного цвета."
     },
     "subsets": []
   },
@@ -1469,7 +1469,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "L shape: two neighbouring colours at the back, two neighbouring colours on the left.",
-      "ru": "Форма L: два соседних цвета сзади, два соседних цвета слева."
+      "ru": "Форма L: соседние цвета сзади и слева."
     },
     "subsets": []
   },
@@ -1521,7 +1521,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Sune shape: two neighbouring colours on the left; the front left corner's front sticker matches the front right corner's right one.",
-      "ru": "Форма Суне: два соседних цвета слева; наклейка переднего левого угла спереди совпадает по цвету с наклейкой переднего правого справа."
+      "ru": "Форма Суне: соседние цвета слева; наклейки переднего левого угла спереди и переднего правого справа одного цвета."
     },
     "subsets": []
   },
@@ -1573,7 +1573,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Sune shape: two opposite colours on the right.",
-      "ru": "Форма Суне: два противоположных цвета справа."
+      "ru": "Форма Суне: противоположные цвета справа."
     },
     "subsets": []
   },
@@ -1625,7 +1625,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Sune shape: two neighbouring colours on the right; the front left corner's front sticker matches the back right corner's back one.",
-      "ru": "Форма Суне: два соседних цвета справа; наклейка переднего левого угла спереди совпадает по цвету с наклейкой заднего правого сзади."
+      "ru": "Форма Суне: соседние цвета справа; наклейки переднего левого угла спереди и заднего правого сзади одного цвета."
     },
     "subsets": []
   },
@@ -1677,7 +1677,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Sune shape: two opposite colours in front.",
-      "ru": "Форма Суне: два противоположных цвета спереди."
+      "ru": "Форма Суне: противоположные цвета спереди."
     },
     "subsets": []
   },
@@ -1742,7 +1742,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Sune shape: two neighbouring colours on the right; the front right corner's right sticker matches the back right corner's back one.",
-      "ru": "Форма Суне: два соседних цвета справа; наклейка переднего правого угла справа совпадает по цвету с наклейкой заднего правого сзади."
+      "ru": "Форма Суне: соседние цвета справа; наклейки переднего правого угла справа и заднего правого сзади одного цвета."
     },
     "subsets": []
   },
@@ -1794,7 +1794,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Sune shape: two neighbouring colours on the left; the front left corner's front sticker matches the back left corner's left one.",
-      "ru": "Форма Суне: два соседних цвета слева; наклейка переднего левого угла спереди совпадает по цвету с наклейкой заднего левого слева."
+      "ru": "Форма Суне: соседние цвета слева; наклейки переднего левого угла спереди и заднего левого слева одного цвета."
     },
     "subsets": []
   },
@@ -1846,7 +1846,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Antisune shape: two neighbouring colours at the back.",
-      "ru": "Форма Антисуне: два соседних цвета сзади."
+      "ru": "Форма Антисуне: соседние цвета сзади."
     },
     "subsets": []
   },
@@ -1898,7 +1898,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Antisune shape: two neighbouring colours in front.",
-      "ru": "Форма Антисуне: два соседних цвета спереди."
+      "ru": "Форма Антисуне: соседние цвета спереди."
     },
     "subsets": []
   },
@@ -1950,7 +1950,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Antisune shape: two opposite colours in front.",
-      "ru": "Форма Антисуне: два противоположных цвета спереди."
+      "ru": "Форма Антисуне: противоположные цвета спереди."
     },
     "subsets": []
   },
@@ -2002,7 +2002,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Antisune shape: two neighbouring colours on the left.",
-      "ru": "Форма Антисуне: два соседних цвета слева."
+      "ru": "Форма Антисуне: соседние цвета слева."
     },
     "subsets": []
   },
@@ -2054,7 +2054,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Antisune shape: two opposite colours on the right.",
-      "ru": "Форма Антисуне: два противоположных цвета справа."
+      "ru": "Форма Антисуне: противоположные цвета справа."
     },
     "subsets": []
   },
@@ -2106,7 +2106,7 @@ export const COLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "Antisune shape: two neighbouring colours on the right.",
-      "ru": "Форма Антисуне: два соседних цвета справа."
+      "ru": "Форма Антисуне: соседние цвета справа."
     },
     "subsets": []
   }

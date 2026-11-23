@@ -317,6 +317,12 @@ async function benchmark(
 
       const frames = await scrollList(page);
 
+      // The probe's Space at load can land before the session's settings, and so start
+      // inspection; inspection hides the status line and lets no click through it
+      // (DESIGN.md section 7). Esc ends it, as a person would.
+      if (await page.locator("main[data-inspecting]").count())
+        await page.keyboard.press("Escape");
+      await expect(page.locator("main")).not.toHaveAttribute("data-inspecting");
       await page.locator('[data-action="progress"]').click();
       await waitForMark(page, "progress-ready");
       await expect(page.locator('[data-part="progress-event"]')).toHaveCount(1);

@@ -20,9 +20,9 @@
   color-scheme: dark;
   --ground: #000000;
   --ink: #ffffff;
-  --dim: #c2cad3;
-  --gutter: #8a96a3;
-  --line: #171b20;
+  --dim: #c8c8c8;
+  --gutter: #929292;
+  --line: #1a1a1a;
   --sel: rgb(167 167 255 / 0.27);
   --prime: #ffb878;
   --double: #9ccbff;
@@ -36,9 +36,9 @@
   color-scheme: light;
   --ground: #ffffff;
   --ink: #000000;
-  --dim: #424a53;
-  --gutter: #5f6873;
-  --line: #f0f2f4;
+  --dim: #454545;
+  --gutter: #636363;
+  --line: #f2f2f2;
   --sel: rgb(84 174 255 / 0.28);
   --prime: #8f3700;
   --double: #0349a0;

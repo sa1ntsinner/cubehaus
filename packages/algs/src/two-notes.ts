@@ -1,3 +1,5 @@
+import { type Corner, stickerPairRu } from "./collwords";
+import type { Side } from "./diagram";
 import { facesOf, type Two, twoStickers } from "./two";
 
 /**
@@ -12,11 +14,18 @@ type Words = { en: string; ru: string };
 
 // Top places in turn round the top (each and the next share a side): URF UFL ULB UBR.
 const CORNER: readonly Words[] = [
-  { en: "front right", ru: "спереди справа" },
-  { en: "front left", ru: "спереди слева" },
-  { en: "back left", ru: "сзади слева" },
-  { en: "back right", ru: "сзади справа" },
+  { en: "front right", ru: "передний правый" },
+  { en: "front left", ru: "передний левый" },
+  { en: "back left", ru: "задний левый" },
+  { en: "back right", ru: "задний правый" },
 ];
+// Both corners of a side, in Russian: «оба передних угла».
+const BOTH_RU: Record<string, string> = {
+  F: "передних",
+  R: "правых",
+  B: "задних",
+  L: "левых",
+};
 // The side top places k and k + 1 share.
 const SHARED = ["F", "L", "B", "R"] as const;
 const SIDES = ["F", "R", "B", "L"] as const;
@@ -55,25 +64,33 @@ function topColour(s: Two) {
 /** How many corners show the top's colour up, and which: the most visible fact. */
 function headNote(s: Two): Words {
   const { up } = topColour(s);
-  if (up.length === 0) return { en: "None up", ru: "Вверх ни одного" };
+  if (up.length === 0)
+    return { en: "None up", ru: "Ни один угол не смотрит вверх" };
   if (up.length === 1) {
     const at = CORNER[up[0] as number] as Words;
-    return { en: `One up, ${at.en}`, ru: `Один вверх, ${at.ru}` };
+    return {
+      en: `One up, ${at.en}`,
+      ru: `Вверх смотрит только ${at.ru} угол`,
+    };
   }
   if (up.length === 2) {
     const [a, b] = up as [number, number];
     if ((b - a) % 2 === 1) {
-      const side = AT[SHARED[b - a === 1 ? a : b] as string] as Words;
-      return { en: `Two up, ${side.en}`, ru: `Два вверх, ${side.ru}` };
+      const shared = SHARED[b - a === 1 ? a : b] as string;
+      const side = AT[shared] as Words;
+      return {
+        en: `Two up, ${side.en}`,
+        ru: `Вверх смотрят оба ${BOTH_RU[shared]} угла`,
+      };
     }
     const ca = CORNER[a] as Words;
     const cb = CORNER[b] as Words;
     return {
       en: `Two up, ${ca.en} and ${cb.en}`,
-      ru: `Два вверх, ${ca.ru} и ${cb.ru}`,
+      ru: `Вверх смотрят ${ca.ru} и ${cb.ru} углы`,
     };
   }
-  return { en: "All up", ru: "Все вверх" };
+  return { en: "All up", ru: "Все углы смотрят вверх" };
 }
 
 /** Where the top's colour faces on the sides, one clause per side that shows it. */
@@ -123,11 +140,20 @@ export function layerKind(s: Two, layer: "top" | "bottom"): 0 | 1 | 4 {
   return bars as 0 | 1 | 4;
 }
 
-const KIND: Record<0 | 1 | 4, Words> = {
-  4: { en: "whole", ru: "собран" },
-  1: { en: "one bar", ru: "одна полоса" },
-  0: { en: "no bar", ru: "без полос" },
+// Each layer's kind as a phrase of its own, so a note needs no colon (DESIGN.md 17a).
+const KIND: Record<"top" | "bottom", Record<0 | 1 | 4, Words>> = {
+  top: {
+    4: { en: "top solved", ru: "верх собран" },
+    1: { en: "one bar on top", ru: "сверху одна полоса" },
+    0: { en: "no bar on top", ru: "сверху полос нет" },
+  },
+  bottom: {
+    4: { en: "bottom solved", ru: "низ собран" },
+    1: { en: "one bar on the bottom", ru: "снизу одна полоса" },
+    0: { en: "no bar on the bottom", ru: "снизу полос нет" },
+  },
 };
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
  * The note for an OLL or PBL case as shown (the build keeps it only where it singles the
@@ -135,11 +161,19 @@ const KIND: Record<0 | 1 | 4, Words> = {
  */
 export function twoNoteRaw(set: "two-oll" | "two-pbl", s: Two): Words {
   if (set === "two-pbl") {
-    const top = KIND[layerKind(s, "top")];
-    const low = KIND[layerKind(s, "bottom")];
+    const kinds = [layerKind(s, "top"), layerKind(s, "bottom")] as const;
+    const top = KIND.top[kinds[0]];
+    const low = KIND.bottom[kinds[1]];
+    // Russian says a kind both layers share once.
+    const both =
+      kinds[0] === 0 && kinds[1] === 0
+        ? "Ни сверху, ни снизу полос нет"
+        : kinds[0] === 1 && kinds[1] === 1
+          ? "Сверху и снизу по одной полосе"
+          : null;
     return {
-      en: `Top: ${top.en}; bottom: ${low.en}.`,
-      ru: `Верх: ${top.ru}; низ: ${low.ru}.`,
+      en: `${capital(top.en)}, ${low.en}.`,
+      ru: `${both ?? `${capital(top.ru)}, ${low.ru}`}.`,
     };
   }
   const shape = shapeNote(s);
@@ -170,11 +204,15 @@ type CllFact = {
 const SIDE_AT: Record<string, number> = { F: 4, R: 6, B: 8, L: 10 };
 const neighbours = (a: string, b: string) =>
   a !== "U" && b !== "U" && a !== b && OPPOSITE[a] !== b;
-// A sticker of a side's top row by its end, as seen from outside the side.
-const END_WORDS = {
-  en: ["left", "right"],
-  ru: ["левая", "правая"],
-} as const;
+// A sticker of a side's top row by its end, as seen from outside the side, and the
+// corner it belongs to: the front side's left end is the front left corner.
+const END_WORDS = ["left", "right"] as const;
+const END_CORNER: Record<string, readonly [Corner, Corner]> = {
+  F: ["FL", "FR"],
+  R: ["FR", "BR"],
+  B: ["BR", "BL"],
+  L: ["BL", "FL"],
+};
 const SIDE_WORDS: Record<string, { en: string; ru: string }> = {
   F: { en: "in front", ru: "спереди" },
   R: { en: "on the right", ru: "справа" },
@@ -205,7 +243,7 @@ function cllFacts(): CllFact[] {
         return p[i] !== p[i + 1] || p[i] === "U";
       }),
     en: "no pair at the sides",
-    ru: "по бокам без пар",
+    ru: "пар нет",
     cost: 0.8,
   });
   for (const s of SIDES) {
@@ -249,27 +287,30 @@ function cllFacts(): CllFact[] {
         (a.end === 1 && b.s === SIDES[(k + 1) % 4] && b.end === 0) ||
         (a.end === 0 && b.s === SIDES[(k + 3) % 4] && b.end === 1);
       if (a.s === b.s || onePiece) continue;
-      const sa = SIDE_WORDS[a.s] as { en: string; ru: string };
-      const sb = SIDE_WORDS[b.s] as { en: string; ru: string };
-      // The kind first, then the two stickers: `same colour: left in front, right on
-      // the right`.
-      const two = {
-        en: `${END_WORDS.en[a.end]} ${sa.en}, ${END_WORDS.en[b.end]} ${sb.en}`,
-        ru: `${END_WORDS.ru[a.end]} ${sa.ru}, ${END_WORDS.ru[b.end]} ${sb.ru}`,
-      };
+      const sa = SIDE_WORDS[a.s] as Words;
+      const sb = SIDE_WORDS[b.s] as Words;
+      // English: the kind first, then each sticker by its end, `same colour: left in
+      // front, right on the right`. Russian names each sticker by its corner and side,
+      // as COLL does, since «левая справа» reads as a riddle.
+      const two = `${END_WORDS[a.end]} ${sa.en}, ${END_WORDS[b.end]} ${sb.en}`;
+      const at = (x: { s: string; end: number }) =>
+        [
+          (END_CORNER[x.s] as readonly [Corner, Corner])[x.end] as Corner,
+          x.s as Side,
+        ] as const;
       facts.push(
         {
           id: `same-${a.s}${a.end}-${b.s}${b.end}`,
           holds: (p) => p[i] === p[j] && p[i] !== "U",
-          en: `same colour: ${two.en}`,
-          ru: `один цвет: ${two.ru}`,
+          en: `same colour: ${two}`,
+          ru: stickerPairRu(at(a), at(b), "same"),
           cost: 1.5,
         },
         {
           id: `across-${a.s}${a.end}-${b.s}${b.end}`,
           holds: (p) => OPPOSITE[p[i] as string] === p[j],
-          en: `opposite colours: ${two.en}`,
-          ru: `противоположные цвета: ${two.ru}`,
+          en: `opposite colours: ${two}`,
+          ru: stickerPairRu(at(a), at(b), "opposite"),
           cost: 1.6,
         },
       );

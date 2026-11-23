@@ -33,7 +33,14 @@ main:has(> [data-part="scramble"]) {
     "status   status   actions";
   column-gap: var(--s6);
   row-gap: var(--s5);
-  padding: 36px var(--s6) var(--s5);
+  /* The page's margins, kept clear of the notch, the status bar of a Home Screen app and
+     the home indicator (safe areas; the page is laid out under them, viewport-fit=cover).
+     The foot lets the status line's 44 px targets reach a little into the indicator's
+     band, so the words stand just above it rather than floating a band higher. */
+  padding: calc(36px + env(safe-area-inset-top))
+    max(var(--s6), env(safe-area-inset-right))
+    max(var(--s5), calc(env(safe-area-inset-bottom) - var(--s3)))
+    max(var(--s6), env(safe-area-inset-left));
   container-type: inline-size;
   outline: none;
 }
@@ -59,8 +66,10 @@ main > [data-part="focus-history"] {
   min-width: 44px;
   min-height: 44px;
 }
-[data-part="focus-history"] button:hover:not(:disabled) {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="focus-history"] button:hover:not(:disabled) {
+    color: var(--ink);
+  }
 }
 [data-part="focus-history"] button:disabled {
   opacity: 0.35;
@@ -142,14 +151,20 @@ main > [data-part="scramble"] > [data-action^="scramble-"]:active {
 main > [data-part="scramble"] > [data-action^="scramble-"]:active::before {
   scale: 0.9;
 }
-main > [data-part="scramble"]:hover > [data-action^="scramble-"],
 main
   > [data-part="scramble"]:has(> [data-action^="scramble-"]:focus-visible)
   > [data-action^="scramble-"] {
   opacity: 1;
 }
-main > [data-part="scramble"] > [data-action^="scramble-"]:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  main > [data-part="scramble"]:hover > [data-action^="scramble-"] {
+    opacity: 1;
+  }
+}
+@media (hover: hover) {
+  main > [data-part="scramble"] > [data-action^="scramble-"]:hover {
+    color: var(--ink);
+  }
 }
 /* The ring goes round the glyph's target, not the zero-width box. */
 main > [data-part="scramble"] > [data-action^="scramble-"]:focus-visible {
@@ -478,7 +493,7 @@ main[data-phase="holding"] > output[data-part="time"] {
     var(--hue) var(--rise),
     transparent var(--rise)
   );
-  animation: time-rise 300ms linear forwards;
+  animation: time-rise var(--hold, 300ms) linear forwards;
 }
 @keyframes time-rise {
   to {
@@ -696,9 +711,13 @@ main > [data-part="file"] > [data-part="solves"] {
   border-radius: 4px;
   transition: background-color 100ms ease;
 }
-[data-part="solves"] > li:hover,
 [data-part="solves"] > li[data-shown] {
   background: var(--line);
+}
+@media (hover: hover) {
+  [data-part="solves"] > li:hover {
+    background: var(--line);
+  }
 }
 /* Picked lines (Shift or Mod with a click or an arrow) read as an editor's selection:
    neighbours join into one block. The newest line is first in the markup and lowest on
@@ -750,8 +769,10 @@ main > [data-part="file"] > [data-part="solves"] {
   text-decoration-color: var(--gutter);
   text-underline-offset: 0.25em;
 }
-[data-part="solves-import"] a:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="solves-import"] a:hover {
+    color: var(--ink);
+  }
 }
 @media (hover: none), (pointer: coarse) {
   /* A finger's target, without moving the line's text. */
@@ -836,9 +857,24 @@ li[data-penalty="dnf"] [data-part="solve-time"] {
   color: var(--gutter);
   opacity: 0;
 }
-[data-part="solves"] > li:hover [data-action="comment-edit"],
+@media (hover: hover) {
+  [data-part="solves"] > li:hover [data-action="comment-edit"] {
+    opacity: 1;
+  }
+}
 [data-part="solves"] [data-action="comment-edit"]:focus-visible {
   opacity: 1;
+}
+/* A finger has no hover to bring the word out, and a word that appears at the first tap
+   costs iOS a second one. On a touch screen it stands, quiet, on the line on show (a tap
+   on a time puts a line on show), else on the newest line: one tap opens the field. */
+@media (hover: none) {
+  [data-part="solves"] > li[data-shown] [data-action="comment-edit"],
+  [data-part="solves"]:not(:has(> li[data-shown]))
+    > li[data-newest]
+    [data-action="comment-edit"] {
+    opacity: 1;
+  }
 }
 /* One picked line offers to part the session above it, where the comment word would be:
    in the line's own gap, so the action row keeps one line in every language. */
@@ -852,11 +888,15 @@ li[data-penalty="dnf"] [data-part="solve-time"] {
   color: var(--dim);
   white-space: nowrap;
 }
-[data-part="solves"] [data-action="solve-split"]:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="solves"] [data-action="solve-split"]:hover {
+    color: var(--ink);
+  }
 }
-[data-part="solves"] [data-action="comment-edit"]:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="solves"] [data-action="comment-edit"]:hover {
+    color: var(--ink);
+  }
 }
 [data-part="comment-form"] {
   grid-column: 1 / -1;
@@ -883,15 +923,30 @@ li[data-penalty="dnf"] [data-part="solve-time"] {
 [data-part="comment-form"] button {
   color: var(--dim);
 }
-[data-part="comment-form"] button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="comment-form"] button:hover {
+    color: var(--ink);
+  }
 }
 main > [data-part="file"] [data-action="solves-more"] {
   font-size: max(var(--text-floor), calc(13px * var(--size-times, 1)));
   color: var(--gutter);
 }
-main > [data-part="file"] [data-action="solves-more"]:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  /* The wheel scrolls the file; the word is for the keyboard and for whoever looks for
+     it, so it waits for the pointer over the file or the focus, in line with the numbers. */
+  main > [data-part="file"] [data-action="solves-more"] {
+    padding-inline: var(--s2);
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  main > [data-part="file"]:hover [data-action="solves-more"],
+  main > [data-part="file"] [data-action="solves-more"]:focus-visible {
+    opacity: 1;
+  }
+  main > [data-part="file"] [data-action="solves-more"]:hover {
+    color: var(--ink);
+  }
 }
 
 /* The totals at the foot of the file: best and mean; the rest stays for those who look. */
@@ -945,16 +1000,27 @@ main > [data-part="last-actions"] {
   color: var(--dim);
   white-space: nowrap;
 }
-[data-part="last-actions"] [data-action="penalty-plus2"]:hover:not(:disabled),
 [data-part="last-actions"][data-penalty="plus2"] [data-action="penalty-plus2"] {
   color: var(--warn);
 }
-[data-part="last-actions"] [data-action="penalty-dnf"]:hover:not(:disabled),
+@media (hover: hover) {
+  [data-part="last-actions"]
+    [data-action="penalty-plus2"]:hover:not(:disabled) {
+    color: var(--warn);
+  }
+}
 [data-part="last-actions"][data-penalty="dnf"] [data-action="penalty-dnf"] {
   color: var(--error);
 }
-[data-part="last-actions"] button:hover:not(:disabled) {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="last-actions"] [data-action="penalty-dnf"]:hover:not(:disabled) {
+    color: var(--error);
+  }
+}
+@media (hover: hover) {
+  [data-part="last-actions"] button:hover:not(:disabled) {
+    color: var(--ink);
+  }
 }
 /* With lines picked the row is what can be done with them, with how many. With a
    pointer, Esc or a plain click on a line drops the pick; a touch screen gets a ×. */
@@ -995,8 +1061,43 @@ main > footer[data-part="status-line"] {
   display: flex;
   gap: var(--s5);
 }
-[data-part="status-line"] > nav:last-child a:hover {
-  color: var(--ink);
+/* With a pointer on a wide screen the line has three places, one under each column: the
+   session under the picture, the screen's own words on the axis under the time, the last
+   solve's actions under the file (owner, 2026-11-23). A message stands just above the
+   words, on the same axis, and moves nothing. */
+@media (hover: hover) and (min-width: 700px) {
+  main > footer[data-part="status-line"] {
+    position: relative;
+  }
+  [data-part="status-line"] > nav:last-child,
+  [data-part="status-line"]
+    > :is([data-part="db-state"], [data-part="notice"], [data-part="update"]) {
+    position: absolute;
+    left: calc(var(--side) + var(--s6));
+    right: 0;
+    justify-content: center;
+    text-align: center;
+  }
+  [data-part="status-line"] > nav:last-child {
+    top: 0;
+    bottom: 0;
+    margin: 0;
+    align-items: center;
+  }
+  [data-part="status-line"]
+    > :is([data-part="db-state"], [data-part="notice"], [data-part="update"]) {
+    bottom: calc(100% + var(--s2));
+  }
+  /* What just happened is said alone: a standing message waits behind it. */
+  [data-part="status-line"]:has(> [data-part="notice"])
+    > :is([data-part="db-state"], [data-part="update"]) {
+    visibility: hidden;
+  }
+}
+@media (hover: hover) {
+  [data-part="status-line"] > nav:last-child a:hover {
+    color: var(--ink);
+  }
 }
 [data-part="sessions"] {
   display: flex;
@@ -1023,11 +1124,13 @@ main > footer[data-part="status-line"] {
 [data-part="sessions"]:has(> [data-action="session-switch"]:empty) {
   display: none;
 }
-[data-action="session-switch"]:enabled:hover {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-decoration-color: var(--gutter);
-  text-underline-offset: 0.25em;
+@media (hover: hover) {
+  [data-action="session-switch"]:enabled:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--gutter);
+    text-underline-offset: 0.25em;
+  }
 }
 /* Secondary controls wait until the pointer comes to the line (DESIGN.md section 1). */
 [data-part="status-line"] > label {
@@ -1036,12 +1139,18 @@ main > footer[data-part="status-line"] {
 }
 /* Focus reveals it only when it is the select's own: a link in the line that takes focus on
    its way to another screen (Algorithms, Progress) must not light the entry mode up. */
-[data-part="status-line"]:hover > label,
 [data-part="status-line"] > label:focus-within {
   opacity: 1;
 }
-[data-part="status-line"] select:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="status-line"]:hover > label {
+    opacity: 1;
+  }
+}
+@media (hover: hover) {
+  [data-part="status-line"] select:hover {
+    color: var(--ink);
+  }
 }
 [data-part="status-line"] > label {
   display: flex;
@@ -1092,10 +1201,58 @@ main[data-phase="ready"]
   opacity: 0;
   transition: opacity 140ms ease;
 }
+/* Inspecting, and holding or armed during inspection: the count, the scramble and its
+   picture stay; the date, the line number, the slots, the file and the status line go
+   (DESIGN.md section 7). input/behavior.css lets a touch through them to the timer. */
+main[data-inspecting]
+  > :is(
+    [data-part="time-under"],
+    [data-part="stats"],
+    [data-part="file"],
+    [data-part="last-actions"],
+    [data-part="focus-history"],
+    footer[data-part="status-line"]
+  ) {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+/* Held, the screen clears in the time the ink takes to rise: one move, not two. Let go
+   early and it comes back from where it was (the 140 ms below). */
+main[data-phase="holding"]:not([data-inspecting])
+  > :not(
+    output[data-part="time"],
+    [data-part="scramble"],
+    [data-part="hand-keys"]
+  ) {
+  opacity: 0;
+  transition: opacity var(--hold, 300ms) linear;
+}
+/* Coming back, the same parts fade in. Not the scramble: its own transition is the swipe's. */
+main[data-timer-surface]
+  > :where(
+    [data-part="picture"],
+    [data-part="stats"],
+    [data-part="file"],
+    [data-part="last-actions"],
+    [data-part="time-under"],
+    footer[data-part="status-line"]
+  ) {
+  transition: opacity 140ms ease;
+}
 /* Held and armed, the scramble stays readable at 0.3 (DESIGN.md section 7). */
-main:is([data-phase="holding"], [data-phase="ready"]) > [data-part="scramble"] {
+main[data-phase="holding"] > [data-part="scramble"] {
+  opacity: 0.3;
+  transition: opacity var(--hold, 300ms) linear;
+}
+main[data-phase="ready"] > [data-part="scramble"] {
   opacity: 0.3;
   transition: opacity 140ms ease;
+}
+/* Held during inspection the rest of the screen stays as inspection has it: the scramble
+   is still being read (section 7). */
+main[data-inspecting]:is([data-phase="holding"], [data-phase="ready"])
+  > [data-part="scramble"] {
+  opacity: 1;
 }
 
 /* ---- phone: one column, the scramble first, the time and its stats centred, the file,
@@ -1120,7 +1277,10 @@ main:is([data-phase="holding"], [data-phase="ready"]) > [data-part="scramble"] {
       "file"
       "actions"
       "status";
-    padding: var(--s5) var(--s4) var(--s3);
+    padding: calc(var(--s5) + env(safe-area-inset-top))
+      max(var(--s4), env(safe-area-inset-right))
+      max(var(--s3), calc(env(safe-area-inset-bottom) - var(--s3)))
+      max(var(--s4), env(safe-area-inset-left));
     row-gap: var(--s3);
   }
   /* Moves per line on a phone (DESIGN.md section 4); the size follows, up to 40 px. The box
@@ -1336,7 +1496,7 @@ main:is([data-phase="holding"], [data-phase="ready"]) > [data-part="scramble"] {
 @media (max-width: 699px) and (max-height: 740px) {
   main[data-timer-surface],
   main:has(> [data-part="scramble"]) {
-    padding-top: var(--s4);
+    padding-top: calc(var(--s4) + env(safe-area-inset-top));
     row-gap: var(--s2);
   }
   main > [data-part="scramble"] {
@@ -1409,8 +1569,11 @@ main:is([data-phase="holding"], [data-phase="ready"]) > [data-part="scramble"] {
   main[data-timer-surface],
   main:has(> [data-part="scramble"]) {
     row-gap: var(--s3);
-    padding-top: var(--s4);
-    padding-bottom: var(--s3);
+    padding-top: calc(var(--s4) + env(safe-area-inset-top));
+    padding-bottom: max(
+      var(--s3),
+      calc(env(safe-area-inset-bottom) - var(--s3))
+    );
   }
   main > output[data-part="time"],
   [data-part="fm-clock"] {
@@ -1480,8 +1643,10 @@ main > [data-part="stats"] {
   min-height: 44px;
   margin-block: var(--slot-block-margin, -6px);
 }
-[data-part="stats-now"] > button[data-slot]:hover [data-part="slot-name"] {
-  text-decoration: underline;
+@media (hover: hover) {
+  [data-part="stats-now"] > button[data-slot]:hover [data-part="slot-name"] {
+    text-decoration: underline;
+  }
 }
 [data-part="stat-picker"] {
   position: absolute;
@@ -1515,8 +1680,10 @@ main [data-part="stat-picker"] button[data-stat-choice] {
 [data-stat-choice] + [data-stat-choice] {
   margin-block-start: var(--s2);
 }
-[data-stat-choice]:hover {
-  background: var(--line);
+@media (hover: hover) {
+  [data-stat-choice]:hover {
+    background: var(--line);
+  }
 }
 [data-stat-choice] span:last-child {
   font-family: var(--font-mono);
@@ -1599,8 +1766,10 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
   font-size: 15px;
   color: var(--dim);
 }
-main > [data-part="time-under"] > [data-part="time-meta"] > button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  main > [data-part="time-under"] > [data-part="time-meta"] > button:hover {
+    color: var(--ink);
+  }
 }
 [data-part="time-under"]
   [data-part="time-meta"]
@@ -1635,9 +1804,13 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button:hover {
   border-radius: 4px;
   transition: background-color 100ms var(--ease);
 }
-[data-part="time-under"] [data-part="attempts"] > li > button:hover,
 [data-part="attempts"] > li[data-shown] > button {
   background: var(--line);
+}
+@media (hover: hover) {
+  [data-part="time-under"] [data-part="attempts"] > li > button:hover {
+    background: var(--line);
+  }
 }
 [data-part="attempt-result"] {
   font-family: var(--font-solid);
@@ -1735,6 +1908,12 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button:hover {
     min-height: calc(2 * 44px);
     max-height: none;
   }
+}
+/* A slot breaks only between its name and its value, never inside the value: in a narrow
+   middle column (an iPad mini upright) "ao5 in 4" stands as "ao5" over "in 4", as a
+   slot with a time stands as its name over the time, not as "ao5 in" over "4". */
+[data-part="stats-now"] [data-stat] {
+  white-space: nowrap;
 }
 /* An average still short of solves: how many to go, quiet, in the stat's own place. */
 [data-stat] [data-part="to-go"] {

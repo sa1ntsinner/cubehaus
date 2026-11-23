@@ -236,6 +236,55 @@ test.describe("touch", () => {
     await touch("up");
     await expect(timer).toHaveAttribute("data-phase", "idle");
   });
+
+  // A phone follows a tap with a click on what lies under the finger, and the controls are
+  // only faded while the timer runs: in iOS Safari the release that started a solve opened
+  // the stat picker under it (which unbinds the touch, so the solve could not be stopped),
+  // and a stop could land on DNF. No click from a timing touch may reach the page.
+  test("a timing touch brings no click to the controls under the finger", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName !== "chromium",
+      "needs a touch through the browser's input pipeline (CDP), which only Chromium has",
+    );
+    const timer = page.locator("main");
+    const cdp = await page.context().newCDPSession(page);
+    const box = await page.locator('[data-part="time"]').boundingBox();
+    if (!box) throw new Error("the time has no box");
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const touch = (type: "down" | "up") =>
+      cdp.send("Input.dispatchTouchEvent", {
+        type: type === "down" ? "touchStart" : "touchEnd",
+        touchPoints: type === "down" ? [at] : [],
+      });
+    await page.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { clicks: string[] }).clicks = seen;
+      document.addEventListener("click", (event) =>
+        seen.push((event.target as Element).tagName),
+      );
+    });
+    const clicks = () =>
+      page.evaluate(() => (window as unknown as { clicks: string[] }).clicks);
+    await touch("down");
+    await page.waitForTimeout(400);
+    await touch("up");
+    await expect(timer).toHaveAttribute("data-phase", "running");
+    await page.waitForTimeout(300);
+    await touch("down");
+    await touch("up");
+    await expect(timer).toHaveAttribute("data-phase", "idle");
+    // Long enough for the click a tap brings to have landed.
+    await page.waitForTimeout(300);
+    expect(await clicks()).toEqual([]);
+    // A tap on a control is still a click.
+    await page.locator('[data-action="penalty-dnf"]').tap();
+    await expect(
+      page.locator('main > output[data-part="time"]'),
+    ).toHaveAttribute("data-penalty", "dnf");
+  });
 });
 
 test("dragging the mouse across the scramble does not start a solve", async ({
@@ -303,7 +352,7 @@ test("a short Space tap delayed by a blocked main thread does not start a solve"
 test("both physical hand keys start on the last release and an unrelated key stops", async ({
   page,
 }) => {
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/timer");
   const choice = page.locator("#setting-startMode");
   await choice.selectOption("two-hand");
   await expect(choice).toHaveValue("two-hand");

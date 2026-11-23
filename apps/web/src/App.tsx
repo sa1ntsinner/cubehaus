@@ -16,6 +16,7 @@ import {
   type StatId,
 } from "@cubehaus/stats";
 import {
+  type CSSProperties,
   lazy,
   Suspense,
   startTransition,
@@ -35,6 +36,10 @@ import { backupDue } from "./db/native";
 import { openDatabase } from "./db/open";
 import { createPendingJournal, memoryStorage } from "./db/pending";
 import { canFullscreen, toggleFullscreen } from "./fullscreen";
+import type { GestureId } from "./gesture-hints";
+import { learnGesture, nudge, takeHint } from "./input/hint-store";
+import { isTouchScreen } from "./input/touch-screen";
+import { DEFAULT_SWIPE, useSwipe } from "./input/use-swipe";
 import { actionsForEvent, bindActions } from "./keys/actions";
 import type { Action } from "./keys/engine";
 import { Help } from "./keys/Help";
@@ -276,8 +281,8 @@ export function App({
       return <Progress view={view} dbMessage={dbMessage} words={words} />;
     if (route === "#/train" || route.startsWith("#/train/"))
       return <Train app={app} view={view} words={words} route={route} />;
-    if (route === "#/settings" || route === "#/settings/data")
-      return <Settings app={app} view={view} words={words} />;
+    if (route === "#/settings" || route.startsWith("#/settings/"))
+      return <Settings app={app} view={view} words={words} route={route} />;
     return (
       <TimerPage
         app={app}
@@ -314,7 +319,7 @@ function countScramble(key: string) {
 
 function screenOf(route: string) {
   if (route === "#/train" || route.startsWith("#/train/")) return "train";
-  if (route === "#/settings/data") return "#/settings";
+  if (route.startsWith("#/settings/")) return "#/settings";
   if (route === "#/progress" || route === "#/settings") return route;
   return "timer";
 }
@@ -1274,6 +1279,151 @@ function TimerPage({
     if (view.browsing) void app.live();
     if (!stepScramble(direction)) unavailable(words.noEarlierScramble);
   };
+
+  // ---- touch gestures (DESIGN.md section 18a) ----
+  // A gesture acts only between solves, and not in the moments after a stop, when the
+  // second hand may still be coming down on the screen.
+  const stoppedAt = useRef(Number.NEGATIVE_INFINITY);
+  useEffect(() => {
+    if (state.phase === "stopped") stoppedAt.current = performance.now();
+  }, [state.phase]);
+  const gestureReady = () =>
+    settledPhase &&
+    modal === null &&
+    zoom === null &&
+    !statPicker &&
+    commenting === null &&
+    performance.now() - stoppedAt.current > 700;
+  const learned = learnGesture;
+  // For the parts that bind their own gestures (the session name, the file's lines).
+  const readyNow = useRef(gestureReady);
+  readyNow.current = gestureReady;
+  const gesturesReady = useCallback(() => readyNow.current(), []);
+  const timePenalty = target ? hasTimePenalty(target.event) : false;
+  useSwipe(timerPage, {
+    config: {
+      ...DEFAULT_SWIPE,
+      directions: timePenalty ? ["left", "right", "down"] : ["left", "down"],
+    },
+    // The time and the row it stands in: a short result is narrow, and a finger starting
+    // beside it on the ground means the time all the same.
+    subject: (element, at) => {
+      const time = timerPage.current?.querySelector<HTMLElement>(
+        ':scope > output[data-part="time"]',
+      );
+      if (!time) return null;
+      if (time.contains(element)) return time;
+      if (element !== timerPage.current) return null;
+      const box = time.getBoundingClientRect();
+      return at.y >= box.top - 16 && at.y <= box.bottom + 16 ? time : null;
+    },
+    enabled: () =>
+      gestureReady() && editable && !!target && view.selected.size === 0,
+    word: (direction) =>
+      direction === "left"
+        ? words.deleteSolve
+        : direction === "right"
+          ? target?.plus2
+            ? words.penaltyOk
+            : words.penaltyPlus2
+          : target?.dnf
+            ? words.penaltyOk
+            : words.penaltyDnf,
+    tone: (direction) => (direction === "right" ? "warn" : "error"),
+    onCommit: (direction) => {
+      if (!target) return;
+      if (direction === "left") void app.deleteSolve(target);
+      else void app.penalty(target, direction === "right" ? "plus2" : "dnf");
+      learned(
+        direction === "left"
+          ? "time-left"
+          : direction === "right"
+            ? "time-right"
+            : "time-down",
+      );
+    },
+  });
+  useSwipe(timerPage, {
+    config: { ...DEFAULT_SWIPE, directions: ["left", "right"] },
+    subject: (element) =>
+      element.closest<HTMLElement>('main > [data-part="scramble"]'),
+    enabled: () => gestureReady() && canStepScramble,
+    word: (direction) =>
+      direction === "left" ? words.gestures.next : words.gestures.previous,
+    onCommit: (direction) => {
+      navigateScramble(direction === "left" ? 1 : -1);
+      learned("scramble");
+    },
+  });
+  // After a stop, once the result has been seen: at most one quiet line naming a gesture
+  // that works here, with the part showing the way once.
+  const [hint, setHint] = useState<GestureId | null>(null);
+  const solvesSinceHint = useRef(0);
+  const lastPhase = useRef(state.phase);
+  const hintContext = useRef({
+    ready: gestureReady,
+    available: [] as GestureId[],
+  });
+  hintContext.current = {
+    ready: gestureReady,
+    available: [
+      ...(editable && target
+        ? ([
+            ...(timePenalty ? (["time-right"] as const) : []),
+            "time-down",
+            "time-left",
+          ] as GestureId[])
+        : []),
+      ...(canStepScramble ? (["scramble"] as const) : []),
+      ...(editable && view.settings.layout !== "focus" && view.rows.length > 1
+        ? (["row-left"] as const)
+        : []),
+      ...(listed(view.sessions, view.current?.id).length > 1
+        ? (["session"] as const)
+        : []),
+    ],
+  };
+  useEffect(() => {
+    const before = lastPhase.current;
+    lastPhase.current = state.phase;
+    if (state.phase === "running") setHint(null);
+    if (before === "running" && state.phase === "stopped")
+      solvesSinceHint.current += 1;
+    if (!(before === "stopped" && state.phase === "idle")) return;
+    if (!isTouchScreen()) return;
+    const timeout = setTimeout(() => {
+      const { ready, available } = hintContext.current;
+      if (!ready()) return;
+      const id = takeHint(available, solvesSinceHint.current);
+      if (!id) return;
+      solvesSinceHint.current = 0;
+      setHint(id);
+    }, 900);
+    return () => clearTimeout(timeout);
+  }, [state.phase]);
+  // The hint goes when its moment has passed: a new attempt, a sheet, or after a while.
+  useEffect(() => {
+    if (hint === null) return;
+    if (!settledPhase || modal !== null) {
+      setHint(null);
+      return;
+    }
+    const timeout = setTimeout(() => setHint(null), 6000);
+    return () => clearTimeout(timeout);
+  }, [hint, settledPhase, modal]);
+  useEffect(() => {
+    if (hint === null) return;
+    const page = timerPage.current;
+    const [selector, direction] =
+      hint === "scramble"
+        ? ['[data-part="scramble"]', "left"]
+        : hint === "row-left"
+          ? ['[data-part="solves"] > li[data-newest]', "left"]
+          : hint === "session"
+            ? ['[data-action="session-switch"]', "left"]
+            : ['output[data-part="time"]', hint.slice("time-".length)];
+    return nudge(page?.querySelector(selector), direction);
+  }, [hint]);
   // Everything before the solve goes to a new session named by its last day.
   const splitBefore = useCallback(
     (pivotId: string) =>
@@ -1598,17 +1748,24 @@ function TimerPage({
       data-timer-surface={timerEnabled ? "" : undefined}
       data-no-timer={zoom !== null ? "" : undefined}
       data-phase={state.phase}
+      data-inspecting={inspecting || undefined}
       data-arrangement="c"
       data-layout={view.settings.layout}
       data-shown-solve={shownSolve?.id}
       data-stat-picker-open={statPicker || undefined}
       data-inspection={view.settings.inspection}
-      style={Object.fromEntries(
-        VIEW_PARTS.map((part) => [
-          `--size-${part}`,
-          view.settings.sizes[part] / 100,
-        ]),
-      )}
+      style={
+        {
+          ...Object.fromEntries(
+            VIEW_PARTS.map((part) => [
+              `--size-${part}`,
+              view.settings.sizes[part] / 100,
+            ]),
+          ),
+          // The hold the person chose: the ink rises and the screen clears in that time.
+          "--hold": `${view.settings.holdMs}ms`,
+        } as CSSProperties
+      }
       onPointerMove={(input) => {
         hoveredPart.current =
           input.pointerType === "mouse" && input.target instanceof Element
@@ -1933,7 +2090,8 @@ function TimerPage({
         <Help
           bindings={bindingsFor(helpState, actions)}
           language={view.settings.language}
-          title={words.keysTitle}
+          title={isTouchScreen() ? words.gestures.title : words.keysTitle}
+          gestures={isTouchScreen() ? words.gestures.list : undefined}
           closeLabel={words.backToTimer}
           commandsLabel={words.paletteTitle}
           onCommands={() => setModal("palette")}
@@ -1996,6 +2154,8 @@ function TimerPage({
         onStatPicker={setStatPicker}
         onAverage={openAverage}
         emptyHint={emptyHint}
+        gesturesReady={gesturesReady}
+        onLearned={learned}
       />
       {view.settings.layout === "focus" &&
         editable &&
@@ -2038,20 +2198,9 @@ function TimerPage({
             setRenameOnOpen(false);
             openDialog("switch", opener);
           }}
+          ready={gesturesReady}
+          onLearned={learned}
         />
-        {session &&
-          view.settings.inspection === "official" &&
-          eventInfo(event).inspectionMs !== null && (
-            <button
-              type="button"
-              data-action="inspection-toggle"
-              data-no-timer
-              disabled={!editable || timerActive || inspecting}
-              onClick={handlers["inspection.toggle"]}
-            >
-              15″
-            </button>
-          )}
         {session && kind === "time" && (
           <label data-no-timer>
             {words.entry.mode}
@@ -2114,6 +2263,20 @@ function TimerPage({
             {notice}
           </p>
         )}
+        {!notice && hint && (
+          <p data-part="notice" data-kind="hint" role="status" data-no-timer>
+            {words.gestures.hint[hint]}
+            <button
+              type="button"
+              data-action="gestures-open"
+              onClick={(input) => {
+                if (modal === null) openDialog("help", input.currentTarget);
+              }}
+            >
+              {words.gestures.title}
+            </button>
+          </p>
+        )}
         <nav data-no-timer>
           <a
             href="#/train"
@@ -2155,7 +2318,20 @@ function TimerPage({
             onFocus={() => void loadSettings()}
           >
             {words.settings.title}
-          </a>
+          </a>{" "}
+          {/* A touch screen has no keys: its list is the gestures (shown by CSS). */}
+          <button
+            type="button"
+            data-action="gestures"
+            data-no-timer
+            aria-label={words.gestures.title}
+            disabled={timerActive || inspecting}
+            onClick={(input) => {
+              if (modal === null) openDialog("help", input.currentTarget);
+            }}
+          >
+            ?
+          </button>
         </nav>
       </footer>
     </main>

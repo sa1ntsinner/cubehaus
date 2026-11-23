@@ -32,8 +32,10 @@ main > [data-part="scramble-picture"] {
   transform-origin: 0 100%;
   transition: transform 200ms var(--ease);
 }
-[data-action="picture-enlarge"]:hover svg[data-part="picture-drawing"] {
-  transform: scale(1.03);
+@media (hover: hover) {
+  [data-action="picture-enlarge"]:hover svg[data-part="picture-drawing"] {
+    transform: scale(1.03);
+  }
 }
 [data-action="picture-enlarge"]:active svg[data-part="picture-drawing"] {
   transform: scale(0.99);

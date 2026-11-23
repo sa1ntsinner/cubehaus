@@ -592,8 +592,50 @@ function historySolves(
   return solves;
 }
 
+/**
+ * The database that would not open, in each form the banner takes. Nothing here touches a
+ * file: a restore that "works" never settles, so the shot shows it under way.
+ */
+function failedSeed(state: string): DbState | undefined {
+  const never = () => new Promise<never>(() => {});
+  const readable = async () => "{}";
+  switch (state) {
+    case "db-failed":
+      return {
+        kind: "failed",
+        reason: "file is not a database",
+        recovery: { restoreFile: never, saveReadable: readable },
+      };
+    case "db-failed-desktop":
+    case "db-restoring":
+      return {
+        kind: "failed",
+        reason: "file is not a database",
+        recovery: { restoreLatest: never, saveReadable: readable },
+      };
+    case "db-restore-failed":
+      return {
+        kind: "failed",
+        reason: "file is not a database",
+        recovery: {
+          restoreLatest: async () => {
+            throw new Error("disk full");
+          },
+          saveReadable: readable,
+        },
+      };
+    case "db-newer":
+      return { kind: "failed", reason: "schema 99", newer: true };
+    case "db-unwritable":
+      return { kind: "failed", reason: "no storage" };
+  }
+  return undefined;
+}
+
 export async function openSeed(seed: Seed): Promise<DbState> {
   if (seed.state === "db-busy") return { kind: "busy" };
+  const failed = failedSeed(seed.state);
+  if (failed) return failed;
   const db = await openDatabase({ memory: true }).initial;
   if (db.kind !== "memory") return db;
   const { store } = db;

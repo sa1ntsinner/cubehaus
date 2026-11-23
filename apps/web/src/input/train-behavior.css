@@ -6,3 +6,9 @@
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* A case in Learn swipes sideways into the drills or out (input/use-swipe.ts): the page
+   keeps the vertical scroll, the horizontal move is the swipe's. */
+[data-part="train-case-list"] > li {
+  touch-action: pan-y;
+}

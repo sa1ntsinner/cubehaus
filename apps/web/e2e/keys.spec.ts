@@ -166,19 +166,20 @@ test("the palette close button restores the same focus as Escape", async ({
   await expect(input).toBeFocused();
 });
 
-test("the inspection status button uses the session's inspection action", async ({
+test("the I key switches the session's inspection and says so", async ({
   page,
 }) => {
   const main = page.locator("main");
-  const inspection = page.locator('[data-action="inspection-toggle"]');
-  await expect(inspection).toHaveText("15″");
-  await inspection.click();
+  // Inspection is a setting: the main screen carries no word for it.
+  await expect(page.locator('[data-action="inspection-toggle"]')).toHaveCount(
+    0,
+  );
+  await expect(main).toHaveAttribute("data-inspection", "official");
+  await page.keyboard.press("KeyI");
   await expect(main).toHaveAttribute("data-inspection", "off");
   await expect(part(page, "notice")).toHaveText("Inspection off");
-  await expect(inspection).toHaveCount(0);
   await page.keyboard.press("KeyI");
   await expect(main).toHaveAttribute("data-inspection", "official");
-  await expect(inspection).toBeVisible();
 });
 
 test("scramble history restores the text and picture, copies, and times the shown scramble", async ({
@@ -225,7 +226,14 @@ test("scramble history restores the text and picture, copies, and times the show
       isPrimary: true,
       clientY: 40,
     };
+    // A finger moves on its way: the swipe follows it (input/swipe.ts) and acts on
+    // letting go past its commit distance.
     await scramble.dispatchEvent("pointerdown", { ...touch, clientX: from });
+    for (const step of [0.25, 0.5, 0.75, 1])
+      await scramble.dispatchEvent("pointermove", {
+        ...touch,
+        clientX: from + (to - from) * step,
+      });
     await scramble.dispatchEvent("pointerup", { ...touch, clientX: to });
   };
   await swipe(130, 40);
@@ -284,7 +292,7 @@ test("scramble history restores the text and picture, copies, and times the show
   await page.keyboard.press("KeyA");
   await expect(solves(page)).toHaveCount(3);
   const id = await solves(page).first().getAttribute("data-solve-id");
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const [backup] = await Promise.all([
     page.waitForEvent("download"),
     page.locator('[data-action="backup-save"]').click(),
@@ -304,8 +312,7 @@ test("rebinds actions, rejects a clash, and recovers an unbound palette", async 
   const row = (id: string) => keymap.locator(`[data-binding="${id}"]`);
   const keys = (id: string) => row(id).locator('[data-part="binding-keys"]');
   async function openKeymap() {
-    await page.goto("/#/settings");
-    await keymap.locator('[data-action="keymap-toggle"]').click();
+    await page.goto("/#/settings/keys");
   }
   async function capture(id: string, code: string, label?: string) {
     await row(id).locator('[data-action="binding-change"]').click();
@@ -326,7 +333,6 @@ test("rebinds actions, rejects a clash, and recovers an unbound palette", async 
   await expect(keys("palette")).toHaveText("Unbound");
 
   await page.reload();
-  await keymap.locator('[data-action="keymap-toggle"]').click();
   await expect(keys("solve.dnf")).toHaveText("J");
   await expect(keys("timer.handLeft")).toHaveText("Left Shift");
   await expect(keys("timer.handRight")).toHaveText("Right Shift");
@@ -398,7 +404,7 @@ test("rebinds actions, rejects a clash, and recovers an unbound palette", async 
   await expect(solves(page)).toHaveCount(3);
   await expect(solves(page).first()).toHaveAttribute("data-penalty", "ok");
 
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/timer");
   const start = page.locator("#setting-startMode");
   await start.selectOption("two-hand");
   await expect(start).toHaveValue("two-hand");

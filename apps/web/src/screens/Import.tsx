@@ -5,6 +5,7 @@ import {
   csvIssueCodes,
   type ImportPreview,
 } from "../import";
+import { titleField } from "../input/fields";
 import type { Text } from "../text";
 
 const timedEvents = EVENTS.filter(({ kind }) => kind === "time");
@@ -155,6 +156,7 @@ export function ImportPreviewPanel({
                       data-action="import-session-name"
                       aria-label={`${words.sessionName}: ${file.name}`}
                       placeholder={words.sessionName}
+                      {...titleField("import-session-title")}
                       required
                       disabled={busy}
                       value={draft.name}

@@ -42,7 +42,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A dot; no corner up; bars of the top colour on the left and the right.",
-      "ru": "Точка; углов сверху нет; слева и справа полосы верхнего цвета."
+      "ru": "Точка; ни один угол не смотрит вверх; слева и справа полосы цвета верха."
     },
     "subsets": []
   },
@@ -94,7 +94,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A dot; no corner up; a bar of the top colour at the back; the front left corner faces left.",
-      "ru": "Точка; углов сверху нет; сзади полоса верхнего цвета; передний левый угол смотрит влево."
+      "ru": "Точка; ни один угол не смотрит вверх; сзади полоса цвета верха; передний левый угол смотрит влево."
     },
     "subsets": [
       "2-look"
@@ -135,7 +135,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A dot; one corner up, the front left; the back left corner faces the back.",
-      "ru": "Точка; один угол сверху, передний левый; задний левый угол смотрит назад."
+      "ru": "Точка; вверх смотрит только передний левый угол; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -174,7 +174,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A dot; one corner up, the front right; the back left corner faces left.",
-      "ru": "Точка; один угол сверху, передний правый; задний левый угол смотрит влево."
+      "ru": "Точка; вверх смотрит только передний правый угол; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -213,7 +213,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the right; one corner up, the front right; the back left corner faces the back.",
-      "ru": "Уголок спереди и справа; один угол сверху, передний правый; задний левый угол смотрит назад."
+      "ru": "Уголок спереди и справа; вверх смотрит только передний правый угол; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -252,7 +252,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; one corner up, the back right; the back left corner faces left.",
-      "ru": "Уголок сзади и справа; один угол сверху, задний правый; задний левый угол смотрит влево."
+      "ru": "Уголок сзади и справа; вверх смотрит только задний правый угол; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -278,7 +278,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; one corner up, the front left; the back left corner faces the back.",
-      "ru": "Уголок сзади и слева; один угол сверху, передний левый; задний левый угол смотрит назад."
+      "ru": "Уголок сзади и слева; вверх смотрит только передний левый угол; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -317,7 +317,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; one corner up, the front right; the back left corner faces left.",
-      "ru": "Уголок сзади и справа; один угол сверху, передний правый; задний левый угол смотрит влево."
+      "ru": "Уголок сзади и справа; вверх смотрит только передний правый угол; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -356,7 +356,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; one corner up, the front right; the back left corner faces left.",
-      "ru": "Уголок сзади и слева; один угол сверху, передний правый; задний левый угол смотрит влево."
+      "ru": "Уголок сзади и слева; вверх смотрит только передний правый угол; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -395,7 +395,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the left; one corner up, the back right; the back left corner faces the back.",
-      "ru": "Уголок спереди и слева; один угол сверху, задний правый; задний левый угол смотрит назад."
+      "ru": "Уголок спереди и слева; вверх смотрит только задний правый угол; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -434,7 +434,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the right; one corner up, the front left; the back left corner faces the back.",
-      "ru": "Уголок спереди и справа; один угол сверху, передний левый; задний левый угол смотрит назад."
+      "ru": "Уголок спереди и справа; вверх смотрит только передний левый угол; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -486,7 +486,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; one corner up, the back left; the back right corner faces the back.",
-      "ru": "Уголок сзади и справа; один угол сверху, задний левый; задний правый угол смотрит назад."
+      "ru": "Уголок сзади и справа; вверх смотрит только задний левый угол; задний правый угол смотрит назад."
     },
     "subsets": []
   },
@@ -525,7 +525,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; one corner up, the front left; the back left corner faces the back.",
-      "ru": "Линия слева направо; один угол сверху, передний левый; задний левый угол смотрит назад."
+      "ru": "Линия слева направо; вверх смотрит только передний левый угол; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -551,7 +551,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; one corner up, the front right; the back left corner faces left.",
-      "ru": "Линия слева направо; один угол сверху, передний правый; задний левый угол смотрит влево."
+      "ru": "Линия слева направо; вверх смотрит только передний правый угол; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -590,7 +590,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; one corner up, the front right; the back left corner faces the back.",
-      "ru": "Линия слева направо; один угол сверху, передний правый; задний левый угол смотрит назад."
+      "ru": "Линия слева направо; вверх смотрит только передний правый угол; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -629,7 +629,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; one corner up, the back right; the back left corner faces left.",
-      "ru": "Линия слева направо; один угол сверху, задний правый; задний левый угол смотрит влево."
+      "ru": "Линия слева направо; вверх смотрит только задний правый угол; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -668,7 +668,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A dot; two corners up across, the back left and the front right.",
-      "ru": "Точка; два угла сверху по диагонали, задний левый и передний правый."
+      "ru": "Точка; вверх смотрят задний левый и передний правый углы."
     },
     "subsets": []
   },
@@ -707,7 +707,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A dot; both back corners up; a bar of the top colour in front.",
-      "ru": "Точка; оба задних угла сверху; спереди полоса верхнего цвета."
+      "ru": "Точка; вверх смотрят оба задних угла; спереди полоса цвета верха."
     },
     "subsets": []
   },
@@ -746,7 +746,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A dot; both back corners up; the front left corner faces left.",
-      "ru": "Точка; оба задних угла сверху; передний левый угол смотрит влево."
+      "ru": "Точка; вверх смотрят оба задних угла; передний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -785,7 +785,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A dot; all four corners up.",
-      "ru": "Точка; все четыре угла сверху."
+      "ru": "Точка; все углы смотрят вверх."
     },
     "subsets": []
   },
@@ -824,7 +824,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A cross; no corner up; headlights of the top colour on the left and the right.",
-      "ru": "Крест; углов сверху нет; слева и справа фары верхнего цвета."
+      "ru": "Крест; ни один угол не смотрит вверх; слева и справа фары цвета верха."
     },
     "subsets": [
       "2-look"
@@ -865,7 +865,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A cross; no corner up; headlights of the top colour on the left; the back right corner faces the back.",
-      "ru": "Крест; углов сверху нет; слева фары верхнего цвета; задний правый угол смотрит назад."
+      "ru": "Крест; ни один угол не смотрит вверх; слева фары цвета верха; задний правый угол смотрит назад."
     },
     "subsets": [
       "2-look"
@@ -906,7 +906,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A cross; both back corners up; headlights of the top colour in front.",
-      "ru": "Крест; оба задних угла сверху; спереди фары верхнего цвета."
+      "ru": "Крест; вверх смотрят оба задних угла; спереди фары цвета верха."
     },
     "subsets": [
       "2-look"
@@ -947,7 +947,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A cross; both right corners up; the back left corner faces the back.",
-      "ru": "Крест; оба правых угла сверху; задний левый угол смотрит назад."
+      "ru": "Крест; вверх смотрят оба правых угла; задний левый угол смотрит назад."
     },
     "subsets": [
       "2-look"
@@ -988,7 +988,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A cross; two corners up across, the back right and the front left.",
-      "ru": "Крест; два угла сверху по диагонали, задний правый и передний левый."
+      "ru": "Крест; вверх смотрят задний правый и передний левый углы."
     },
     "subsets": [
       "2-look"
@@ -1029,7 +1029,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A cross; one corner up, the back right; the back left corner faces left.",
-      "ru": "Крест; один угол сверху, задний правый; задний левый угол смотрит влево."
+      "ru": "Крест; вверх смотрит только задний правый угол; задний левый угол смотрит влево."
     },
     "subsets": [
       "2-look"
@@ -1070,7 +1070,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A cross; one corner up, the front left; the back left corner faces the back.",
-      "ru": "Крест; один угол сверху, передний левый; задний левый угол смотрит назад."
+      "ru": "Крест; вверх смотрит только передний левый угол; задний левый угол смотрит назад."
     },
     "subsets": [
       "2-look"
@@ -1111,7 +1111,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the right; all four corners up.",
-      "ru": "Уголок спереди и справа; все четыре угла сверху."
+      "ru": "Уголок спереди и справа; все углы смотрят вверх."
     },
     "subsets": []
   },
@@ -1163,7 +1163,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; both front corners up; the back left corner faces left.",
-      "ru": "Уголок сзади и справа; оба передних угла сверху; задний левый угол смотрит влево."
+      "ru": "Уголок сзади и справа; вверх смотрят оба передних угла; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -1202,7 +1202,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; both front corners up; the back left corner faces left.",
-      "ru": "Уголок сзади и слева; оба передних угла сверху; задний левый угол смотрит влево."
+      "ru": "Уголок сзади и слева; вверх смотрят оба передних угла; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -1241,7 +1241,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; both right corners up; the back left corner faces the back.",
-      "ru": "Уголок сзади и справа; оба правых угла сверху; задний левый угол смотрит назад."
+      "ru": "Уголок сзади и справа; вверх смотрят оба правых угла; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -1280,7 +1280,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the right; both right corners up; the back left corner faces the back.",
-      "ru": "Уголок спереди и справа; оба правых угла сверху; задний левый угол смотрит назад."
+      "ru": "Уголок спереди и справа; вверх смотрят оба правых угла; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -1319,7 +1319,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; both right corners up; the back left corner faces the back.",
-      "ru": "Линия слева направо; оба правых угла сверху; задний левый угол смотрит назад."
+      "ru": "Линия слева направо; вверх смотрят оба правых угла; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -1358,7 +1358,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; both front corners up; the back left corner faces left.",
-      "ru": "Линия слева направо; оба передних угла сверху; задний левый угол смотрит влево."
+      "ru": "Линия слева направо; вверх смотрят оба передних угла; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -1397,7 +1397,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the right; two corners up across, the back left and the front right; the back right corner faces right.",
-      "ru": "Уголок спереди и справа; два угла сверху по диагонали, задний левый и передний правый; задний правый угол смотрит вправо."
+      "ru": "Уголок спереди и справа; вверх смотрят задний левый и передний правый углы; задний правый угол смотрит вправо."
     },
     "subsets": []
   },
@@ -1449,7 +1449,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; two corners up across, the back right and the front left; the back left corner faces left.",
-      "ru": "Уголок сзади и слева; два угла сверху по диагонали, задний правый и передний левый; задний левый угол смотрит влево."
+      "ru": "Уголок сзади и слева; вверх смотрят задний правый и передний левый углы; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -1488,7 +1488,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; two corners up across, the back left and the front right; the back right corner faces right.",
-      "ru": "Уголок сзади и слева; два угла сверху по диагонали, задний левый и передний правый; задний правый угол смотрит вправо."
+      "ru": "Уголок сзади и слева; вверх смотрят задний левый и передний правый углы; задний правый угол смотрит вправо."
     },
     "subsets": []
   },
@@ -1527,7 +1527,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; two corners up across, the back right and the front left; the back left corner faces the back.",
-      "ru": "Уголок сзади и слева; два угла сверху по диагонали, задний правый и передний левый; задний левый угол смотрит назад."
+      "ru": "Уголок сзади и слева; вверх смотрят задний правый и передний левый углы; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -1566,7 +1566,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; two corners up across, the back right and the front left.",
-      "ru": "Линия слева направо; два угла сверху по диагонали, задний правый и передний левый."
+      "ru": "Линия слева направо; вверх смотрят задний правый и передний левый углы."
     },
     "subsets": []
   },
@@ -1605,7 +1605,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; two corners up across, the back left and the front right.",
-      "ru": "Линия слева направо; два угла сверху по диагонали, задний левый и передний правый."
+      "ru": "Линия слева направо; вверх смотрят задний левый и передний правый углы."
     },
     "subsets": []
   },
@@ -1644,7 +1644,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the right; both back corners up; headlights of the top colour in front.",
-      "ru": "Уголок спереди и справа; оба задних угла сверху; спереди фары верхнего цвета."
+      "ru": "Уголок спереди и справа; вверх смотрят оба задних угла; спереди фары цвета верха."
     },
     "subsets": []
   },
@@ -1696,7 +1696,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; both front corners up; headlights of the top colour at the back.",
-      "ru": "Уголок сзади и справа; оба передних угла сверху; сзади фары верхнего цвета."
+      "ru": "Уголок сзади и справа; вверх смотрят оба передних угла; сзади фары цвета верха."
     },
     "subsets": []
   },
@@ -1735,7 +1735,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; both back corners up; a bar of the top colour in front.",
-      "ru": "Уголок сзади и слева; оба задних угла сверху; спереди полоса верхнего цвета."
+      "ru": "Уголок сзади и слева; вверх смотрят оба задних угла; спереди полоса цвета верха."
     },
     "subsets": []
   },
@@ -1774,7 +1774,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; both left corners up; a bar of the top colour on the right.",
-      "ru": "Уголок сзади и слева; оба левых угла сверху; справа полоса верхнего цвета."
+      "ru": "Уголок сзади и слева; вверх смотрят оба левых угла; справа полоса цвета верха."
     },
     "subsets": [
       "2-look"
@@ -1815,7 +1815,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; both right corners up; headlights of the top colour on the left.",
-      "ru": "Линия слева направо; оба правых угла сверху; слева фары верхнего цвета."
+      "ru": "Линия слева направо; вверх смотрят оба правых угла; слева фары цвета верха."
     },
     "subsets": [
       "2-look"
@@ -1843,7 +1843,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from front to back; both left corners up; a bar of the top colour on the right.",
-      "ru": "Линия спереди назад; оба левых угла сверху; справа полоса верхнего цвета."
+      "ru": "Линия спереди назад; вверх смотрят оба левых угла; справа полоса цвета верха."
     },
     "subsets": []
   },
@@ -1882,7 +1882,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; no corner up; headlights of the top colour on the right; the back left corner faces the back.",
-      "ru": "Уголок сзади и справа; углов сверху нет; справа фары верхнего цвета; задний левый угол смотрит назад."
+      "ru": "Уголок сзади и справа; ни один угол не смотрит вверх; справа фары цвета верха; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -1921,7 +1921,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the left; no corner up; headlights of the top colour on the left; the back right corner faces the back.",
-      "ru": "Уголок сзади и слева; углов сверху нет; слева фары верхнего цвета; задний правый угол смотрит назад."
+      "ru": "Уголок сзади и слева; ни один угол не смотрит вверх; слева фары цвета верха; задний правый угол смотрит назад."
     },
     "subsets": []
   },
@@ -1960,7 +1960,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; no corner up; a bar of the top colour on the left; the back right corner faces the back.",
-      "ru": "Уголок сзади и справа; углов сверху нет; слева полоса верхнего цвета; задний правый угол смотрит назад."
+      "ru": "Уголок сзади и справа; ни один угол не смотрит вверх; слева полоса цвета верха; задний правый угол смотрит назад."
     },
     "subsets": []
   },
@@ -1999,7 +1999,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the right; no corner up; a bar of the top colour on the left; the back right corner faces the back.",
-      "ru": "Уголок спереди и справа; углов сверху нет; слева полоса верхнего цвета; задний правый угол смотрит назад."
+      "ru": "Уголок спереди и справа; ни один угол не смотрит вверх; слева полоса цвета верха; задний правый угол смотрит назад."
     },
     "subsets": []
   },
@@ -2038,7 +2038,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; no corner up; headlights of the top colour on the right; the back left corner faces the back.",
-      "ru": "Линия слева направо; углов сверху нет; справа фары верхнего цвета; задний левый угол смотрит назад."
+      "ru": "Линия слева направо; ни один угол не смотрит вверх; справа фары цвета верха; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -2077,7 +2077,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from front to back; no corner up; a bar of the top colour on the right; the back left corner faces the back.",
-      "ru": "Линия спереди назад; углов сверху нет; справа полоса верхнего цвета; задний левый угол смотрит назад."
+      "ru": "Линия спереди назад; ни один угол не смотрит вверх; справа полоса цвета верха; задний левый угол смотрит назад."
     },
     "subsets": []
   },
@@ -2116,7 +2116,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L in front and on the right; no corner up; headlights of the top colour on the right; a bar of the top colour on the left.",
-      "ru": "Уголок спереди и справа; углов сверху нет; справа фары верхнего цвета; слева полоса верхнего цвета."
+      "ru": "Уголок спереди и справа; ни один угол не смотрит вверх; справа фары цвета верха; слева полоса цвета верха."
     },
     "subsets": []
   },
@@ -2155,7 +2155,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "An L at the back and on the right; no corner up; headlights of the top colour on the right; a bar of the top colour on the left.",
-      "ru": "Уголок сзади и справа; углов сверху нет; справа фары верхнего цвета; слева полоса верхнего цвета."
+      "ru": "Уголок сзади и справа; ни один угол не смотрит вверх; справа фары цвета верха; слева полоса цвета верха."
     },
     "subsets": []
   },
@@ -2194,7 +2194,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from front to back; no corner up; bars of the top colour on the left and the right.",
-      "ru": "Линия спереди назад; углов сверху нет; слева и справа полосы верхнего цвета."
+      "ru": "Линия спереди назад; ни один угол не смотрит вверх; слева и справа полосы цвета верха."
     },
     "subsets": []
   },
@@ -2233,7 +2233,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; no corner up; headlights of the top colour on the left and the right.",
-      "ru": "Линия слева направо; углов сверху нет; слева и справа фары верхнего цвета."
+      "ru": "Линия слева направо; ни один угол не смотрит вверх; слева и справа фары цвета верха."
     },
     "subsets": []
   },
@@ -2272,7 +2272,7 @@ export const OLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A line from left to right; all four corners up.",
-      "ru": "Линия слева направо; все четыре угла сверху."
+      "ru": "Линия слева направо; все углы смотрят вверх."
     },
     "subsets": []
   }

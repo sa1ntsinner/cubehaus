@@ -78,7 +78,7 @@ test("an assigned colour is shown, kept with the solve, and survives reload and 
     "white",
   );
 
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.locator('[data-action="backup-save"]').click(),
@@ -95,7 +95,7 @@ test("an assigned colour is shown, kept with the solve, and survives reload and 
     const fresh = await other.newPage();
     await fresh.goto("/");
     await expect(sessionButton(fresh)).toBeEnabled();
-    await fresh.goto("/#/settings");
+    await fresh.goto("/#/settings/data");
     await fresh
       .locator('[data-action="backup-restore"] input')
       .setInputFiles(file);
@@ -241,9 +241,15 @@ test("F2L pictures turn to another cross colour, remembered", async ({
   page,
 }) => {
   await page.goto("/#/train/f2l/learn", { waitUntil: "domcontentloaded" });
-  const word = page.locator('[data-action="train-cross"]');
-  await expect(word).toHaveAttribute("data-colour", "white");
   const first = page.locator('[data-part="train-case-list"] li').first();
+  // The colour is said and changed in the open case, under its name.
+  await expect(page.locator('[data-action="train-cross"]')).toHaveCount(0);
+  await first.locator("button").first().click();
+  const word = page.locator(
+    '[data-part="train-case"] [data-action="train-cross"]',
+  );
+  await expect(word).toHaveAttribute("data-colour", "white");
+  await expect(word).toHaveText("white cross");
   const fills = () =>
     first
       .locator("polygon")
@@ -259,5 +265,6 @@ test("F2L pictures turn to another cross colour, remembered", async ({
     white.map((fill) => fill === "var(--pz-grey)"),
   );
   await page.reload();
+  await first.locator("button").first().click();
   await expect(word).toHaveAttribute("data-colour", "yellow");
 });

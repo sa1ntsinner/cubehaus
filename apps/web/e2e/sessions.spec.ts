@@ -663,7 +663,7 @@ test("the trash keeps a session and a solve 30 days by the clock, then lets them
 
   // The history as a csTimer file, to import again once the trash has let go.
   await page.evaluate(() => {
-    location.hash = "#/settings";
+    location.hash = "#/settings/data";
   });
   const button = page.locator('[data-action="export-cstimer"]');
   await expect(button).toBeEnabled();
@@ -750,7 +750,7 @@ test("the trash keeps a session and a solve 30 days by the clock, then lets them
 
   // The file exported before: every solve is already here, and no session comes back.
   await page.evaluate(() => {
-    location.hash = "#/settings";
+    location.hash = "#/settings/data";
   });
   const input = page.locator('[data-action="import-file"] input');
   await expect(input).toBeEnabled();
@@ -777,7 +777,7 @@ test("M moves the solve on show to another session of its puzzle; undo and a rep
 
   // The history as a csTimer file, to import again at the end.
   await page.evaluate(() => {
-    location.hash = "#/settings";
+    location.hash = "#/settings/data";
   });
   const button = page.locator('[data-action="export-cstimer"]');
   await expect(button).toBeEnabled();
@@ -861,7 +861,7 @@ test("M moves the solve on show to another session of its puzzle; undo and a rep
 
   // The file from before the moves: every solve is already here.
   await page.evaluate(() => {
-    location.hash = "#/settings";
+    location.hash = "#/settings/data";
   });
   const input = page.locator('[data-action="import-file"] input');
   await expect(input).toBeEnabled();
@@ -1463,10 +1463,19 @@ test("timer layouts keep solve identity, display precision and quiet records", a
   const fast = await solveId(rows(page).first());
 
   await settings();
+  await page
+    .locator('[data-part="settings-sections"] [data-section="look"]')
+    .click();
   await settingLayout.selectOption("times");
   await expect(settingLayout).toHaveValue("times");
+  await page
+    .locator('[data-part="settings-sections"] [data-section="timer"]')
+    .click();
   await page.locator("#setting-precision").selectOption("3");
   await expect(page.locator("#setting-precision")).toHaveValue("3");
+  await page
+    .locator('[data-part="settings-sections"] [data-section="look"]')
+    .click();
   await page.locator("#setting-recordCue").selectOption("off");
   await expect(page.locator("#setting-recordCue")).toHaveValue("off");
   await closeSettings();

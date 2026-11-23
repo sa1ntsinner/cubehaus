@@ -73,7 +73,7 @@ test("one session alone saves as a table and for csTimer", async ({ page }) => {
   await page.waitForTimeout(250);
   await keyboardSolve(page);
 
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const save = async (action: string) => {
     const [download] = await Promise.all([
       page.waitForEvent("download"),
@@ -92,6 +92,6 @@ test("one session alone saves as a table and for csTimer", async ({ page }) => {
 });
 
 test("inspection calls are off until chosen", async ({ page }) => {
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/timer");
   await expect(page.locator("#setting-calls")).toHaveValue("off");
 });

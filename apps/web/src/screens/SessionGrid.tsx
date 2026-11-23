@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import type { AppState, AppView } from "../app-state";
+import { titleField } from "../input/fields";
 import { actionKey } from "../keys/keymap";
 import {
   cleanName,
@@ -1638,9 +1639,9 @@ export function SessionGrid({
             ref={renameInput}
             data-part="switch-rename"
             aria-label={tile.kind === "folder" ? t.folder : words.sessionName}
-            autoComplete="off"
-            spellCheck={false}
-            enterKeyHint="done"
+            {...titleField(
+              tile.kind === "folder" ? "folder-title" : "session-title",
+            )}
             maxLength={NAME_LIMIT}
             value={renaming.name}
             onFocus={(focus) => focus.currentTarget.select()}

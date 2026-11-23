@@ -54,7 +54,7 @@ for (const [set, shipped, count] of SETS)
         expect(facts.length, c.label).toBeGreaterThanOrEqual(1);
         expect(facts.length, c.label).toBeLessThanOrEqual(2);
         expect(c.recognise?.ru, c.label).toMatch(
-          /^(Вверх ни одного|Один|Два|Все)/,
+          /^(Ни один угол не смотрит вверх|Вверх смотрит только|Вверх смотрят|Все углы смотрят вверх)/,
         );
         expect(c.recognise?.en.length, c.label).toBeLessThanOrEqual(120);
       }

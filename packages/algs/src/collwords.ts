@@ -53,10 +53,16 @@ const PAIRING = {
   },
   ru: {
     lights: "фары",
-    opposite: "два противоположных цвета",
-    neighbours: "два соседних цвета",
+    opposite: "противоположные цвета",
+    neighbours: "соседние цвета",
   },
 } as const;
+const ORDER: readonly Pairing[] = ["lights", "opposite", "neighbours"];
+/** Places joined as Russian lists them: «спереди и сзади», «спереди, справа и слева». */
+const andRu = (items: readonly string[]) =>
+  items.length < 2
+    ? items.join("")
+    : `${items.slice(0, -1).join(", ")} и ${items.at(-1)}`;
 
 /**
  * The corners' side stickers, by their place in the picture: which corner and which side.
@@ -72,7 +78,7 @@ const STICKERS: readonly [number, Corner, Side][] = [
   [18, "BL", "L"],
   [20, "FL", "L"],
 ];
-type Corner = "FL" | "FR" | "BR" | "BL";
+export type Corner = "FL" | "FR" | "BR" | "BL";
 const CORNER = {
   en: {
     FL: "front left",
@@ -123,9 +129,17 @@ export function collWords(
   const sticker = (at: number) =>
     STICKERS.find(([i]) => i === at) as [number, Corner, Side];
   const say = (lang: "en" | "ru") => {
-    const parts = SIDES.filter((s) => pairs[s]).map(
-      (s) => `${PAIRING[lang][pairs[s] as Pairing]} ${WHERE[lang][s]}`,
-    );
+    const sides = SIDES.filter((s) => pairs[s]);
+    // Russian says each kind once, with its sides: «соседние цвета справа и слева».
+    const parts =
+      lang === "en"
+        ? sides.map((s) => `${PAIRING.en[pairs[s] as Pairing]} ${WHERE.en[s]}`)
+        : ORDER.flatMap((kind) => {
+            const at = sides.filter((s) => pairs[s] === kind);
+            return at.length
+              ? [`${PAIRING.ru[kind]} ${andRu(at.map((s) => WHERE.ru[s]))}`]
+              : [];
+          });
     const shape = SHAPE[lang][group];
     const base = parts.length === 0 ? shape : `${shape}: ${parts.join(", ")}`;
     if (!apart) return `${base}.`;
@@ -133,7 +147,22 @@ export function collWords(
     const [, cornerB, faceB] = sticker(apart[1]);
     return lang === "en"
       ? `${base}; the ${CORNER.en[cornerA]} corner's ${FACE.en[faceA]} sticker matches the ${CORNER.en[cornerB]} corner's ${FACE.en[faceB]} one.`
-      : `${base}; наклейка ${CORNER.ru[cornerA]} угла ${FACE.ru[faceA]} совпадает по цвету с наклейкой ${CORNER.ru[cornerB]} ${FACE.ru[faceB]}.`;
+      : `${base}; ${stickerPairRu([cornerA, faceA], [cornerB, faceB], "same")}.`;
   };
   return { en: say("en"), ru: say("ru") };
+}
+
+/**
+ * Two corner stickers on two sides in Russian, each named by its corner and the side it
+ * is on, and what they share: one colour, or opposite colours. COLL and the 2×2 notes
+ * say it alike: «наклейки переднего левого угла спереди и заднего правого справа одного
+ * цвета».
+ */
+export function stickerPairRu(
+  [cornerA, sideA]: readonly [Corner, Side],
+  [cornerB, sideB]: readonly [Corner, Side],
+  kind: "same" | "opposite",
+): string {
+  const both = `наклейки ${CORNER.ru[cornerA]} угла ${FACE.ru[sideA]} и ${CORNER.ru[cornerB]} ${FACE.ru[sideB]}`;
+  return `${both} ${kind === "same" ? "одного цвета" : "противоположных цветов"}`;
 }

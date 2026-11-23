@@ -11,6 +11,8 @@
 @import "./grid.css";
 @import "./status.css";
 @import "./progress.css";
+@import "./gestures.css";
+@import "./safe-area.css";
 
 @font-face {
   font-family: "Roboto";

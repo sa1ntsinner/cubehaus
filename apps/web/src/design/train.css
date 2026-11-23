@@ -27,8 +27,10 @@ main[data-part="train"] > nav a::before {
   margin-inline-end: var(--s2);
   font-family: var(--font-mono);
 }
-main[data-part="train"] > nav a:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  main[data-part="train"] > nav a:hover {
+    color: var(--ink);
+  }
 }
 main[data-part="train"] h1 {
   margin: var(--s5) 0 var(--s4);
@@ -70,28 +72,10 @@ main[data-part="train"] h1 {
   gap: var(--s2);
   margin-inline-start: auto;
 }
-/* F2L's cross colour: one word with its sticker before the slots, a step apart from them;
-   a press turns the whole cube to the next colour. */
-[data-action="train-cross"] {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-  margin-inline-end: var(--s3);
-}
 @media (max-width: 359px) {
-  /* The sticker and four slots beside `All` on one line: closer, each still 44 px. */
+  /* Four slots beside `All` on one line: closer, each still 44 px. */
   [data-part="train-slot"] {
     gap: var(--s1);
-  }
-  [data-action="train-cross"] {
-    margin-inline-end: 0;
-  }
-  [data-part="train-cross-name"] {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
   }
 }
 /* The other puzzle, 3×3 or 2×2: one word at the bar's far end, a step apart from the
@@ -113,14 +97,16 @@ main[data-part="train"] h1 {
   color: var(--dim);
   transition: color 120ms ease;
 }
-:is(
-    [data-part="train-sets"],
-    [data-part="train-modes"],
-    [data-part="train-filter"],
-    [data-part="train-show"]
-  )
-  button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  :is(
+      [data-part="train-sets"],
+      [data-part="train-modes"],
+      [data-part="train-filter"],
+      [data-part="train-show"]
+    )
+    button:hover {
+    color: var(--ink);
+  }
 }
 :is(
     [data-part="train-sets"],
@@ -185,9 +171,13 @@ main[data-part="train"] button:active:not(:disabled) {
   border-radius: 6px;
   transition: background-color 100ms ease;
 }
-[data-part="train-case-list"] button:hover,
 [data-part="train-case-list"] button[aria-current="true"] {
   background: var(--line);
+}
+@media (hover: hover) {
+  [data-part="train-case-list"] button:hover {
+    background: var(--line);
+  }
 }
 main[data-part="train"] [data-part="case-diagram"] {
   width: 60px;
@@ -246,8 +236,10 @@ main[data-part="train"] [data-part="case-diagram"][data-shape="slot"] {
     background-color 120ms ease,
     border-color 120ms ease;
 }
-[data-part="train-pick"]:hover span::before {
-  border-color: var(--ink);
+@media (hover: hover) {
+  [data-part="train-pick"]:hover span::before {
+    border-color: var(--ink);
+  }
 }
 [data-part="train-pick"]:has(input:checked) span::before {
   border-color: var(--ink);
@@ -287,6 +279,31 @@ main[data-part="train"]
   width: 120px;
   height: 120px;
   opacity: 1;
+}
+/* F2L: under the case's name, the cross colour its pictures are drawn for, in the timer's
+   mark (sticker and name), `dim`, `ink` under the pointer; a press steps the colour. */
+[data-part="train-case-title"] {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s1);
+}
+[data-action="train-cross"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  margin-inline: calc(-1 * var(--s2));
+  padding-inline: var(--s2);
+  border-radius: 6px;
+  font-size: 15px;
+  color: var(--dim);
+  transition: color 120ms ease;
+}
+@media (hover: hover) {
+  [data-action="train-cross"]:hover {
+    color: var(--ink);
+  }
 }
 [data-part="train-case-head"] h2 {
   margin: 0;
@@ -332,6 +349,11 @@ main[data-part="train"]
    of moves, never one move alone), and the lines are balanced so the last is not a stub.
    The text keeps one real space between moves, so a copied algorithm reads as one. */
 [data-part="train-moves"] {
+  /* Geist Mono's ss03: an l without the foot bar, so a wide l' never reads as 1'. Only
+     algorithms take it; the root's tabular figures are kept. */
+  font-feature-settings:
+    "tnum" 1,
+    "ss03" 1;
   word-spacing: -0.25ch;
   text-wrap: balance;
 }
@@ -358,8 +380,10 @@ main[data-part="train"]
   font-family: var(--font-ui);
   font-size: 15px;
 }
-:is([data-action="train-more"], [data-action="train-use"]):hover {
-  color: var(--ink);
+@media (hover: hover) {
+  :is([data-action="train-more"], [data-action="train-use"]):hover {
+    color: var(--ink);
+  }
 }
 [data-action="train-more"]::after {
   content: " ▸";
@@ -386,8 +410,10 @@ main[data-part="train"]
   font-weight: 500;
   color: var(--dim);
 }
-[data-part="train-case-actions"] [data-action="train-remove"]:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="train-case-actions"] [data-action="train-remove"]:hover {
+    color: var(--ink);
+  }
 }
 
 @media (min-width: 900px) {
@@ -647,9 +673,13 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   font-weight: 500;
   color: var(--dim);
 }
-[data-part="train-after"] [data-action="train-missed"]:hover,
 [data-part="train-after"] [data-action="train-missed"][aria-pressed="true"] {
   color: var(--error);
+}
+@media (hover: hover) {
+  [data-part="train-after"] [data-action="train-missed"]:hover {
+    color: var(--error);
+  }
 }
 [data-part="train-after"] [data-input="keys"] {
   font-family: var(--font-mono);
@@ -725,11 +755,16 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   [data-part="train-time"] {
     font-size: 56px;
   }
+  /* Whole, so a narrow screen breaks before it, never inside the hint's last words. */
   [data-part="train-today"] {
-    display: inline;
+    display: inline-block;
+    white-space: nowrap;
+  }
+  [data-part="train-today"] {
+    margin-inline-start: 0.3em;
   }
   [data-part="train-today"]::before {
-    content: " · ";
+    content: "· ";
   }
   [data-part="train-show"] {
     margin-top: calc(-1 * var(--s2));
@@ -853,4 +888,19 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* The trainer's action pairs (DESIGN.md section 17a): with a fine pointer the word under it
+   gains the 1px underline, as every action pair's does. */
+@media (hover: hover) and (pointer: fine) {
+  :is(
+      [data-part="train-case-actions"],
+      [data-part="train-after"],
+      [data-part="train-empty"]
+    )
+    button:hover {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
 }

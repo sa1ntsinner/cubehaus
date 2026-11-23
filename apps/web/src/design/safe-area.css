@@ -1,0 +1,12 @@
+/*
+ * Safe areas for the trainer, whose stylesheet loads with it (the page is laid out under
+ * the notch, the status bar and the home indicator: viewport-fit=cover in index.html).
+ * The timer, the sheets and Progress take the insets in their own rules; Settings is a
+ * 640 px column, clear of a notch on any phone on its side. Only the sides here: on its
+ * side a phone's notch takes 59 px or more of a margin of 16 or 24. `:root` outranks the
+ * trainer's own rule, which loads later.
+ */
+:root main[data-part="train"] {
+  padding-inline: max(var(--pad), env(safe-area-inset-left))
+    max(var(--pad), env(safe-area-inset-right));
+}

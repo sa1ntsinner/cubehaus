@@ -38,7 +38,10 @@ export default defineConfig({
       : []),
     {
       name: "webkit",
-      testIgnore: perfSpec,
+      // Only what depends on the engine: touch and gestures, the timer's input, layout,
+      // storage and offline. The rest is the same code in both, and Chromium runs it.
+      testMatch:
+        /(ios|gestures|timer|layout|storage|offline|theme|a11y)\.spec\.ts$/,
       use: { browserName: "webkit" },
       // WebKit keeps an origin's file system outside the profile, shared by every WebKit
       // process on the machine (e2e/fixtures.ts): two workers' tests would open, and clear,

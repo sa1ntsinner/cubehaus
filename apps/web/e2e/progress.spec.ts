@@ -14,7 +14,7 @@ test("progress compares stored solves and shows DNF-only days", async ({
   await page.clock.setFixedTime(dates.now);
 
   await expect(sessionButton(page)).toBeEnabled();
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const input = page.locator('[data-action="import-file"] input');
   await expect(input).toBeEnabled();
   await input.setInputFiles({
@@ -282,7 +282,7 @@ test("on a phone a month opens its days, and today counts in the file", async ({
   }));
   await page.clock.setFixedTime(times.now);
   await expect(sessionButton(page)).toBeEnabled();
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const input = page.locator('[data-action="import-file"] input');
   await expect(input).toBeEnabled();
   await input.setInputFiles({
@@ -309,6 +309,9 @@ test("on a phone a month opens its days, and today counts in the file", async ({
   await expect(page.locator('[data-part="data-result"]')).toHaveText(
     "Added 6 solves.",
   );
+  await page
+    .locator('[data-part="settings-sections"] [data-section="look"]')
+    .click();
   await page.locator("#setting-today").selectOption("on");
   await page.goto("/#/");
   await switchSession(page, "Phone");
@@ -346,7 +349,7 @@ test("a target time gets a rough day, or says why it cannot", async ({
   }));
   await page.clock.setFixedTime(times.now);
   await expect(sessionButton(page)).toBeEnabled();
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const input = page.locator('[data-action="import-file"] input');
   await expect(input).toBeEnabled();
   // Seven days, five solves a day, medians from 16.00 down to 10.00; then a flat

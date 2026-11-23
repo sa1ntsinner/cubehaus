@@ -34,6 +34,15 @@ type Attempt = {
   input: InputKind;
 };
 
+/**
+ * Whether an input may wake the audio for the inspection calls. A press, and its release
+ * too: iOS Safari lets audio start only from the end of a touch (touchend), so a context
+ * resumed at the press alone stayed suspended and the 8 s tick was never heard.
+ */
+function unlocks(input: TimerInput): boolean {
+  return input.type === "press" || input.type === "release";
+}
+
 export function sessionTimerConfig(
   event: EventId,
   settings: Pick<Settings, "inspection" | "holdMs">,
@@ -255,7 +264,7 @@ export function useTimer(options: {
     const phase = () => timer.state.phase;
     const dispatch = (input: TimerInput, source: Source) => {
       if (replayed.current) setFrozen(false);
-      if (input.type === "press" && latest.current.settings.calls !== "off")
+      if (unlocks(input) && latest.current.settings.calls !== "off")
         outputs.unlock();
       timer.dispatch(input, source);
     };
@@ -302,7 +311,7 @@ export function useTimer(options: {
       window,
       (input) => {
         if (replayed.current) setFrozen(false);
-        if (input.type === "press" && latest.current.settings.calls !== "off")
+        if (unlocks(input) && latest.current.settings.calls !== "off")
           outputs.unlock();
         timer.dispatch(input, "touch");
       },

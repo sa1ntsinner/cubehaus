@@ -158,7 +158,7 @@ export function ideaFacts(
 const OUT: Record<"corner" | "edge" | "both", { en: string; ru: string }> = {
   corner: { en: "take the corner out", ru: "достаньте угол" },
   edge: { en: "take the edge out", ru: "достаньте ребро" },
-  both: { en: "take both out", ru: "достаньте оба" },
+  both: { en: "take both out", ru: "достаньте угол и ребро" },
 };
 const HIDE = {
   corner: {
@@ -183,9 +183,17 @@ export function ideaWords(facts: IdeaFacts): { en: string; ru: string } {
   const parts: { en: string; ru: string }[] = [];
   if (facts.takeOut) parts.push(OUT[facts.takeOut]);
   if (facts.hide) parts.push(HIDE[facts.hide.piece]);
-  if (facts.insert === "joined")
-    parts.push({ en: "join them", ru: "соедините" });
-  if (facts.lift) parts.push({ en: "bring the pair up", ru: "поднимите пару" });
+  // Russian joins the pair in the words cubers use, «соберите пару», and lifts it in the
+  // same breath rather than naming the pair twice.
+  if (facts.insert === "joined" && facts.lift)
+    parts.push(
+      { en: "join them", ru: "соберите пару" },
+      { en: "bring the pair up", ru: "поднимите её" },
+    );
+  else if (facts.insert === "joined")
+    parts.push({ en: "join them", ru: "соберите пару" });
+  else if (facts.lift)
+    parts.push({ en: "bring the pair up", ru: "поднимите пару" });
   const tail =
     facts.insert === "joined"
       ? { en: "then insert.", ru: "затем вставьте." }

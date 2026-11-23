@@ -332,12 +332,16 @@ dialog[data-part="switch"][data-layout="grid"]
   text-align: start;
   white-space: nowrap;
 }
-[data-layout="grid"]
-  [data-part="switch-menu"]
-  > button:is(:hover, :focus-visible) {
+[data-layout="grid"] [data-part="switch-menu"] > button:focus-visible {
   background: var(--line);
   color: var(--ink);
   outline: none;
+}
+@media (hover: hover) {
+  [data-layout="grid"] [data-part="switch-menu"] > button:hover {
+    background: var(--line);
+    color: var(--ink);
+  }
 }
 [data-layout="grid"] [data-part="switch-menu"] > [data-action="switch-delete"] {
   color: var(--error);
@@ -365,8 +369,10 @@ dialog[data-part="switch"][data-layout="grid"]
   color: var(--dim);
   cursor: text;
 }
-[data-action="switch-folder-name"]:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-action="switch-folder-name"]:hover {
+    color: var(--ink);
+  }
 }
 
 /* ---- the words at the foot: Find (touch), Archive, Trash ---- */
@@ -388,8 +394,10 @@ dialog[data-part="switch"][data-layout="grid"]
 [data-part="switch-places"][data-hidden] {
   visibility: hidden;
 }
-[data-layout="grid"] [data-part="switch-places"] > button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-layout="grid"] [data-part="switch-places"] > button:hover {
+    color: var(--ink);
+  }
 }
 @media (hover: hover) {
   [data-action="switch-find"] {

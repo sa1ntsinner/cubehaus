@@ -125,7 +125,6 @@ export function Timer({
       ? inspectionDisplay(inspectionMs)
       : null;
   const line = useRef<HTMLParagraphElement>(null);
-  const swipe = useRef<{ id: number; x: number; y: number } | null>(null);
   const pictureVisible =
     showPicture &&
     scramble !== null &&
@@ -180,31 +179,6 @@ export function Timer({
         data-no-timer={stepScramble ? "" : undefined}
         data-upto={upto ?? undefined}
         data-over-zoom={pictureZoom !== null && pictureVisible ? "" : undefined}
-        onPointerDown={(pointer) => {
-          if (
-            !stepScramble ||
-            pointer.pointerType !== "touch" ||
-            !pointer.isPrimary
-          )
-            return;
-          swipe.current = {
-            id: pointer.pointerId,
-            x: pointer.clientX,
-            y: pointer.clientY,
-          };
-        }}
-        onPointerCancel={() => {
-          swipe.current = null;
-        }}
-        onPointerUp={(pointer) => {
-          const start = swipe.current;
-          if (!start || start.id !== pointer.pointerId) return;
-          swipe.current = null;
-          const dx = pointer.clientX - start.x;
-          const dy = pointer.clientY - start.y;
-          if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy))
-            stepScramble?.(dx < 0 ? 1 : -1);
-        }}
         onPointerOver={(input) => {
           if (
             stepKey === null ||
@@ -672,6 +646,7 @@ function CommentField({
     <input
       data-part="time-comment-input"
       data-no-timer
+      name="solve-comment"
       aria-label={label}
       placeholder={label}
       autoComplete="off"

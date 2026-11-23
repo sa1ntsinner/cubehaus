@@ -22,7 +22,13 @@ dialog[data-part="switch"] {
   max-height: none;
   margin: 0;
   /* Room above the content for the way back, however short the window. */
-  padding: max(12vh, calc(44px + 2 * var(--s4))) var(--s5) var(--s7);
+  padding: calc(
+      max(12vh, calc(44px + 2 * var(--s4))) +
+      env(safe-area-inset-top)
+    )
+    max(var(--s5), env(safe-area-inset-right))
+    calc(var(--s7) + env(safe-area-inset-bottom))
+    max(var(--s5), env(safe-area-inset-left));
   overflow-y: auto;
   overscroll-behavior: contain;
   border: 0;
@@ -107,8 +113,10 @@ p[data-part="switch-find"] {
   color: var(--gutter);
   text-align: center;
 }
-[data-action="switch-back"]:hover > span {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-action="switch-back"]:hover > span {
+    color: var(--ink);
+  }
 }
 
 /* ---- the rows ---- */
@@ -370,8 +378,10 @@ dialog[data-part="switch"]:has(
   font-size: 15px;
   color: var(--dim);
 }
-[data-action="switch-event"]:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-action="switch-event"]:hover {
+    color: var(--ink);
+  }
 }
 @media (hover: hover) {
   li[data-selected] > [data-action="switch-event"]::after {
@@ -395,13 +405,22 @@ dialog[data-part="switch"]:has(
     var(--dot) calc(50% + 6px) 50% / 5px 5px no-repeat;
   opacity: 0;
 }
-li:is([data-selected], :hover, :focus-within, [data-menu])
+li:is([data-selected], :focus-within, [data-menu])
   > [data-action="switch-more"] {
   opacity: 1;
 }
-[data-action="switch-more"]:hover,
+@media (hover: hover) {
+  li:hover > [data-action="switch-more"] {
+    opacity: 1;
+  }
+}
 [data-action="switch-more"][aria-expanded="true"] {
   color: var(--ink);
+}
+@media (hover: hover) {
+  [data-action="switch-more"]:hover {
+    color: var(--ink);
+  }
 }
 /* An open menu takes the line under its row's name: the actions do not fit beside a long
    name (five of them in Russian). Its words start where the name does; the lead is in the
@@ -426,8 +445,10 @@ li:is([data-selected], :hover, :focus-within, [data-menu])
   font-size: 15px;
   color: var(--dim);
 }
-[data-part="switch-menu"] > button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="switch-menu"] > button:hover {
+    color: var(--ink);
+  }
 }
 [data-part="switch-menu"] > [data-action="switch-delete"] {
   color: var(--error);
@@ -494,8 +515,10 @@ li[data-renaming] {
   dialog[data-part="switch"] {
     --row: 52px;
     --close-left: var(--s4);
-    padding: calc(var(--s4) + 44px + var(--s2)) var(--s4)
-      calc(var(--s4) + env(safe-area-inset-bottom));
+    padding: calc(var(--s4) + 44px + var(--s2) + env(safe-area-inset-top))
+      max(var(--s4), env(safe-area-inset-right))
+      calc(var(--s4) + env(safe-area-inset-bottom))
+      max(var(--s4), env(safe-area-inset-left));
     font-size: 22px;
   }
   [data-part="switch-find"] {

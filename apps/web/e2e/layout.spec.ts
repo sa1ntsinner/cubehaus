@@ -4,7 +4,6 @@ import { test as stored } from "./fixtures";
 const scrambleSelector = 'main > [data-part="scramble"]';
 const solveListSelector = '[data-part="solves"]';
 const statusSelector = 'footer[data-part="status-line"]';
-const inspectionSelector = '[data-action="inspection-toggle"]';
 const keysSelector = '[data-action="keys"]';
 const mobile = { hasTouch: true, isMobile: true };
 const desktop = { width: 1440, height: 900 };
@@ -128,25 +127,29 @@ test.describe("small phone 320×568", () => {
 test.describe("desktop status line 1440×900", () => {
   test.use({ viewport: desktop });
 
-  test("Russian status controls share one row with inspection on", async ({
-    page,
-  }) => {
+  test("Russian status controls share one row", async ({ page }) => {
     await page.goto("/?state=session&lang=ru");
     await expect(page.locator("html")).toHaveAttribute("lang", "ru");
     const status = page.locator(statusSelector);
-    await expect(status.locator(inspectionSelector)).toBeVisible();
     await expect(status.locator(keysSelector)).toBeVisible();
+    await expect(
+      status.locator('[data-action="session-switch"]'),
+    ).toBeVisible();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
+    // A message stands above the words on purpose (DESIGN.md section 5): not counted.
     const centers = await status.evaluate((footer) =>
-      Array.from(footer.children).flatMap((child) => {
-        const rect = child.getBoundingClientRect();
-        return (child instanceof HTMLElement && child.offsetParent !== null) ||
-          rect.width > 0 ||
-          rect.height > 0
-          ? [rect.top + rect.height / 2]
-          : [];
-      }),
+      Array.from(footer.children)
+        .filter((child) => child.tagName !== "P")
+        .flatMap((child) => {
+          const rect = child.getBoundingClientRect();
+          return (child instanceof HTMLElement &&
+            child.offsetParent !== null) ||
+            rect.width > 0 ||
+            rect.height > 0
+            ? [rect.top + rect.height / 2]
+            : [];
+        }),
     );
     expect(centers.length).toBeGreaterThan(1);
     expect(
@@ -168,7 +171,7 @@ for (const viewport of [
     }) => {
       await page.goto("/?state=session");
       const status = page.locator(statusSelector);
-      for (const selector of [inspectionSelector, keysSelector]) {
+      for (const selector of [keysSelector]) {
         const control = status.locator(selector);
         await expect(control).toHaveCount(1);
         await expect(control).toBeHidden();
@@ -248,7 +251,7 @@ stored.describe("sizes", () => {
       );
       expect(await fontSize()).toBeGreaterThan(before * 1.1);
 
-      await page.goto("/#/settings");
+      await page.goto("/#/settings/look");
       await page.locator('[data-size-control="time"]').selectOption("130");
       await expect(page.locator('[data-action="reset-sizes"]')).toBeVisible();
       await page.goto("/#/");
@@ -263,7 +266,7 @@ stored.describe("sizes", () => {
         "data-size",
         "130",
       );
-      await page.goto("/#/settings");
+      await page.goto("/#/settings/look");
       await page.locator('[data-action="reset-sizes"]').click();
       await page.goto("/#/");
       await expect(scramble).toHaveAttribute("data-size", "100");

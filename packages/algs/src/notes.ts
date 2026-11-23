@@ -105,7 +105,7 @@ function pllFacts(): Fact[] {
       "all-mixed",
       mixed,
       "no headlights and no bar, three colours on every side",
-      "ни фар, ни полос, на каждой стороне три цвета",
+      "ни фар, ни полос: на каждой стороне три цвета",
     ),
     every(
       "all-lights-opposite",
@@ -123,13 +123,13 @@ function pllFacts(): Fact[] {
       "all-pairs-right",
       (p, s) => pair(p, s, "right"),
       "a pair on every side, each at its right end",
-      "пара на каждой стороне, у правого края",
+      "на каждой стороне пара у правого края",
     ),
     every(
       "all-pairs-left",
       (p, s) => pair(p, s, "left"),
       "a pair on every side, each at its left end",
-      "пара на каждой стороне, у левого края",
+      "на каждой стороне пара у левого края",
     ),
     every("no-lights", (p, s) => !lights(p, s), "no headlights", "фар нет"),
   ];
@@ -291,28 +291,37 @@ function cornersOf(p: string): Fact {
     up.length === 2 && up.includes(a) && up.includes(b);
   const say =
     up.length === 0
-      ? { en: "no corner up", ru: "углов сверху нет" }
+      ? { en: "no corner up", ru: "ни один угол не смотрит вверх" }
       : up.length === 4
-        ? { en: "all four corners up", ru: "все четыре угла сверху" }
+        ? { en: "all four corners up", ru: "все углы смотрят вверх" }
         : up.length === 1
           ? {
               en: `one corner up, the ${CORNER_NAME.en[up[0] as Corner]}`,
-              ru: `один угол сверху, ${CORNER_NAME.ru[up[0] as Corner]}`,
+              ru: `вверх смотрит только ${CORNER_NAME.ru[up[0] as Corner]} угол`,
             }
           : both("BL", "BR")
-            ? { en: "both back corners up", ru: "оба задних угла сверху" }
+            ? {
+                en: "both back corners up",
+                ru: "вверх смотрят оба задних угла",
+              }
             : both("FL", "FR")
-              ? { en: "both front corners up", ru: "оба передних угла сверху" }
+              ? {
+                  en: "both front corners up",
+                  ru: "вверх смотрят оба передних угла",
+                }
               : both("BL", "FL")
-                ? { en: "both left corners up", ru: "оба левых угла сверху" }
+                ? {
+                    en: "both left corners up",
+                    ru: "вверх смотрят оба левых угла",
+                  }
                 : both("BR", "FR")
                   ? {
                       en: "both right corners up",
-                      ru: "оба правых угла сверху",
+                      ru: "вверх смотрят оба правых угла",
                     }
                   : {
                       en: `two corners up across, the ${CORNER_NAME.en[up[0] as Corner]} and the ${CORNER_NAME.en[up[1] as Corner]}`,
-                      ru: `два угла сверху по диагонали, ${CORNER_NAME.ru[up[0] as Corner]} и ${CORNER_NAME.ru[up[1] as Corner]}`,
+                      ru: `вверх смотрят ${CORNER_NAME.ru[up[0] as Corner]} и ${CORNER_NAME.ru[up[1] as Corner]} углы`,
                     };
   return {
     id: `corners-${key}`,
@@ -340,7 +349,7 @@ function ollFacts(): Fact[] {
         id: `top-bars-${a}${b}`,
         holds: (p) => bars(p, a) && bars(p, b),
         en: `bars of the top colour ${en}`,
-        ru: `${ru} полосы верхнего цвета`,
+        ru: `${ru} полосы цвета верха`,
         cost: 1,
         sides: [a, b],
       },
@@ -348,7 +357,7 @@ function ollFacts(): Fact[] {
         id: `top-lights-${a}${b}`,
         holds: (p) => lamps(p, a) && lamps(p, b),
         en: `headlights of the top colour ${en}`,
-        ru: `${ru} фары верхнего цвета`,
+        ru: `${ru} фары цвета верха`,
         cost: 1,
         sides: [a, b],
       },
@@ -359,7 +368,7 @@ function ollFacts(): Fact[] {
         id: `top-bar-${s}`,
         holds: (p) => bars(p, s),
         en: `a bar of the top colour ${WHERE.en[s]}`,
-        ru: `${WHERE.ru[s]} полоса верхнего цвета`,
+        ru: `${WHERE.ru[s]} полоса цвета верха`,
         cost: 1,
         sides: [s],
       },
@@ -367,7 +376,7 @@ function ollFacts(): Fact[] {
         id: `top-lights-${s}`,
         holds: (p) => lamps(p, s),
         en: `headlights of the top colour ${WHERE.en[s]}`,
-        ru: `${WHERE.ru[s]} фары верхнего цвета`,
+        ru: `${WHERE.ru[s]} фары цвета верха`,
         cost: 1,
         sides: [s],
       },

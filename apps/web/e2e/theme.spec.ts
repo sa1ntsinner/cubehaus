@@ -7,7 +7,7 @@ test("a saved dark choice paints dark over a light system", async ({
   browserName,
 }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/look");
   const choice = page.locator("#setting-theme");
   await expect(choice).toBeEnabled();
   await choice.selectOption("dark");
@@ -57,7 +57,7 @@ test("only the system choice follows changes to the system scheme", async ({
   page,
 }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/look");
   const html = page.locator("html");
   const choice = page.locator("#setting-theme");
   await expect(choice).toBeEnabled();
@@ -122,7 +122,7 @@ test("a custom theme is made, refused when unreadable, exported, imported and re
   browserName,
 }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/look");
   const html = page.locator("html");
   const choice = page.locator("#setting-theme");
   await expect(choice).toBeEnabled();
@@ -148,7 +148,7 @@ test("a custom theme is made, refused when unreadable, exported, imported and re
   await page.locator("#theme-gutter").fill("#202830");
   const status = page.locator('[data-part="theme-status"]');
   await expect(status).toContainText("Hard to read: Muted text");
-  expect(await token("gutter")).toBe("#8a96a3");
+  expect(await token("gutter")).toBe("#929292");
   await page.locator('[data-action="theme-reset-colours"]').click();
   await expect(status).toBeEmpty();
   await expect.poll(() => token("ground")).toMatch(/^#0+$/);

@@ -86,8 +86,10 @@
   min-height: 44px;
   color: var(--dim);
 }
-[data-part="training-case-tools"] button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-part="training-case-tools"] button:hover {
+    color: var(--ink);
+  }
 }
 [data-part="training-empty"] {
   margin: var(--s3) 0 0;
@@ -113,8 +115,10 @@
   font-size: 13px;
   color: var(--gutter);
 }
-[data-part="training-case-list"] button:hover {
-  color: var(--dim);
+@media (hover: hover) {
+  [data-part="training-case-list"] button:hover {
+    color: var(--dim);
+  }
 }
 [data-part="training-case-list"] button[aria-pressed="true"] {
   background: var(--line);
@@ -165,8 +169,10 @@ main > [data-part="drill"] button {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-main > [data-part="drill"] button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  main > [data-part="drill"] button:hover {
+    color: var(--ink);
+  }
 }
 [data-part="drill-solution"] {
   flex-basis: 100%;

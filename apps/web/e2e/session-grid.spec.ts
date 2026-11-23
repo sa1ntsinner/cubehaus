@@ -46,7 +46,7 @@ test("the pictures take the colours held: yellow on top by default, white once c
   await page.keyboard.press("Escape");
 
   await page.evaluate(() => {
-    location.hash = "#/settings";
+    location.hash = "#/settings/look";
   });
   await page.locator('[data-setting="holdingTop"] select').selectOption("U");
   await page.evaluate(() => {

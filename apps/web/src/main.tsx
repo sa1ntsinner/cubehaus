@@ -1,9 +1,12 @@
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { inDesktopApp } from "./db/native";
+import { trackKeyboardInset } from "./input/keyboard-inset";
 import { watchOffline } from "./offline";
 import { type LoadedSeed, loadSeed } from "./testing/load";
 import "./design/index.css";
+
+trackKeyboardInset(window);
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing application root");

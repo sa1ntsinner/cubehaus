@@ -121,7 +121,7 @@ test("a custom theme and its picture come back after an offline reload", async (
   page,
   context,
 }) => {
-  await page.goto("/?test-offline=1#/settings");
+  await page.goto("/?test-offline=1#/settings/look");
   await expect(page.locator("html")).toHaveAttribute("data-offline", "ready");
   // Based on dark: the custom theme starts from the theme in view.
   await page.locator("#setting-theme").selectOption("dark");

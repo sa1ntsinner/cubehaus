@@ -225,7 +225,7 @@ test("the colour held on top colours every case picture", async ({ page }) => {
     .locator("rect")
     .first();
   await expect(top).toHaveAttribute("fill", "var(--pz-D)");
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/look");
   await page.locator("#setting-holdingTop").selectOption("U");
   // Only the four colours that can be in front with white on top.
   await expect(page.locator("#setting-holdingFront option")).toHaveCount(4);

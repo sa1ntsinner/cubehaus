@@ -195,7 +195,7 @@ const russianNames: Record<EventId, string> = {
 test("9b, WCA Russian locale (research A2): the event chooser shows Russian names", async ({
   page,
 }) => {
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/look");
   await page.locator("#setting-language").selectOption("ru");
   await expect(
     part(page, "settings").getByRole("heading", { level: 1 }),

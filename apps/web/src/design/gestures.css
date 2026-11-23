@@ -1,0 +1,163 @@
+/* ---- touch gestures (DESIGN.md section 18a): the part under the finger follows it, the
+   action's word stands in the room it leaves, and let go it settles back ---- */
+
+/* Under the finger: from the first pixel, no easing. */
+[data-swiping] {
+  translate: var(--swipe-x, 0px) var(--swipe-y, 0px);
+  transition: none;
+  will-change: translate;
+}
+/* Let go: back to its place with a little give, from wherever it stood. */
+[data-swipe-settling] {
+  transition: translate 300ms cubic-bezier(0.25, 1.25, 0.4, 1);
+}
+
+[data-part="swipe-word"] {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--dim);
+  white-space: nowrap;
+}
+/* Let go now and it acts: the word in ink, or in its meaning's hue. */
+[data-part="swipe-word"][data-armed] {
+  color: var(--ink);
+  font-weight: 600;
+}
+[data-part="swipe-word"][data-armed][data-tone="warn"] {
+  color: var(--warn);
+}
+[data-part="swipe-word"][data-armed][data-tone="error"] {
+  color: var(--error);
+}
+
+/* The hint's nudge: the part shows the way once, a few pixels and back. */
+[data-nudge="left"] {
+  animation: nudge-left 900ms var(--ease);
+}
+[data-nudge="right"] {
+  animation: nudge-right 900ms var(--ease);
+}
+[data-nudge="down"] {
+  animation: nudge-down 900ms var(--ease);
+}
+@keyframes nudge-left {
+  35% {
+    translate: -12px 0;
+  }
+}
+@keyframes nudge-right {
+  35% {
+    translate: 12px 0;
+  }
+}
+@keyframes nudge-down {
+  35% {
+    translate: 0 10px;
+  }
+}
+
+/* The hint stands where messages do; its one word opens the list: the line's main
+   action (DESIGN.md section 17a), 600 ink, underlined only under a fine pointer, a 44 px
+   target that does not move the line. */
+[data-part="notice"][data-kind="hint"] button {
+  margin-inline-start: var(--s2);
+  padding-block: 12px;
+  margin-block: -12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-part="notice"][data-kind="hint"] button {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+}
+
+/* The gestures in place of the keys: one column, what it does in ink over how in dim. */
+[data-part="keys-help"] dl[data-list="gestures"] {
+  width: min(560px, 100%);
+  columns: auto;
+}
+[data-part="keys-help"] dl[data-list="gestures"] > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding-block: var(--s2);
+}
+[data-part="keys-help"] dl[data-list="gestures"] dt {
+  display: block;
+  font-size: 14px;
+  color: var(--dim);
+}
+@media (max-width: 699px) {
+  dialog[data-part="keys-help"] {
+    padding: calc(var(--s4) + 44px + var(--s2) + env(safe-area-inset-top))
+      max(var(--s4), env(safe-area-inset-right))
+      calc(var(--s6) + env(safe-area-inset-bottom))
+      max(var(--s4), env(safe-area-inset-left));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-swipe-settling] {
+    transition: none;
+  }
+  [data-nudge] {
+    animation: none;
+  }
+}
+
+/* The status line's `?` opens the gestures: on a touch screen only, where Keys is not. */
+[data-part="status-line"] > nav:last-child [data-action="gestures"] {
+  display: none;
+}
+@media (hover: none) and (pointer: coarse) {
+  [data-part="status-line"] > nav:last-child [data-action="gestures"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    margin-inline: -12px;
+  }
+}
+
+/* Algorithms: the touch line says the gesture where the keys line says the keys, in
+   the same quiet note (mono 13, gutter); in Learn one line over the cases. */
+[data-part="gesture-hint"] {
+  display: none;
+}
+@media (hover: none) and (pointer: coarse) {
+  [data-part="train-after"] > [data-part="gesture-hint"] {
+    display: block;
+    flex-basis: 100%;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gutter);
+    text-align: center;
+  }
+  [data-part="train-cases"] > [data-part="gesture-hint"] {
+    display: block;
+    margin: 0 0 var(--s3);
+    font-size: 14px;
+    color: var(--dim);
+  }
+}
+
+/* The time swiped down passes over its slots and notes: they step back meanwhile. */
+main:has(> output[data-part="time"][data-swipe-direction="down"])
+  > :is([data-part="stats"], [data-part="time-under"]) {
+  opacity: 0.15;
+  transition: opacity 120ms ease;
+}
+/* Over a grid the word stands on the ground, clear of the captions under it. */
+[data-part="swipe-word"] {
+  padding: 0 var(--s1);
+  background: var(--ground);
+}

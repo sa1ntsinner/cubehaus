@@ -13,6 +13,11 @@
   font-size: 15px;
   color: var(--ink);
 }
+/* Settings and Progress open as the sheets do (palette.css): one short fade. */
+[data-part="settings"],
+main[data-part="progress"] {
+  animation: sheet-in 110ms var(--ease);
+}
 [data-part="settings"] h1 {
   margin: var(--s5) 0 var(--s6);
   font-weight: 600;
@@ -30,8 +35,97 @@
   margin-inline-end: var(--s2);
   font-family: var(--font-mono);
 }
-[data-action="settings-close"]:hover {
+@media (hover: hover) {
+  [data-action="settings-close"]:hover {
+    color: var(--ink);
+  }
+}
+
+/*
+ * The sections: a row of squares, one section on screen at a time (owner, 2026-11-23).
+ * Each square holds a character of the thing itself in the app's own faces; the one in
+ * view is inked in, the others stand on the line fill. No icons, no accent.
+ */
+[data-part="settings-sections"] {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 72px));
+  gap: var(--s4);
+  margin: 0 0 var(--s6);
+}
+[data-part="settings-sections"] > a {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--dim);
+  text-decoration: none;
+  outline-offset: 4px;
+  border-radius: 10px;
+  transition: color 120ms ease;
+}
+[data-part="section-glyph"] {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 22%;
+  background: var(--line);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 19px;
+  color: var(--dim);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    scale 120ms ease;
+}
+[data-section="session"] > [data-part="section-glyph"],
+[data-section="timer"] > [data-part="section-glyph"] {
+  font-family: var(--font-solid);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+[data-section="look"] > [data-part="section-glyph"] {
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+[data-part="settings-sections"] > a[aria-current] {
+  font-weight: 600;
   color: var(--ink);
+}
+[data-part="settings-sections"]
+  > a[aria-current]
+  > [data-part="section-glyph"] {
+  background: var(--ink);
+  color: var(--ground);
+}
+@media (hover: hover) {
+  [data-part="settings-sections"] > a:not([aria-current]):hover {
+    color: var(--ink);
+  }
+  [data-part="settings-sections"]
+    > a:not([aria-current]):hover
+    > [data-part="section-glyph"] {
+    color: var(--ink);
+  }
+}
+[data-part="settings-sections"] > a:active > [data-part="section-glyph"] {
+  scale: 0.96;
+}
+/* A section arrives as one piece, 4 px up into place. */
+[data-part="settings-section"] {
+  animation: settings-section-in 160ms var(--ease);
+}
+@keyframes settings-section-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+[data-part="settings-section"] > :is(h2, ul):first-child,
+[data-part="settings-section"] > section:first-child > :first-child {
+  margin-top: 0;
 }
 
 [data-part="settings"] ul {
@@ -54,8 +148,10 @@
   border-radius: 6px;
   transition: background-color 120ms ease;
 }
-[data-part="settings"] li:hover:has(select:enabled) {
-  background: var(--line);
+@media (hover: hover) {
+  [data-part="settings"] li:hover:has(select:enabled) {
+    background: var(--line);
+  }
 }
 /* The name opens its choice too: it is as tall as a finger. */
 [data-part="settings"] label {
@@ -106,6 +202,14 @@
   font-size: 15px;
   color: var(--dim);
 }
+/* The open session's rows come first under its name, then what holds for every session:
+   two plain headings in the list's own voice, the name itself in `ink`. */
+[data-part="settings"] h1 + [data-part="settings-scope"] {
+  margin-top: 0;
+}
+[data-part="settings-session"] {
+  color: var(--ink);
+}
 [data-part="data"] li > span {
   color: var(--dim);
 }
@@ -125,8 +229,10 @@
   color: var(--ink);
   cursor: pointer;
 }
-[data-part="data"] li:hover:has(:is(button, input):enabled) {
-  background: var(--line);
+@media (hover: hover) {
+  [data-part="data"] li:hover:has(:is(button, input):enabled) {
+    background: var(--line);
+  }
 }
 [data-part="data"] button:disabled,
 :is([data-action="backup-restore"], [data-action="import-file"]):has(
@@ -213,8 +319,10 @@
 [data-action="import-session-name"]::placeholder {
   color: var(--gutter);
 }
-[data-action="import-session-name"]:hover:enabled {
-  border-bottom-color: var(--gutter);
+@media (hover: hover) {
+  [data-action="import-session-name"]:hover:enabled {
+    border-bottom-color: var(--gutter);
+  }
 }
 [data-action="import-session-name"]:focus {
   outline: none;
@@ -263,10 +371,12 @@
   font-weight: 500;
   color: var(--dim);
 }
-[data-part="import-actions"] button:hover:enabled {
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@media (hover: hover) {
+  [data-part="import-actions"] button:hover:enabled {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 [data-part="import-actions"] button:focus-visible {
   outline: 2px solid var(--double);
@@ -293,6 +403,19 @@
   }
   [data-part="settings"] li {
     padding-block: var(--s1);
+  }
+  [data-part="settings-sections"] {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--s3);
+    margin-bottom: var(--s5);
+    font-size: 13px;
+  }
+  [data-part="settings-sections"] > a {
+    font-size: 13px;
+  }
+  [data-part="section-glyph"] {
+    max-width: 64px;
+    font-size: 17px;
   }
 }
 
@@ -328,8 +451,10 @@
 [data-part="keymap"] li > span:first-child {
   color: var(--dim);
 }
-[data-part="keymap"] li:hover:has(> :is(a, button:enabled)) {
-  background: var(--line);
+@media (hover: hover) {
+  [data-part="keymap"] li:hover:has(> :is(a, button:enabled)) {
+    background: var(--line);
+  }
 }
 [data-part="keymap"] button:disabled {
   color: var(--gutter);
@@ -341,8 +466,10 @@
   z-index: 1;
   background: var(--ground);
 }
-[data-part="keymap"][data-open] [data-setting="keymap"]:hover {
-  background: var(--line);
+@media (hover: hover) {
+  [data-part="keymap"][data-open] [data-setting="keymap"]:hover {
+    background: var(--line);
+  }
 }
 /* Heard, not seen: the line under the row shows the same words. */
 [data-part="keymap-notice"] {
@@ -408,8 +535,10 @@
   font-weight: 500;
   color: var(--dim);
 }
-[data-binding] [data-action="binding-remove"]:hover:enabled {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-binding] [data-action="binding-remove"]:hover:enabled {
+    color: var(--ink);
+  }
 }
 /* Nothing to unbind: the word keeps its room but is not there. */
 [data-binding] [data-action="binding-remove"]:disabled {
@@ -487,8 +616,10 @@ li[data-setting="training"] > span:first-child {
   color: var(--ink);
   text-decoration: none;
 }
-[data-setting="training"]:hover {
-  background: var(--line);
+@media (hover: hover) {
+  [data-setting="training"]:hover {
+    background: var(--line);
+  }
 }
 
 [data-action="reset-sizes"],
@@ -517,8 +648,10 @@ li[data-setting="training"] > span:first-child {
   color: var(--ink);
   cursor: pointer;
 }
-[data-part="backups"] li:hover:has(button:enabled) {
-  background: var(--line);
+@media (hover: hover) {
+  [data-part="backups"] li:hover:has(button:enabled) {
+    background: var(--line);
+  }
 }
 :is([data-part="backups"], [data-part="backup-confirm"]) button:disabled {
   color: var(--gutter);
@@ -585,8 +718,10 @@ li[data-setting="training"] > span:first-child {
 [data-part="theme-editor"] li > span:first-child {
   color: var(--dim);
 }
-[data-part="theme-editor"] li:hover:has(:is(select, input, button):enabled) {
-  background: var(--line);
+@media (hover: hover) {
+  [data-part="theme-editor"] li:hover:has(:is(select, input, button):enabled) {
+    background: var(--line);
+  }
 }
 [data-part="theme-editor"] input[type="color"] {
   box-sizing: border-box;
@@ -703,8 +838,10 @@ li[data-setting="crossColours"] > span:first-child {
   > [data-part="cross-swatch"] {
   opacity: 0.4;
 }
-[data-action="cross-colour"]:hover:enabled {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-action="cross-colour"]:hover:enabled {
+    color: var(--ink);
+  }
 }
 /* Narrow: the colours take a line of their own under the label, the first column on the
    labels' edge and the last on the choices' edge. */

@@ -11,6 +11,10 @@
 [data-part="db-state"]:is([data-kind="failed"], [data-kind="unsaved"]) {
   color: var(--error);
 }
+/* In Settings the same line says why the rows are off: a step apart from the first row. */
+[data-part="settings"] > [data-part="db-state"] {
+  margin-bottom: var(--s4);
+}
 [data-part="notice"] {
   animation: notice-in 140ms ease;
 }
@@ -24,19 +28,28 @@
     animation: none;
   }
 }
+/* The main action of a message, as every action pair (DESIGN.md section 17a): 600 `ink`, the
+   1px underline only under a fine pointer. */
 :is([data-part="update"], [data-part="db-state"][data-kind="unsaved"]) button {
   margin-inline-start: var(--s2);
   font-weight: 600;
   color: var(--ink);
-  text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
 }
+@media (hover: hover) and (pointer: fine) {
+  :is([data-part="update"], [data-part="db-state"][data-kind="unsaved"])
+    button:hover {
+    text-decoration-line: underline;
+  }
+}
 
-/* ---- the line's other words: Keys beside Progress, and 15″ while inspection is on ---- */
-[data-part="status-line"] > nav:last-child button:hover,
-[data-action="inspection-toggle"]:hover {
-  color: var(--ink);
+/* ---- the line's other words: Keys beside Progress ---- */
+@media (hover: hover) {
+  [data-part="status-line"] > nav:last-child button:hover,
+  [data-action="inspection-toggle"]:hover {
+    color: var(--ink);
+  }
 }
 [data-action="inspection-toggle"] {
   font-family: var(--font-mono);
@@ -44,14 +57,11 @@
 }
 /* They are disabled only while a solve starts; they keep their look, so nothing flickers
    during a hold. */
-[data-part="status-line"] > nav:last-child button:disabled,
-[data-action="inspection-toggle"]:disabled {
+[data-part="status-line"] > nav:last-child button:disabled {
   opacity: 1;
 }
 @media (max-width: 699px), (hover: none) {
-  /* Desktop only (DESIGN.md section 5): a touch screen has no keys to list, and Settings
-     switches inspection. */
-  [data-action="inspection-toggle"],
+  /* Desktop only (DESIGN.md section 5): a touch screen has no keys to list. */
   [data-part="status-line"] > nav:last-child [data-action="keys"] {
     display: none;
   }
@@ -79,10 +89,6 @@
     flex: none;
     justify-content: center;
     min-width: 44px;
-  }
-  /* The rule above makes every word a box; 15″ stays a desktop word (section 5). */
-  main > [data-part="status-line"] > [data-action="inspection-toggle"] {
-    display: none;
   }
   /* The name stays a block, so a long one ends in an ellipsis. */
   [data-part="status-line"] [data-action="session-switch"] {
@@ -152,6 +158,11 @@
   display: none;
 }
 @media (max-width: 360px) {
+  /* The narrowest phones give the ? back to the session's name: the gesture list still
+     opens from a hint's own word. */
+  main > [data-part="status-line"] > nav:last-child [data-action="gestures"] {
+    display: none;
+  }
   main > footer[data-part="status-line"] {
     column-gap: var(--s2);
   }

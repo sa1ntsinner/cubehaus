@@ -51,7 +51,7 @@ export const TWO_OLL: readonly (TrainerCaseData & { scrambles: readonly string[]
     ],
     "recognise": {
       "en": "None up; two face front, two back.",
-      "ru": "Вверх ни одного; два смотрят вперёд, два назад."
+      "ru": "Ни один угол не смотрит вверх; два смотрят вперёд, два назад."
     },
     "subsets": [],
     "scrambles": [
@@ -113,7 +113,7 @@ export const TWO_OLL: readonly (TrainerCaseData & { scrambles: readonly string[]
     ],
     "recognise": {
       "en": "One up, front left; one faces front, one right, one back.",
-      "ru": "Один вверх, спереди слева; один смотрит вперёд, один вправо, один назад."
+      "ru": "Вверх смотрит только передний левый угол; один смотрит вперёд, один вправо, один назад."
     },
     "subsets": [],
     "scrambles": [
@@ -175,7 +175,7 @@ export const TWO_OLL: readonly (TrainerCaseData & { scrambles: readonly string[]
     ],
     "recognise": {
       "en": "Two up, front; two face back.",
-      "ru": "Два вверх, спереди; два смотрят назад."
+      "ru": "Вверх смотрят оба передних угла; два смотрят назад."
     },
     "subsets": [],
     "scrambles": [
@@ -237,7 +237,7 @@ export const TWO_OLL: readonly (TrainerCaseData & { scrambles: readonly string[]
     ],
     "recognise": {
       "en": "One up, back right; one faces front, one right, one left.",
-      "ru": "Один вверх, сзади справа; один смотрит вперёд, один вправо, один влево."
+      "ru": "Вверх смотрит только задний правый угол; один смотрит вперёд, один вправо, один влево."
     },
     "subsets": [],
     "scrambles": [
@@ -299,7 +299,7 @@ export const TWO_OLL: readonly (TrainerCaseData & { scrambles: readonly string[]
     ],
     "recognise": {
       "en": "Two up, front left and back right; one faces right, one back.",
-      "ru": "Два вверх, спереди слева и сзади справа; один смотрит вправо, один назад."
+      "ru": "Вверх смотрят передний левый и задний правый углы; один смотрит вправо, один назад."
     },
     "subsets": [],
     "scrambles": [
@@ -361,7 +361,7 @@ export const TWO_OLL: readonly (TrainerCaseData & { scrambles: readonly string[]
     ],
     "recognise": {
       "en": "Two up, front; one faces right, one left.",
-      "ru": "Два вверх, спереди; один смотрит вправо, один влево."
+      "ru": "Вверх смотрят оба передних угла; один смотрит вправо, один влево."
     },
     "subsets": [],
     "scrambles": [
@@ -423,7 +423,7 @@ export const TWO_OLL: readonly (TrainerCaseData & { scrambles: readonly string[]
     ],
     "recognise": {
       "en": "None up; two face front, one right, one left.",
-      "ru": "Вверх ни одного; два смотрят вперёд, один вправо, один влево."
+      "ru": "Ни один угол не смотрит вверх; два смотрят вперёд, один вправо, один влево."
     },
     "subsets": [],
     "scrambles": [

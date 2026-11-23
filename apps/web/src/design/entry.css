@@ -83,8 +83,10 @@ main
   margin-top: calc(-1 * var(--s2));
   color: var(--dim);
 }
-[data-action="fm-start"]:hover:not(:disabled) {
-  color: var(--ink);
+@media (hover: hover) {
+  [data-action="fm-start"]:hover:not(:disabled) {
+    color: var(--ink);
+  }
 }
 /* Once running, the word leaves but keeps its line, so nothing below moves. */
 [data-action="fm-start"]:disabled {
@@ -143,8 +145,10 @@ main
   font-weight: 600;
   color: var(--ink);
 }
-[data-part="entry"] button:hover:not(:disabled) {
-  color: var(--prime);
+@media (hover: hover) {
+  [data-part="entry"] button:hover:not(:disabled) {
+    color: var(--prime);
+  }
 }
 
 /* ---- what the check says ---- */

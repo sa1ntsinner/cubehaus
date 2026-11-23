@@ -37,8 +37,8 @@ export const TWO_PBL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Top: no bar; bottom: no bar.",
-      "ru": "Верх: без полос; низ: без полос."
+      "en": "No bar on top, no bar on the bottom.",
+      "ru": "Ни сверху, ни снизу полос нет."
     },
     "subsets": [],
     "scrambles": [
@@ -99,8 +99,8 @@ export const TWO_PBL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Top: one bar; bottom: one bar.",
-      "ru": "Верх: одна полоса; низ: одна полоса."
+      "en": "One bar on top, one bar on the bottom.",
+      "ru": "Сверху и снизу по одной полосе."
     },
     "subsets": [],
     "scrambles": [
@@ -161,8 +161,8 @@ export const TWO_PBL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Top: one bar; bottom: no bar.",
-      "ru": "Верх: одна полоса; низ: без полос."
+      "en": "One bar on top, no bar on the bottom.",
+      "ru": "Сверху одна полоса, снизу полос нет."
     },
     "subsets": [],
     "scrambles": [
@@ -223,8 +223,8 @@ export const TWO_PBL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Top: one bar; bottom: whole.",
-      "ru": "Верх: одна полоса; низ: собран."
+      "en": "One bar on top, bottom solved.",
+      "ru": "Сверху одна полоса, низ собран."
     },
     "subsets": [],
     "scrambles": [
@@ -285,8 +285,8 @@ export const TWO_PBL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Top: whole; bottom: no bar.",
-      "ru": "Верх: собран; низ: без полос."
+      "en": "Top solved, no bar on the bottom.",
+      "ru": "Верх собран, снизу полос нет."
     },
     "subsets": [],
     "scrambles": [

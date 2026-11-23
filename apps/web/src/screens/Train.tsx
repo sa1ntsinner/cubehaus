@@ -56,6 +56,10 @@ import {
   useState,
 } from "react";
 import type { AppView, createAppState } from "../app-state";
+import { HINT_GAP } from "../gesture-hints";
+import { learnGesture, nudge, takeHint } from "../input/hint-store";
+import { isTouchScreen } from "../input/touch-screen";
+import { DEFAULT_SWIPE, useSwipe } from "../input/use-swipe";
 import type { Action } from "../keys/engine";
 import { Help } from "../keys/Help";
 import { formatRunning } from "../running";
@@ -676,6 +680,42 @@ function Learn({
   const current = cases.find((c) => c.id === open) ?? null;
   const twoLookOnly = inDrills(twoLook) && learning.size === twoLook.length;
 
+  // A case swiped sideways goes into the drills, or out of them.
+  const caseList = useRef<HTMLElement>(null);
+  const toggleDrill = (id: string) => {
+    const on = !picked(id);
+    setPending((was) => new Map(was).set(id, on));
+    void onDrill([id], on);
+  };
+  useSwipe(caseList, {
+    config: { ...DEFAULT_SWIPE, directions: ["left", "right"], commitPx: 56 },
+    // A tile has a neighbour 12 px away: it shows the way, it does not travel far.
+    travel: 0.4,
+    wordAt: "above",
+    subject: (element) =>
+      element.closest<HTMLElement>("[data-part='train-case-list'] > li"),
+    enabled: () => true,
+    word: (_direction, line) =>
+      picked(line.dataset.caseId ?? "") ? t.remove : t.add,
+    onCommit: (_direction, line) => {
+      const id = line.dataset.caseId;
+      if (!id) return;
+      toggleDrill(id);
+      learnGesture("learn");
+    },
+  });
+  // On a touch screen, a few visits say how, once each.
+  const [learnHint] = useState(() =>
+    isTouchScreen() ? takeHint(["learn"], HINT_GAP) : null,
+  );
+  useEffect(() => {
+    if (!learnHint) return;
+    return nudge(
+      caseList.current?.querySelector("[data-part='train-case-list'] > li"),
+      "right",
+    );
+  }, [learnHint]);
+
   // Narrow, the case takes the list's place: show it from its top, and on the way back
   // the list where it was left.
   const listScroll = useRef(0);
@@ -714,7 +754,12 @@ function Learn({
 
   return (
     <div data-part="train-learn" data-open={current ? "" : undefined}>
-      <section data-part="train-cases">
+      <section data-part="train-cases" ref={caseList}>
+        {learnHint && (
+          <p data-part="gesture-hint" data-input="touch">
+            {words.gestures.hint.learn}
+          </p>
+        )}
         <p data-part="train-filter">
           {/* Presets: the one that describes the drills stands pressed, and pressed
               again it empties them, so no third word is needed for none. */}
@@ -747,32 +792,8 @@ function Learn({
           )}
           {isFamily(family) && (
             // The family's member, at the line's far end, apart from what goes in drills.
-            // F2L keeps its slot words and data hooks; before them, its cross colour.
+            // F2L keeps its slot words and data hooks.
             <span data-part="train-slot" data-family={family}>
-              {family === "f2l" && cross && (
-                // One quiet word that steps to the next colour: the person's own, its
-                // opposite, then the other pairs (DESIGN.md section 14a).
-                <button
-                  type="button"
-                  data-action="train-cross"
-                  data-colour={cross}
-                  aria-label={t.crossOn(words.cross.name[cross])}
-                  onClick={() =>
-                    onCross(
-                      order[(order.indexOf(cross) + 1) % order.length] ?? cross,
-                    )
-                  }
-                >
-                  <span
-                    data-part="cross-swatch"
-                    data-face={faceOfCrossColour(cross)}
-                    aria-hidden="true"
-                  />
-                  <span data-part="train-cross-name">
-                    {words.cross.name[cross]}
-                  </span>
-                </button>
-              )}
               {FAMILIES[family].choices.map((id) => (
                 <button
                   key={id}
@@ -849,7 +870,34 @@ function Learn({
             {isLastSlot(set) && current.pictures && (
               <Picture set={set} stickers={current.pictures.slot} />
             )}
-            <h2>{labelOf(current)}</h2>
+            <div data-part="train-case-title">
+              <h2>{labelOf(current)}</h2>
+              {family === "f2l" && cross && (
+                // The cross colour every F2L picture is drawn for, as the timer marks a
+                // cross: its sticker and its name. A press steps to the next colour (the
+                // person's own, its opposite, then the other pairs) and the list follows.
+                <button
+                  type="button"
+                  data-action="train-cross"
+                  data-colour={cross}
+                  aria-label={t.crossOn(words.cross.name[cross])}
+                  onClick={() =>
+                    onCross(
+                      order[(order.indexOf(cross) + 1) % order.length] ?? cross,
+                    )
+                  }
+                >
+                  <span
+                    data-part="cross-swatch"
+                    data-face={faceOfCrossColour(cross)}
+                    aria-hidden="true"
+                  />
+                  <span data-part="train-cross-name">
+                    {words.cross.mark(words.cross.name[cross])}
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
           <CaseNumbers
             attempts={attempts}
@@ -1458,6 +1506,50 @@ function Practice({
     };
   }, [drill.phase, step, next, toggleMissed, shown, paused]);
 
+  // After a case: swipe left for the next, right for missed. Not in the moments after the
+  // stop, when the other hand may still be coming down.
+  const surface = useRef<HTMLElement>(null);
+  const stoppedAt = useRef(Number.NEGATIVE_INFINITY);
+  const [drillHint, setDrillHint] = useState(false);
+  useEffect(() => {
+    if (drill.phase !== "stopped") {
+      setDrillHint(false);
+      return;
+    }
+    stoppedAt.current = performance.now();
+    if (isTouchScreen() && takeHint(["drill"], HINT_GAP) === "drill")
+      setDrillHint(true);
+  }, [drill.phase]);
+  useEffect(() => {
+    if (!drillHint) return;
+    return nudge(
+      surface.current?.querySelector("[data-part='train-stage']"),
+      "left",
+    );
+  }, [drillHint]);
+  useSwipe(
+    surface,
+    {
+      config: { ...DEFAULT_SWIPE, directions: ["left", "right"] },
+      subject: (element) =>
+        element
+          .closest("[data-part='train-drill']")
+          ?.querySelector<HTMLElement>("[data-part='train-stage']") ?? null,
+      enabled: () =>
+        !paused &&
+        drillNow.current.phase === "stopped" &&
+        performance.now() - stoppedAt.current > 700,
+      word: (direction) => (direction === "left" ? t.next : t.missed),
+      tone: (direction) => (direction === "right" ? "error" : undefined),
+      onCommit: (direction) => {
+        if (direction === "left") void next(shown?.caseId ?? null);
+        else toggleMissed();
+        learnGesture("drill");
+      },
+    },
+    pool.length > 0,
+  );
+
   const pointer = (type: "down" | "up") => (event: ReactPointerEvent) => {
     if (drill.phase === "stopped") return;
     if (type === "down")
@@ -1526,6 +1618,7 @@ function Practice({
 
   return (
     <section
+      ref={surface}
       data-part="train-drill"
       data-phase={drill.phase}
       data-show={byPicture ? "picture" : "scramble"}
@@ -1609,6 +1702,11 @@ function Practice({
                 {t.missed}
               </button>
               <span data-input="keys">{t.afterKeys}</span>
+              {drillHint && (
+                <span data-part="gesture-hint" data-input="touch">
+                  {words.gestures.hint.drill}
+                </span>
+              )}
             </p>
           </div>
         ) : (

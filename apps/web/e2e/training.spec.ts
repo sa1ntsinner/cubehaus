@@ -109,7 +109,7 @@ test("a late PLL scramble never replaces the OLL case picked after it", async ({
 
   await keyboardSolve(page);
   await expect(page.locator("[data-solve-id]")).toHaveCount(1);
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.locator('[data-action="backup-save"]').click(),
@@ -124,6 +124,9 @@ test("a late PLL scramble never replaces the OLL case picked after it", async ({
     classifyLL(puzzle.defaultPattern().applyAlg(whiteOnTop(stored))).oll,
   ).toBe(oll27);
   // The setting row names the drill and leads back to the sheet.
+  await page
+    .locator('[data-part="settings-sections"] [data-section="session"]')
+    .click();
   await expect(page.locator('[data-part="training-current"]')).toHaveText(
     "OLL, 1 case",
   );
@@ -137,7 +140,7 @@ test("a drill with no case picked keeps the timer from starting", async ({
   await pickDrill(page, "pll");
   await closeSheet(page);
   await expect(scramble(page)).toHaveText("Pick at least one case.");
-  await expect(line(page)).toContainText("PLL: no case picked");
+  await expect(line(page)).toContainText("PLL, no case picked");
   await page.keyboard.down("Space");
   await page.waitForTimeout(400);
   await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
@@ -220,7 +223,7 @@ test("a search that runs too long ends and leaves the timer working", async ({
 });
 
 test("the sheet and the line in Russian", async ({ page }) => {
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/look");
   await page.locator("#setting-language").selectOption("ru");
   await page.locator('[data-action="settings-close"]').click();
   await readyScramble(page);

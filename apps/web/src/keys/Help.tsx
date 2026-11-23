@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Action } from "./engine";
 import { isMacPlatform, keyLabel } from "./label";
 
-// The keys that work right now, in the current state.
+// The keys that work right now, in the current state; on a touch screen, the gestures.
 export function Help({
   bindings,
   language,
@@ -11,6 +11,7 @@ export function Help({
   commandsLabel,
   onCommands,
   onClose,
+  gestures,
 }: {
   bindings: readonly { action: Action; keys: readonly string[] }[];
   language: "en" | "ru";
@@ -20,6 +21,8 @@ export function Help({
   commandsLabel?: string;
   onCommands?(): void;
   onClose(): void;
+  /** A touch screen has no keys to list: what to do, and what it does. */
+  gestures?: readonly (readonly [string, string])[] | undefined;
 }) {
   const mac = isMacPlatform();
   // The list takes focus as it opens, so the keyboard is in it and Escape gives focus
@@ -40,25 +43,36 @@ export function Help({
       <button type="button" data-action="dialog-close" onClick={onClose}>
         {closeLabel}
       </button>
-      {commandsLabel && onCommands && (
+      {!gestures && commandsLabel && onCommands && (
         <button type="button" data-action="commands-open" onClick={onCommands}>
           {commandsLabel}
         </button>
       )}
-      <dl>
-        {bindings.map(({ action, keys }) => (
-          <div key={action.id} data-action-id={action.id}>
-            <dt>
-              {keys.map((key) => (
-                <kbd key={key} data-key={key}>
-                  {keyLabel(key, mac, language)}
-                </kbd>
-              ))}
-            </dt>
-            <dd>{action.title[language]}</dd>
-          </div>
-        ))}
-      </dl>
+      {gestures ? (
+        <dl data-list="gestures">
+          {gestures.map(([gesture, does]) => (
+            <div key={gesture}>
+              <dt>{gesture}</dt>
+              <dd>{does}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <dl>
+          {bindings.map(({ action, keys }) => (
+            <div key={action.id} data-action-id={action.id}>
+              <dt>
+                {keys.map((key) => (
+                  <kbd key={key} data-key={key}>
+                    {keyLabel(key, mac, language)}
+                  </kbd>
+                ))}
+              </dt>
+              <dd>{action.title[language]}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </dialog>
   );
 }

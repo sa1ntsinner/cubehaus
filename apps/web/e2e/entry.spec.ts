@@ -72,7 +72,6 @@ test("H1a, H1b1, 9f12c: attempted cubes determine the scrambles and 1 of 2 is DN
   const totals = part(page, "stats-totals");
   await expect(time).toHaveText("0.00");
   await expect(time).not.toHaveAttribute("data-result-kind", "multi");
-  await expect(action(page, "inspection-toggle")).toHaveCount(0);
   for (const field of ["cubes-attempted", "cubes-solved"]) {
     await expect(part(page, field)).toHaveAttribute("placeholder", "–");
   }

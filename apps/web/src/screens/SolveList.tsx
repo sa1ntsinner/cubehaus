@@ -21,6 +21,8 @@ import {
   useState,
 } from "react";
 import type { AppState, AppView, Records, SolveRow } from "../app-state";
+import type { GestureId } from "../gesture-hints";
+import { DEFAULT_SWIPE, useSwipe } from "../input/use-swipe";
 import { actionKey, type Keymap } from "../keys/keymap";
 import { fitFile } from "../list/fit";
 import {
@@ -29,7 +31,6 @@ import {
   statId,
   supportsStat,
 } from "../session-stats";
-
 import type { Text } from "../text";
 
 export { slotsFor } from "../session-stats";
@@ -62,6 +63,8 @@ export const SolveList = memo(function SolveList({
   onStatPicker,
   onAverage,
   emptyHint,
+  gesturesReady,
+  onLearned,
 }: {
   app: AppState;
   view: AppView;
@@ -74,6 +77,9 @@ export const SolveList = memo(function SolveList({
   onAverage?: InspectAverage;
   /** How to start an empty session, by keys and by touch; null: nothing to add. */
   emptyHint?: { keys: string | null; touch: string | null };
+  /** Whether a gesture may act now (between solves, nothing open). */
+  gesturesReady?(): boolean;
+  onLearned?(id: GestureId): void;
 }) {
   const { layout, precision, recordCue } = view.settings;
   const filesVisible = layout !== "focus";
@@ -87,6 +93,28 @@ export const SolveList = memo(function SolveList({
     view.dbState?.kind === "persistent" || view.dbState?.kind === "memory";
   const count = enabled ? view.stats.count : view.rows.length;
   const list = useRef<HTMLOListElement>(null);
+  // A line swiped to the left is deleted; Undo brings it back (input/use-swipe.ts).
+  useSwipe(
+    list,
+    {
+      config: { ...DEFAULT_SWIPE, directions: ["left"], holdMs: 350 },
+      subject: (element) => element.closest<HTMLElement>("li[data-solve-id]"),
+      enabled: () =>
+        enabled && picked.size === 0 && (gesturesReady?.() ?? false),
+      word: () => text.deleteSolve,
+      tone: () => "error",
+      onCommit: (_direction, line) => {
+        const id = line.dataset.solveId;
+        const row = [...shown.rows, ...view.rows].find(
+          ({ solve }) => solve.id === id,
+        );
+        if (!row) return;
+        void app.deleteSolve(row.solve);
+        onLearned?.("row-left");
+      },
+    },
+    filesVisible,
+  );
   const file = useRef<HTMLElement>(null);
   const rowHeight = useRef(0);
   const [range, setRange] = useState<ReturnType<typeof windowOf>>();
@@ -216,6 +244,43 @@ export const SolveList = memo(function SolveList({
       document.fonts.removeEventListener("loadingdone", measure);
     };
   }, [count, extendedFile, filesVisible, updateRange]);
+
+  // An empty session's comment gives way as the totals do when a short screen leaves the
+  // file too little room (a status line message on a 320 px phone): the line about old
+  // solves first, then the comment, so it never runs up into the averages. Measured with
+  // everything shown, so hiding cannot feed back into the next measure.
+  useLayoutEffect(() => {
+    const aside = file.current;
+    const hint = aside?.querySelector<HTMLElement>(
+      '[data-part="solves-empty"]',
+    );
+    if (!aside || !hint || count > 0) return;
+    const extra = hint.querySelector<HTMLElement>(
+      '[data-part="solves-import"]',
+    );
+    function fitHint() {
+      if (!aside || !hint) return;
+      extra?.removeAttribute("data-fit-hidden");
+      hint.removeAttribute("data-fit-hidden");
+      // Only where the file stands under the averages (a phone): the comment may use the
+      // free room above the file, but never reach the averages' line.
+      const stats = aside.parentElement?.querySelector<HTMLElement>(
+        ':scope > [data-part="stats"]',
+      );
+      if (!stats) return;
+      const above = stats.getBoundingClientRect();
+      if (aside.getBoundingClientRect().top < above.top) return;
+      for (const part of [extra, hint]) {
+        if (!part || hint.getBoundingClientRect().top >= above.bottom + 8)
+          break;
+        part.setAttribute("data-fit-hidden", "");
+      }
+    }
+    fitHint();
+    const observer = new ResizeObserver(fitHint);
+    observer.observe(aside);
+    return () => observer.disconnect();
+  });
 
   // A past solve picked by the arrows stays in view, through every page that loads around
   // it, until a hand scrolls the file; back to now, the newest shows again.
@@ -399,6 +464,7 @@ export const SolveList = memo(function SolveList({
                 data-plus2={solve.plus2}
                 data-record={recordCue && !past && record ? true : undefined}
                 data-shown={solve.id === shownId || undefined}
+                data-newest={solve.id === newest?.id || undefined}
                 data-selected={picked.has(solve.id) || undefined}
                 aria-posinset={count - no + 1}
                 aria-setsize={count}
@@ -507,6 +573,8 @@ export const SolveList = memo(function SolveList({
                       {text.comment}
                       <textarea
                         data-part="comment-input"
+                        name="solve-comment"
+                        autoComplete="off"
                         // biome-ignore lint/a11y/noAutofocus: opened by its own button; the keyboard follows.
                         autoFocus
                         onKeyDown={(key) => {
@@ -1002,6 +1070,9 @@ function StatSlots({
                 {words.averageLength}{" "}
                 <input
                   inputMode="numeric"
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  name="average-length"
                   value={custom}
                   onChange={(event) => {
                     setCustom(event.currentTarget.value);

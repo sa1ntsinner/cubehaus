@@ -30,7 +30,7 @@ const solveRows = (page: Page) =>
 async function openImport(page: Page) {
   await page.goto("/");
   await expect(sessionButton(page)).toBeEnabled();
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const input = page.locator('[data-action="import-file"] input');
   await expect(input).toBeEnabled();
   return input;
@@ -59,7 +59,7 @@ test("a csTimer file is shown before import, imported once, and the empty starte
   await page.goto("/#/");
   expect(await sessionNames(page)).toEqual(["3×3"]);
 
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   await input.setInputFiles(exportFile);
   await page.locator('[data-action="import-confirm"]').click();
   await expect(result).toHaveText("Added 7 solves.");
@@ -73,7 +73,7 @@ test("a csTimer file is shown before import, imported once, and the empty starte
   );
 
   // A second import of the same file has nothing to add, and says so before writing.
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   await input.setInputFiles(exportFile);
   await expect(page.locator('[data-part="import-here"]')).toHaveText(
     "All 7 solves are already here.",
@@ -182,7 +182,7 @@ test("a native backup restores sessions, solves and order in a fresh profile", a
   const labels = await sessionNames(page);
   const solveIds = await ids(page);
 
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.locator('[data-action="backup-save"]').click(),
@@ -198,7 +198,7 @@ test("a native backup restores sessions, solves and order in a fresh profile", a
     const fresh = await other.newPage();
     await fresh.goto("/");
     await expect(sessionButton(fresh)).toBeEnabled();
-    await fresh.goto("/#/settings");
+    await fresh.goto("/#/settings/data");
     const input = fresh.locator('[data-action="backup-restore"] input');
     const result = fresh.locator('[data-part="data-result"]');
     await input.setInputFiles({
@@ -219,7 +219,7 @@ test("a native backup restores sessions, solves and order in a fresh profile", a
     await expect(rows(fresh)).toHaveCount(6);
     expect(await ids(fresh)).toEqual(solveIds);
 
-    await fresh.goto("/#/settings");
+    await fresh.goto("/#/settings/data");
     await input.setInputFiles(file);
     await expect(result).toHaveText(
       /^Restored: 0 added, 0 updated, \d+ already here\.$/,
@@ -242,7 +242,7 @@ test("three formats save from the keyboard and a csTimer file made here imports 
   await page.goto("/?state=session");
   await expect(sessionButton(page)).toBeEnabled();
   await page.evaluate(() => {
-    location.hash = "#/settings";
+    location.hash = "#/settings/data";
   });
   const result = page.locator('[data-part="data-result"]');
   async function save(name: string) {
@@ -592,7 +592,7 @@ test("Twisty Timer backup keeps both attempts and the source category after a re
   await expect(solveRows(page)).toHaveCount(2);
   await renameCurrentSession(page, "Renamed A");
 
-  await page.goto("/#/settings");
+  await page.goto("/#/settings/data");
   await input.setInputFiles(file);
   await expect(panel.locator('[data-part="import-sessions"] li')).toHaveText([
     "A3×32",
@@ -670,8 +670,14 @@ test("Twisty Timer share-shaped files get localized backup guidance", async ({
   );
   await expect(input).toBeFocused();
 
+  await page
+    .locator('[data-part="settings-sections"] [data-section="look"]')
+    .click();
   await page.locator("#setting-language").selectOption("ru");
   await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+  await page
+    .locator('[data-part="settings-sections"] [data-section="data"]')
+    .click();
   await input.setInputFiles(file);
   await expect(result).toHaveText(
     "Этот файл не читается. cubehaus читает экспорт csTimer, CSV-файлы CubeTime, резервные копии Twisty Timer и экспорт CubeDesk.",

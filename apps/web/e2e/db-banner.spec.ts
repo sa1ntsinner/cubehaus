@@ -22,16 +22,65 @@ test("the failure banner restores the newest desktop backup", async ({
   });
   await page.goto("/");
   const banner = page.locator('[data-part="db-state"][data-kind="failed"]');
-  await banner.getByRole("button", { name: "Restore latest backup" }).click();
+  await banner.getByRole("button", { name: "Restore the newest copy" }).click();
   await expect
     .poll(() => page.evaluate(() => sessionStorage.getItem("restored")))
     .toBe("latest");
 });
 
+test("a restore under way says so, and a failed one keeps the keyboard on its button", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    let release: (() => void) | null = null;
+    Object.assign(window, {
+      restoreAsked: () => release !== null,
+      releaseRestore: () => release?.(),
+      __TAURI_INTERNALS__: {
+        async invoke(command: string) {
+          if (command === "db_open") throw new Error("File is damaged");
+          if (command === "list_backups") return [{ id: "latest" }];
+          if (command === "restore_backup")
+            return new Promise((_, reject) => {
+              release = () => reject(new Error("disk full"));
+            });
+          throw new Error(command);
+        },
+      },
+    });
+  });
+  await page.goto("/");
+  const banner = page.locator('[data-part="db-state"][data-kind="failed"]');
+  const restore = banner.getByRole("button", {
+    name: "Restore the newest copy",
+  });
+  await restore.focus();
+  await page.keyboard.press("Enter");
+  await expect(banner.getByRole("alert")).toHaveText("Restoring…");
+  await expect(restore).toHaveAttribute("aria-disabled", "true");
+  await expect(restore).toBeFocused();
+  // "Restoring…" shows before the restore itself is asked for: fail it only once it is.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as unknown as { restoreAsked: () => boolean }).restoreAsked(),
+      ),
+    )
+    .toBe(true);
+  await page.evaluate(() =>
+    (window as unknown as { releaseRestore: () => void }).releaseRestore(),
+  );
+  await expect(banner.getByRole("alert")).toHaveText(
+    "The copy could not be restored.",
+  );
+  await expect(restore).not.toHaveAttribute("aria-disabled");
+  await expect(restore).toBeFocused();
+});
+
 for (const { language, message } of [
   {
     language: "en",
-    message: "This backup needs a newer version of cubehaus.",
+    message: "This copy needs a newer version of cubehaus.",
   },
   {
     language: "ru",
@@ -59,7 +108,7 @@ for (const { language, message } of [
     const banner = page.locator('[data-part="db-state"][data-kind="failed"]');
     const restore = banner.locator('[data-action="restore-latest-backup"]');
     await restore.click();
-    await expect(banner.getByRole("status")).toHaveText(message);
+    await expect(banner.getByRole("alert")).toHaveText(message);
     await expect(restore).toBeEnabled();
   });
 }
@@ -81,7 +130,7 @@ test("a newer database offers an update message and no recovery actions", async 
   await page.goto("/");
   const banner = page.locator('[data-part="db-state"][data-kind="failed"]');
   await expect(banner).toHaveText(
-    "This database needs a newer version of cubehaus.",
+    "Your solve history needs a newer version of cubehaus.",
   );
   await expect(banner.getByRole("button")).toHaveCount(0);
 });
@@ -148,7 +197,7 @@ test("a damaged web database rejects a newer backup, then restores the chosen fi
   await page.goto("/");
   await expect(banner).toHaveAttribute("data-kind", "failed");
   const saved = page.waitForEvent("download");
-  await banner.getByRole("button", { name: "Save readable data" }).click();
+  await banner.getByRole("button", { name: "Save what can be read" }).click();
   const download = await saved;
   expect(download.suggestedFilename()).toMatch(
     /cubehaus-recovered-.*\.sqlite3$/,
@@ -185,8 +234,8 @@ test("a damaged web database rejects a newer backup, then restores the chosen fi
       buffer: Buffer.from(JSON.stringify({ ...backup, schema })),
     });
   await choose(999);
-  await expect(banner.getByRole("status")).toHaveText(
-    "This backup needs a newer version of cubehaus.",
+  await expect(banner.getByRole("alert")).toHaveText(
+    "This copy needs a newer version of cubehaus.",
   );
   await page.reload();
   await expect(banner).toHaveAttribute("data-kind", "failed");
@@ -228,10 +277,10 @@ test("an integrity failure can save the tables still readable on desktop", async
   await page.goto("/");
   const banner = page.locator('[data-part="db-state"][data-kind="failed"]');
   await expect(
-    banner.getByRole("button", { name: "Restore latest backup" }),
+    banner.getByRole("button", { name: "Restore the newest copy" }),
   ).toHaveCount(0);
   const saved = page.waitForEvent("download");
-  await banner.getByRole("button", { name: "Save readable data" }).click();
+  await banner.getByRole("button", { name: "Save what can be read" }).click();
   const download = await saved;
   const file = JSON.parse(
     await readFile((await download.path()) as string, "utf8"),

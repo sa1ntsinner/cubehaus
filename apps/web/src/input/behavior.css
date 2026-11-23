@@ -29,6 +29,77 @@ body {
   margin: 0;
 }
 
+/*
+ * A downward drag that reaches the document reloads the page in iOS Safari (pull to
+ * refresh): a drag on the session sheet, which has nothing to scroll, or a tile dragged
+ * toward the trash band. The app is not a page to refresh.
+ */
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
+/*
+ * iOS Safari zooms into a field whose text is under 16 px when it takes the focus, and the
+ * page stays zoomed after (the timer then stands half off the screen). On a touch screen a
+ * field's text is at least 16 px. Two type selectors: above the design's `input { font:
+ * inherit }`, below any field the design sizes by its part.
+ */
+@media (pointer: coarse) {
+  html
+    input:where(
+      :not(
+        [type="checkbox"],
+        [type="radio"],
+        [type="range"],
+        [type="color"],
+        [type="file"],
+        [type="button"],
+        [type="submit"],
+        [type="reset"]
+      )
+    ),
+  html textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
+/*
+ * iOS lays the on-screen keyboard over the page: a sheet fixed to the whole screen keeps
+ * its foot, and a field there, under the keys. While the keyboard shows, the sheet ends
+ * where the keys begin (input/keyboard-inset.ts).
+ */
+dialog:is(
+  [data-part="switch"],
+  [data-part="palette"],
+  [data-part="keys-help"],
+  [data-part="training"]
+)[open] {
+  bottom: var(--keyboard-inset, 0px);
+}
+
+/*
+ * While inspecting, the controls that are faded out (design/timer.css) are not there for a
+ * finger: a touch where the status line or the file was is the timer's, never an unseen
+ * link or button. While a solve is held or runs, nothing scrolls under a finger, so a
+ * stopping hand that slides cannot move the file or the page.
+ */
+main[data-inspecting]
+  > :is(
+    [data-part="time-under"],
+    [data-part="stats"],
+    [data-part="file"],
+    [data-part="last-actions"],
+    [data-part="focus-history"],
+    footer[data-part="status-line"]
+  ) {
+  pointer-events: none;
+}
+main:is([data-phase="holding"], [data-phase="ready"], [data-phase="running"])
+  [data-no-timer] {
+  touch-action: none;
+}
+
 [data-part="solves"] {
   max-height: 40dvh;
   overflow-y: auto;

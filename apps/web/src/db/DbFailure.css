@@ -1,32 +1,76 @@
+/*
+ * The database that would not open (DESIGN.md section 17). One sentence in the status
+ * line's message place, the hue of an error only on the sentence; then the ways out as an
+ * action pair (DESIGN.md section 17a): the main one 600 `ink`, the second 500 `dim`, no
+ * underline at rest, the 1px underline under a fine pointer, the press of every button.
+ */
+[data-part="db-state"][data-kind="failed"] > [data-part="db-message"] {
+  color: var(--error);
+}
+/* Under way: the sentence is news, not a fault. */
+[data-part="db-state"][data-busy] > [data-part="db-message"] {
+  color: var(--dim);
+}
+
 [data-part="db-recovery-actions"] {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--s2);
+  column-gap: var(--s3);
+  row-gap: 0;
+  margin-inline-start: var(--s2);
 }
 
+/* The padding gives the focus ring room; the negative margin keeps the words on the line's
+   edge. */
 [data-part="db-recovery-actions"] > button {
+  padding-inline: var(--s2);
+  margin-inline: calc(-1 * var(--s1));
   color: var(--ink);
   font-weight: 600;
-  text-decoration: underline;
   text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+[data-part="db-recovery-actions"] > button[data-quiet] {
+  color: var(--dim);
+  font-weight: 500;
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-part="db-recovery-actions"] > button:not([aria-disabled="true"]):hover {
+    color: var(--ink);
+    text-decoration-line: underline;
+  }
+}
+[data-part="db-recovery-actions"] > button[aria-disabled="true"] {
+  color: var(--gutter);
+  cursor: default;
+}
+[data-part="db-recovery-actions"] > button[aria-disabled="true"]:active {
+  transform: none;
 }
 
+/* A touch screen: every word a finger's target, the ways out on their own line under the
+   sentence, starting at its edge. */
 @media (hover: none) {
+  [data-part="db-recovery-actions"] {
+    display: flex;
+    margin-inline-start: calc(-1 * var(--s1));
+  }
   [data-part="db-recovery-actions"] > button {
     min-height: 44px;
   }
 }
 
 @media (max-width: 699px) {
-  footer[data-part="status-line"] > [data-db-recovery]:has(button) {
-    padding-bottom: var(--s2);
+  [data-part="db-recovery-actions"] {
+    display: flex;
+    margin-inline-start: calc(-1 * var(--s1));
   }
 }
 
 /* The ordinary status message is clamped in landscape. Recovery actions and errors wrap. */
 @media (hover: none) and (min-width: 700px) {
-  footer[data-part="status-line"] > [data-db-recovery] {
+  footer[data-part="status-line"] > [data-part="db-state"][data-kind="failed"] {
     display: block;
     overflow: visible;
   }

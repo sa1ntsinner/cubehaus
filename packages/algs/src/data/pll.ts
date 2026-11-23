@@ -171,7 +171,7 @@ export const PLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "No headlights and no bar, three colours on every side.",
-      "ru": "Ни фар, ни полос, на каждой стороне три цвета."
+      "ru": "Ни фар, ни полос: на каждой стороне три цвета."
     },
     "subsets": []
   },
@@ -628,7 +628,7 @@ export const PLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A pair on every side, each at its right end.",
-      "ru": "Пара на каждой стороне, у правого края."
+      "ru": "На каждой стороне пара у правого края."
     },
     "subsets": []
   },
@@ -680,7 +680,7 @@ export const PLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A pair on every side, each at its left end.",
-      "ru": "Пара на каждой стороне, у левого края."
+      "ru": "На каждой стороне пара у левого края."
     },
     "subsets": []
   },

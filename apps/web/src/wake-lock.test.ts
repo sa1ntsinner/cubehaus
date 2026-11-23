@@ -4,13 +4,23 @@ import { keepAwake } from "./wake-lock";
 function fakes() {
   const held: { released: boolean }[] = [];
   const listeners = new Set<() => void>();
+  const gestures = new Map<string, Set<() => void>>();
   const doc = {
     visibilityState: "visible" as DocumentVisibilityState,
-    addEventListener: (_: "visibilitychange", f: () => void) =>
-      listeners.add(f),
-    removeEventListener: (_: "visibilitychange", f: () => void) =>
-      listeners.delete(f),
+    addEventListener: (type: string, f: () => void) => {
+      if (type === "visibilitychange") listeners.add(f);
+      else gestures.set(type, (gestures.get(type) ?? new Set()).add(f));
+    },
+    removeEventListener: (type: string, f: () => void) => {
+      if (type === "visibilitychange") listeners.delete(f);
+      else gestures.get(type)?.delete(f);
+    },
   };
+  const gesture = (type: string) => {
+    for (const f of [...(gestures.get(type) ?? [])]) f();
+  };
+  const waiting = () =>
+    [...gestures.values()].reduce((n, set) => n + set.size, 0);
   const wakeLock = {
     request: async (type: "screen") => {
       expect(type).toBe("screen");
@@ -30,7 +40,7 @@ function fakes() {
     for (const f of listeners) f();
   };
   const tick = () => new Promise((r) => setTimeout(r, 0));
-  return { held, doc, wakeLock, show, tick, listeners };
+  return { held, doc, wakeLock, show, tick, listeners, gesture, waiting };
 }
 
 describe("keep the screen awake", () => {
@@ -68,5 +78,46 @@ describe("keep the screen awake", () => {
     stop();
     await f.tick();
     expect(f.held.filter((s) => !s.released)).toHaveLength(0);
+  });
+
+  // Safari refuses a lock asked for without a user gesture (NotAllowedError), as at load.
+  it("a lock refused for want of a gesture is asked for again at the next touch or key", async () => {
+    const f = fakes();
+    let refuse = true;
+    const wakeLock = {
+      request: (type: "screen") => {
+        if (!refuse) return f.wakeLock.request(type);
+        const error = new Error("Permission was denied");
+        error.name = "NotAllowedError";
+        return Promise.reject(error);
+      },
+    };
+    const stop = keepAwake({ wakeLock }, f.doc);
+    await f.tick();
+    expect(f.held).toHaveLength(0);
+    expect(f.waiting()).toBeGreaterThan(0);
+    refuse = false;
+    f.gesture("pointerup");
+    await f.tick();
+    expect(f.held.filter((s) => !s.released)).toHaveLength(1);
+    expect(f.waiting()).toBe(0);
+    stop();
+    await f.tick();
+    expect(f.held.filter((s) => !s.released)).toHaveLength(0);
+  });
+
+  it("stops waiting for a gesture when it is stopped", async () => {
+    const f = fakes();
+    const error = new Error("Permission was denied");
+    error.name = "NotAllowedError";
+    const stop = keepAwake(
+      { wakeLock: { request: () => Promise.reject(error) } },
+      f.doc,
+    );
+    await f.tick();
+    expect(f.waiting()).toBeGreaterThan(0);
+    stop();
+    expect(f.waiting()).toBe(0);
+    expect(f.listeners.size).toBe(0);
   });
 });

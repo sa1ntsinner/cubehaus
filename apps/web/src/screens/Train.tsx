@@ -85,6 +85,7 @@ import {
   type Family,
   familyOf,
   learnGroups,
+  learntChoices,
   memberOf,
   myAlg,
   otherAlgs,
@@ -390,7 +391,17 @@ export function Train({
     location.hash = `#/train/${next.set ?? set}/${next.mode ?? mode}`;
   };
   const learning = useMemo(() => new Set(rows?.map((r) => r.caseId)), [rows]);
-  const labels = useMemo(() => caseLabels(set), [set]);
+  const bottoms = words.train.memberWords["two-cll"];
+  const labels = useMemo(() => caseLabels(set, bottoms), [set, bottoms]);
+  // What each case shows: the person's own choice, else the algorithm they learnt it with.
+  const learnt = useMemo(
+    () => learntChoices({}, set, attempts),
+    [set, attempts],
+  );
+  const shownChoices = useMemo(
+    () => learntChoices(choices, set, attempts),
+    [choices, set, attempts],
+  );
   const family = familyOf(set);
 
   const otherPuzzle = puzzleOf(set) === "222" ? "333" : "222";
@@ -470,8 +481,9 @@ export function Train({
             ru={ru}
             precision={view.settings.precision}
             labels={labels}
-            choices={choices}
-            onChoose={(next) => {
+            choices={shownChoices}
+            onChoose={(c, moves) => {
+              const next = chooseAlg(choices, set, c, moves, learnt);
               setChoices(next);
               void stored?.set(algsKey, JSON.stringify(next));
             }}
@@ -516,7 +528,7 @@ export function Train({
             labels={labels}
             running={view.settings.running}
             byPicture={byPicture}
-            choices={choices}
+            choices={shownChoices}
             holding={holding}
             whole={whole}
             split={split}
@@ -626,7 +638,7 @@ function Learn({
   /** Puts the cases into the drills, or takes them out. */
   onDrill(ids: readonly string[], on: boolean): Promise<void>;
   choices: AlgChoices;
-  onChoose(next: AlgChoices): void;
+  onChoose(c: TrainerCaseData, moves: string): void;
   /** A family's member: F2L's slot, last slot's insert, the 2×2's bottom. */
   onMember(family: Family, choice: string): void;
 }) {
@@ -877,11 +889,7 @@ function Learn({
                           <button
                             type="button"
                             data-action="train-use"
-                            onClick={() =>
-                              onChoose(
-                                chooseAlg(choices, set, current, alg.moves),
-                              )
-                            }
+                            onClick={() => onChoose(current, alg.moves)}
                           >
                             {t.use}
                           </button>

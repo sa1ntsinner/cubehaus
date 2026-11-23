@@ -47,15 +47,16 @@ for (const [set, shipped, count] of SETS)
       }
     }, 60_000);
 
-    it("a note reads the top's colour first, then at most three facts", () => {
+    it("a note says how many corners show the top's colour up, then at most two short facts", () => {
       for (const c of shipped) {
-        const parts = (c.recognise?.en ?? "").split("; ");
-        expect(parts.length, c.label).toBeGreaterThanOrEqual(1);
-        expect(parts.length, c.label).toBeLessThanOrEqual(5);
-        expect(c.recognise?.en, c.label).toMatch(/^(None|One|Two|All) up/);
+        const [head, ...facts] = (c.recognise?.en ?? "").split("; ");
+        expect(head, c.label).toMatch(/^(None|One|Two|All) up/);
+        expect(facts.length, c.label).toBeGreaterThanOrEqual(1);
+        expect(facts.length, c.label).toBeLessThanOrEqual(2);
         expect(c.recognise?.ru, c.label).toMatch(
           /^(Вверх ни одного|Один|Два|Все)/,
         );
+        expect(c.recognise?.en.length, c.label).toBeLessThanOrEqual(120);
       }
     });
   });

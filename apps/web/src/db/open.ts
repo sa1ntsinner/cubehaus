@@ -1,6 +1,7 @@
 import {
   createStore,
   migrate,
+  NewerSchemaError,
   SCHEMA_VERSION,
   type Store,
 } from "@cubehaus/storage";
@@ -32,6 +33,12 @@ import {
   type NativeUpdates,
 } from "./native";
 import type { PendingJournal } from "./pending";
+import {
+  checkIntegrity,
+  type DbRecovery,
+  readSchema,
+  saveReadable,
+} from "./recovery";
 import { createDbServices } from "./services";
 
 type WritableDb = {
@@ -58,7 +65,7 @@ type WritableDb = {
 type SettledDbState =
   | ({ kind: "persistent" } & WritableDb)
   | ({ kind: "memory"; reason: string } & WritableDb)
-  | { kind: "failed"; reason: string };
+  | { kind: "failed"; reason: string; newer?: boolean; recovery?: DbRecovery };
 
 export type DbState = SettledDbState | { kind: "busy" };
 
@@ -115,28 +122,33 @@ async function readWebviewHistory(): Promise<LegacyRead> {
   }
 }
 
+function reasonOf(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * The desktop file: the shared migrations and services over the native commands, after
  * the webview's earlier history is carried in (once). Solves timed meanwhile stay in the
  * journal and go in after it.
  */
 async function openNative(journal?: PendingJournal): Promise<SettledDbState> {
-  try {
+  const call = async (command: string, args?: Record<string, unknown>) => {
     const { invoke } = await import("@tauri-apps/api/core");
-    const call = (command: string, args?: Record<string, unknown>) =>
-      invoke(command, args);
-    const db = createNativeDb(call);
+    return invoke(command, args);
+  };
+  const db = createNativeDb(call);
+  let readable = false;
+  const backups = createNativeBackups(
+    call,
+    async () =>
+      (await db.all<{ m: number | null }>(LAST_CHANGE_SQL))[0]?.m ?? null,
+  );
+  try {
     await db.open();
-    const backups = createNativeBackups(
-      call,
-      async () =>
-        (await db.all<{ m: number | null }>(LAST_CHANGE_SQL))[0]?.m ?? null,
-    );
+    const version = await readSchema(db);
+    readable = version > 0;
+    await checkIntegrity(db);
     // A copy before a migration changes the file; a failed one does not stop it.
-    const [schema] = await db.all<{ user_version: number }>(
-      "PRAGMA user_version",
-    );
-    const version = schema?.user_version ?? 0;
     if (version > 0 && version < SCHEMA_VERSION)
       await backups.now().catch(() => {});
     await migrate(db);
@@ -158,7 +170,8 @@ async function openNative(journal?: PendingJournal): Promise<SettledDbState> {
       // A restore into an empty file replaces its settings, the handoff mark with them.
       restoreBackup: async (file) => {
         const outcome = await services.restoreBackup(file);
-        if (handoff !== "needs-recovery") await markHandedOff(db);
+        if (!("problem" in outcome) && handoff !== "needs-recovery")
+          await markHandedOff(db);
         return outcome;
       },
       ...(handoff ? { handoff } : {}),
@@ -167,10 +180,28 @@ async function openNative(journal?: PendingJournal): Promise<SettledDbState> {
         : {}),
     };
   } catch (error) {
-    // A file that cannot be opened is reported, never replaced by another database.
+    const reason = reasonOf(error);
+    if (error instanceof NewerSchemaError)
+      return { kind: "failed", reason, newer: true };
+    const [latest] = await backups.list().catch(() => []);
     return {
       kind: "failed",
-      reason: error instanceof Error ? error.message : String(error),
+      reason,
+      recovery: {
+        ...(latest && {
+          restoreLatest: async () => {
+            try {
+              await backups.restore(latest.id);
+            } catch (error) {
+              if (error === "newer_backup_schema")
+                return { problem: "newer" as const };
+              throw error;
+            }
+            return { restored: true as const };
+          },
+        }),
+        ...(readable && { saveReadable: () => saveReadable(db) }),
+      },
     };
   }
 }
@@ -220,7 +251,8 @@ export function openDatabase({
       cleanup();
       resolve({
         kind: "failed",
-        reason: error instanceof Error ? error.message : String(error),
+        reason: reasonOf(error),
+        ...(error instanceof NewerSchemaError && { newer: true }),
       });
     };
     async function open(locked: boolean) {
@@ -235,7 +267,36 @@ export function openDatabase({
           opfs: locked && typeof navigator.storage?.getDirectory === "function",
           delay: readTestHooks(location.search).delay,
         });
-        await migrate(client);
+        const { restoreDamaged, saveReadable } = client;
+        const recoveryFor = (readable: boolean): DbRecovery => ({
+          restoreFile: restoreDamaged,
+          ...(readable && { saveReadable }),
+        });
+        if (result.kind === "failed") {
+          resolve({
+            kind: "failed",
+            reason: result.reason,
+            recovery: recoveryFor(result.readable),
+          });
+          return;
+        }
+        if (result.kind === "persistent") {
+          try {
+            await readSchema(client);
+            await checkIntegrity(client);
+            await migrate(client);
+          } catch (error) {
+            if (error instanceof NewerSchemaError) throw error;
+            resolve({
+              kind: "failed",
+              reason: reasonOf(error),
+              recovery: recoveryFor(true),
+            });
+            return;
+          }
+        } else {
+          await migrate(client);
+        }
         const store = createStore(client);
         resolve({
           ...result,

@@ -52,31 +52,37 @@ function topColour(s: Two) {
   return { up, facing };
 }
 
-/** The shape of the top's colour: how many corners show it up, and where the rest face. */
-function shapeNote(s: Two): Words {
-  const { up, facing } = topColour(s);
-  let head: Words;
-  if (up.length === 0) head = { en: "None up", ru: "Вверх ни одного" };
-  else if (up.length === 1) {
+/** How many corners show the top's colour up, and which: the most visible fact. */
+function headNote(s: Two): Words {
+  const { up } = topColour(s);
+  if (up.length === 0) return { en: "None up", ru: "Вверх ни одного" };
+  if (up.length === 1) {
     const at = CORNER[up[0] as number] as Words;
-    head = { en: `One up, ${at.en}`, ru: `Один вверх, ${at.ru}` };
-  } else if (up.length === 2) {
+    return { en: `One up, ${at.en}`, ru: `Один вверх, ${at.ru}` };
+  }
+  if (up.length === 2) {
     const [a, b] = up as [number, number];
     if ((b - a) % 2 === 1) {
       const side = AT[SHARED[b - a === 1 ? a : b] as string] as Words;
-      head = { en: `Two up, ${side.en}`, ru: `Два вверх, ${side.ru}` };
-    } else {
-      const ca = CORNER[a] as Words;
-      const cb = CORNER[b] as Words;
-      head = {
-        en: `Two up, ${ca.en} and ${cb.en}`,
-        ru: `Два вверх, ${ca.ru} и ${cb.ru}`,
-      };
+      return { en: `Two up, ${side.en}`, ru: `Два вверх, ${side.ru}` };
     }
-  } else return { en: "All up", ru: "Все вверх" };
-  const parts = SIDES.filter((side) => (facing[side] as number) > 0);
+    const ca = CORNER[a] as Words;
+    const cb = CORNER[b] as Words;
+    return {
+      en: `Two up, ${ca.en} and ${cb.en}`,
+      ru: `Два вверх, ${ca.ru} и ${cb.ru}`,
+    };
+  }
+  return { en: "All up", ru: "Все вверх" };
+}
+
+/** Where the top's colour faces on the sides, one clause per side that shows it. */
+function facingWords(
+  facing: Readonly<Record<string, number>>,
+  sides: readonly string[],
+): Words {
   const list = (lang: "en" | "ru") =>
-    parts
+    sides
       .map((side, i) => {
         const n = (COUNT[facing[side] as number] as Words)[lang];
         const to = (TOWARDS[side] as Words)[lang];
@@ -89,7 +95,17 @@ function shapeNote(s: Two): Words {
           : `${n} ${to}`;
       })
       .join(", ");
-  return { en: `${head.en}; ${list("en")}`, ru: `${head.ru}; ${list("ru")}` };
+  return { en: list("en"), ru: list("ru") };
+}
+
+/** The shape of the top's colour: how many corners show it up, and where the rest face. */
+function shapeNote(s: Two): Words {
+  const head = headNote(s);
+  if (head.en === "All up") return head;
+  const { facing } = topColour(s);
+  const parts = SIDES.filter((side) => (facing[side] as number) > 0);
+  const where = facingWords(facing, parts);
+  return { en: `${head.en}; ${where.en}`, ru: `${head.ru}; ${where.ru}` };
 }
 
 const OPPOSITE: Record<string, string> = { F: "B", B: "F", R: "L", L: "R" };
@@ -131,11 +147,13 @@ export function twoNoteRaw(set: "two-oll" | "two-pbl", s: Two): Words {
 }
 
 /*
- * CLL notes from facts, as the 3×3 notes are made (notes.ts): the top's colour is always
- * said first, then the plainest few facts about the side colours that hold on the case as
- * Learn shows it and together on no state of any other case. Every fact compares colours
- * with each other (a pair, opposite colours, neighbouring colours) and never names one, so
- * it holds whatever turn of the top came after the algorithm.
+ * CLL notes from facts, as the 3×3 notes are made (notes.ts): how many corners show the
+ * top's colour up is always said first (it is what the eye takes in first), then the
+ * fewest plain facts that hold on the case as Learn shows it and together on no state of
+ * any other case: where the top's colour faces on a side, then facts about the side
+ * colours. A side-colour fact compares colours with each other (a pair, opposite colours,
+ * neighbouring colours) and never names one, so it holds whatever turn of the top came
+ * after the algorithm.
  */
 
 type CllFact = {
@@ -145,6 +163,8 @@ type CllFact = {
   en: string;
   ru: string;
   cost: number;
+  /** A side the top's colour faces, with how many stickers (the words join in a list). */
+  facing?: { side: string; n: number };
 };
 
 const SIDE_AT: Record<string, number> = { F: 4, R: 6, B: 8, L: 10 };
@@ -163,19 +183,31 @@ const SIDE_WORDS: Record<string, { en: string; ru: string }> = {
 };
 
 function cllFacts(): CllFact[] {
-  const facts: CllFact[] = [
-    {
-      id: "no-pair",
-      holds: (p) =>
-        SIDES.every((s) => {
-          const i = SIDE_AT[s] as number;
-          return p[i] !== p[i + 1] || p[i] === "U";
-        }),
-      en: "no pair at the sides",
-      ru: "по бокам без пар",
-      cost: 0.8,
-    },
-  ];
+  const facts: CllFact[] = [];
+  // Where the top's colour faces: seen at once, so the cheapest after the head.
+  for (const s of SIDES) {
+    const i = SIDE_AT[s] as number;
+    for (const n of [1, 2])
+      facts.push({
+        id: `face-${s}${n}`,
+        holds: (p) => Number(p[i] === "U") + Number(p[i + 1] === "U") === n,
+        en: "",
+        ru: "",
+        cost: 0.5,
+        facing: { side: s, n },
+      });
+  }
+  facts.push({
+    id: "no-pair",
+    holds: (p) =>
+      SIDES.every((s) => {
+        const i = SIDE_AT[s] as number;
+        return p[i] !== p[i + 1] || p[i] === "U";
+      }),
+    en: "no pair at the sides",
+    ru: "по бокам без пар",
+    cost: 0.8,
+  });
   for (const s of SIDES) {
     const i = SIDE_AT[s] as number;
     const w = SIDE_WORDS[s] as Words;
@@ -219,27 +251,25 @@ function cllFacts(): CllFact[] {
       if (a.s === b.s || onePiece) continue;
       const sa = SIDE_WORDS[a.s] as { en: string; ru: string };
       const sb = SIDE_WORDS[b.s] as { en: string; ru: string };
-      const first = {
-        en: `the ${END_WORDS.en[a.end]} sticker ${sa.en}`,
-        ru: `${END_WORDS.ru[a.end]} наклейка ${sa.ru}`,
-      };
-      const second = {
-        en: `the ${END_WORDS.en[b.end]} one ${sb.en}`,
-        ru: `${END_WORDS.ru[b.end]} ${sb.ru}`,
+      // The kind first, then the two stickers: `same colour: left in front, right on
+      // the right`.
+      const two = {
+        en: `${END_WORDS.en[a.end]} ${sa.en}, ${END_WORDS.en[b.end]} ${sb.en}`,
+        ru: `${END_WORDS.ru[a.end]} ${sa.ru}, ${END_WORDS.ru[b.end]} ${sb.ru}`,
       };
       facts.push(
         {
           id: `same-${a.s}${a.end}-${b.s}${b.end}`,
           holds: (p) => p[i] === p[j] && p[i] !== "U",
-          en: `${first.en} and ${second.en} match`,
-          ru: `${first.ru} и ${second.ru} одного цвета`,
+          en: `same colour: ${two.en}`,
+          ru: `один цвет: ${two.ru}`,
           cost: 1.5,
         },
         {
           id: `across-${a.s}${a.end}-${b.s}${b.end}`,
           holds: (p) => OPPOSITE[p[i] as string] === p[j],
-          en: `${first.en} and ${second.en} are opposite colours`,
-          ru: `${first.ru} и ${second.ru} противоположных цветов`,
+          en: `opposite colours: ${two.en}`,
+          ru: `противоположные цвета: ${two.ru}`,
           cost: 1.6,
         },
       );
@@ -249,13 +279,13 @@ function cllFacts(): CllFact[] {
 
 const CLL_FACTS = cllFacts();
 
-/** Whether a note's facts (and the top's colour as on `shown`) hold together on `on`. */
+/** Whether a note's facts (and the corners up as on `shown`) hold together on `on`. */
 export function cllFactsHold(
   ids: readonly string[],
   shown: Two,
   on: Two,
 ): boolean {
-  if (shapeNote(on).en !== shapeNote(shown).en) return false;
+  if (headNote(on).en !== headNote(shown).en) return false;
   const p = twoStickers(on);
   return ids.every((id) => {
     const fact = CLL_FACTS.find((f) => f.id === id);
@@ -264,30 +294,52 @@ export function cllFactsHold(
   });
 }
 
+/** A note's words: the head, the sides the top's colour faces as one list, the rest. */
+function noteWords(head: Words, chosen: readonly CllFact[]): Words {
+  const facing: Record<string, number> = { F: 0, R: 0, B: 0, L: 0 };
+  for (const f of chosen) if (f.facing) facing[f.facing.side] = f.facing.n;
+  const sides = SIDES.filter((side) => (facing[side] as number) > 0);
+  const rest = chosen.filter((f) => !f.facing);
+  const line = (lang: "en" | "ru") =>
+    [
+      head[lang],
+      ...(sides.length ? [facingWords(facing, sides)[lang]] : []),
+      ...rest.map((f) => f[lang]),
+    ].join("; ");
+  return { en: `${line("en")}.`, ru: `${line("ru")}.` };
+}
+
+/** Each fact counts once, and a fact of its own costs more than one more side in a list. */
+const PER_FACT = 1;
+
 /**
- * The note for a CLL case: the top's colour, then the plainest facts (at most three)
- * that hold on `shown` and together on none of `others`; null where none will do.
+ * The note for a CLL case: how many corners show the top's colour up, then the fewest
+ * plain facts (at most three) that hold on `shown` and together on none of `others`;
+ * null where none will do.
  */
 export function cllNote(
   shown: Two,
   others: readonly Two[],
 ): (Words & { facts: string[] }) | null {
-  const shape = shapeNote(shown);
+  const head = headNote(shown);
   const mine = twoStickers(shown);
-  // Only the others with the same top colour can be mistaken for it.
+  // Only the others with the same corners up can be mistaken for it.
   const rest = others
-    .filter((o) => shapeNote(o).en === shape.en)
+    .filter((o) => headNote(o).en === head.en)
     .map((o) => twoStickers(o));
   const pool = CLL_FACTS.filter((f) => f.holds(mine));
   let best: { facts: CllFact[]; cost: number } | null = null;
   const tryPick = (pick: CllFact[]) => {
     if (!rest.every((o) => !pick.every((f) => f.holds(o)))) return;
-    const cost = pick.reduce((sum, f) => sum + f.cost, 0);
+    const cost = pick.reduce(
+      (sum, f) => sum + f.cost + (f.facing ? 0 : PER_FACT),
+      0,
+    );
     if (!best || cost < best.cost - 1e-9) best = { facts: pick, cost };
   };
   const walk = (start: number, pick: CllFact[]) => {
     tryPick(pick);
-    if (pick.length === 3) return;
+    if (pick.filter((f) => !f.facing).length === 3) return;
     for (let i = start; i < pool.length; i++)
       walk(i + 1, [...pick, pool[i] as CllFact]);
   };
@@ -296,11 +348,5 @@ export function cllNote(
   const chosen = (best as { facts: CllFact[] }).facts.sort(
     (a, b) => CLL_FACTS.indexOf(a) - CLL_FACTS.indexOf(b),
   );
-  const line = (lang: "en" | "ru") =>
-    [shape[lang], ...chosen.map((f) => f[lang])].join("; ");
-  return {
-    en: `${line("en")}.`,
-    ru: `${line("ru")}.`,
-    facts: chosen.map((f) => f.id),
-  };
+  return { ...noteWords(head, chosen), facts: chosen.map((f) => f.id) };
 }

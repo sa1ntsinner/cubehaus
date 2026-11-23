@@ -2,19 +2,33 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 let workers: FakeWorker[];
 let version: number;
+let integrity: string;
+let bytes: number;
 class FakeWorker extends EventTarget {
   terminated = false;
+  methods: string[] = [];
+  queries: unknown[] = [];
   constructor() {
     super();
     workers.push(this);
   }
   postMessage(request: { id: number; method: string; args: unknown[] }) {
+    this.methods.push(request.method);
     let result: unknown;
     if (request.method === "open") {
       result = (request.args[0] as { opfs: boolean }).opfs
         ? { kind: "persistent" }
         : { kind: "memory", reason: "Unavailable" };
-    } else if (request.method === "all") result = [{ user_version: version }];
+    } else if (request.method === "all") {
+      const [sql] = request.args;
+      this.queries.push(sql);
+      result =
+        sql === "PRAGMA quick_check(1)"
+          ? [{ quick_check: integrity }]
+          : String(sql).includes("pragma_page_count()")
+            ? [{ bytes }]
+            : [{ user_version: version }];
+    }
     queueMicrotask(() =>
       this.dispatchEvent(
         new MessageEvent("message", { data: { id: request.id, result } }),
@@ -33,6 +47,8 @@ beforeEach(() => {
   vi.resetModules();
   workers = [];
   version = 0;
+  integrity = "ok";
+  bytes = 4096;
   page = new EventTarget();
   persist = vi.fn().mockResolvedValue(false);
   released = vi.fn();
@@ -168,8 +184,33 @@ test("a newer schema reports failed and releases the worker and lock", async () 
   expect(await openDatabase().initial).toMatchObject({
     kind: "failed",
     reason: "Database schema 999 is newer than 9",
+    newer: true,
   });
   await vi.waitFor(() => expect(released).toHaveBeenCalledTimes(1));
   expect(workers[0]?.terminated).toBe(true);
   expect(persist).not.toHaveBeenCalled();
+});
+
+test("an integrity error keeps recovery available without migrating the database", async () => {
+  version = 1;
+  integrity = "page 2 is damaged";
+  const { openDatabase } = await import("./open");
+  expect(await openDatabase().initial).toMatchObject({
+    kind: "failed",
+    recovery: {
+      restoreFile: expect.any(Function),
+      saveReadable: expect.any(Function),
+    },
+  });
+  expect(workers[0]?.methods).not.toContain("batch");
+  expect(workers[0]?.terminated).toBe(false);
+  expect(released).not.toHaveBeenCalled();
+  expect(persist).not.toHaveBeenCalled();
+});
+
+test("a large database skips the startup scan", async () => {
+  bytes = 17_440_768;
+  const { openDatabase } = await import("./open");
+  expect((await openDatabase().initial).kind).toBe("persistent");
+  expect(workers[0]?.queries).not.toContain("PRAGMA quick_check(1)");
 });

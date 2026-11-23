@@ -217,6 +217,11 @@ dialog[data-part="switch"][data-layout="grid"]
   border-radius: 22%;
   background: var(--line);
 }
+/* Held over a folder while dragging: its square darkens a step (an open folder, a menu or the
+   focus keep their own ground). */
+[data-layout="grid"] li[data-drop="on"] [data-part="glyph-folder"] {
+  background: color-mix(in srgb, var(--ink) 14%, var(--ground));
+}
 [data-layout="grid"] li:is([data-open], [data-menu]) [data-part="glyph-folder"],
 [data-layout="grid"]
   [data-action="switch-pick"]:is(:focus-visible)
@@ -374,7 +379,7 @@ dialog[data-part="switch"][data-layout="grid"]
   min-height: 44px;
   margin-top: var(--s5);
 }
-[data-part="switch-places"] > button {
+[data-layout="grid"] [data-part="switch-places"] > button {
   min-height: 44px;
   padding: 0 var(--s2);
   font-size: 15px;
@@ -383,7 +388,7 @@ dialog[data-part="switch"][data-layout="grid"]
 [data-part="switch-places"][data-hidden] {
   visibility: hidden;
 }
-[data-part="switch-places"] > button:hover {
+[data-layout="grid"] [data-part="switch-places"] > button:hover {
   color: var(--ink);
 }
 @media (hover: hover) {
@@ -428,26 +433,6 @@ dialog[data-layout="grid"][data-dragging] [data-action="switch-pick"] {
   opacity: 1;
   scale: 1;
 }
-[data-layout="grid"] li[data-drop="on"] [data-part="glyph-folder"] {
-  background: color-mix(in srgb, var(--ink) 14%, var(--ground));
-}
-[data-part="switch-ghost"] > [data-part="tile-picture"] {
-  transition: scale 140ms var(--ease);
-}
-dialog[data-onto] [data-part="switch-ghost"] > [data-part="tile-picture"] {
-  scale: 0.82;
-}
-/* The sheet gives its children the column's width and centres them; the hanging tile is
-   a tile wide, from the pointer, and the trash a band across the whole foot. */
-dialog[data-part="switch"][data-layout="grid"] > [data-part="switch-ghost"] {
-  width: var(--tile);
-  margin: 0;
-}
-dialog[data-part="switch"][data-layout="grid"]
-  > [data-part="switch-drop-trash"] {
-  width: auto;
-  margin: 0;
-}
 [data-part="switch-ghost"] {
   position: fixed;
   top: 0;
@@ -473,11 +458,21 @@ dialog[data-part="switch"][data-layout="grid"]
     scale: 1;
   }
 }
-[data-part="switch-ghost"] [data-part="switch-label"] {
+dialog[data-layout="grid"]
+  > [data-part="switch-ghost"]
+  [data-part="switch-label"] {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+dialog[data-layout="grid"]
+  > [data-part="switch-ghost"]
+  > [data-part="tile-picture"] {
+  transition: scale 140ms var(--ease);
+}
+dialog[data-onto] [data-part="switch-ghost"] > [data-part="tile-picture"] {
+  scale: 0.82;
 }
 
 /* While a session is dragged: the trash, a band across the foot, the only place it shows. */
@@ -503,6 +498,17 @@ dialog[data-part="switch"][data-layout="grid"]
 [data-part="switch-drop-trash"][data-over] {
   background: color-mix(in srgb, var(--error) 14%, var(--ground));
   color: var(--error);
+}
+/* The sheet gives its children the column's width and centres them; the hanging tile is
+   a tile wide, from the pointer, and the trash a band across the whole foot. */
+dialog[data-part="switch"][data-layout="grid"] > [data-part="switch-ghost"] {
+  width: var(--tile);
+  margin: 0;
+}
+dialog[data-part="switch"][data-layout="grid"]
+  > [data-part="switch-drop-trash"] {
+  width: auto;
+  margin: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

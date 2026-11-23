@@ -1,4 +1,4 @@
-import { trainerSet } from "@cubehaus/algs";
+import { MAIN_BEFORE_REVIEW, REVIEW_LIVE_AT, trainerSet } from "@cubehaus/algs";
 import { expect, test } from "vitest";
 import { texts } from "./text";
 import {
@@ -10,6 +10,7 @@ import {
   familyOf,
   HOLD_MS,
   learnGroups,
+  learntChoices,
   memberOf,
   myAlg,
   otherAlgs,
@@ -118,6 +119,48 @@ test("the algorithm chosen as mine is the one shown, the others are one tap away
   expect(parseChoices("nonsense")).toEqual({});
 });
 
+test("a case drilled before the review changed its main algorithm keeps the one learnt", () => {
+  const e = trainerSet("pll").find((c) => c.label === "E");
+  if (!e) throw new Error("no PLL E");
+  const old = MAIN_BEFORE_REVIEW[e.id];
+  const fresh = e.algs[0]?.moves;
+  expect(old).toBeDefined();
+  expect(fresh).not.toBe(old);
+  const at = (minutes: number) => REVIEW_LIVE_AT + minutes * 60_000;
+  const attempt = (caseId: string, when: number) => ({ caseId, at: when });
+
+  // Drilled before the change, nothing chosen: the old one leads, the new one first after.
+  const before = [attempt("pll-x", at(-500)), attempt(e.id, at(-60))];
+  const learnt = learntChoices({}, "pll", before);
+  expect(learnt).toEqual({ [`pll/${e.id}`]: old });
+  expect(myAlg(e, learnt, "pll").moves).toBe(old);
+  expect(otherAlgs(e, learnt, "pll")[0]?.moves).toBe(fresh);
+  // The same from the same data every time, in any order of the attempts.
+  expect(learntChoices({}, "pll", [...before].reverse())).toEqual(learnt);
+
+  // First drilled after the change, or never: the new one.
+  expect(learntChoices({}, "pll", [attempt(e.id, at(5))])).toEqual({});
+  expect(learntChoices({}, "pll", [])).toEqual({});
+  // Another set's attempts on the same id say nothing about this one.
+  expect(learntChoices({}, "oll", before)).toEqual({});
+  // A choice of their own always wins.
+  const third = e.algs[2]?.moves ?? "";
+  const mine = { [`pll/${e.id}`]: third };
+  expect(learntChoices(mine, "pll", before)).toEqual(mine);
+
+  // Choosing the new one is kept as a choice (it is not what they would see otherwise);
+  // choosing the old one again forgets the choice and still shows the old one.
+  const implicit = learntChoices({}, "pll", before);
+  const chose = chooseAlg({}, "pll", e, fresh ?? "", implicit);
+  expect(chose).toEqual({ [`pll/${e.id}`]: fresh });
+  expect(myAlg(e, learntChoices(chose, "pll", before), "pll").moves).toBe(
+    fresh,
+  );
+  const back = chooseAlg(chose, "pll", e, old ?? "", implicit);
+  expect(back).toEqual({});
+  expect(myAlg(e, learntChoices(back, "pll", before), "pll").moves).toBe(old);
+});
+
 test("the clock on screen runs from the start, and from the recognising press in a split", () => {
   let s = showCase(false);
   expect(drillElapsed(s, 5000)).toBeNull();
@@ -199,6 +242,31 @@ test("F2L reads in the learner's order, numbered 1 to 41 in it, in four groups",
   expect(caseLabels("ls-right").get("ls-right-1011")).toBe(
     trainerSet("ls-right").find((c) => c.id === "ls-right-1011")?.label,
   );
+});
+
+test("the 2×2's swapped bottoms are named in the interface's language, in the set row's words", () => {
+  for (const lang of ["en", "ru"] as const) {
+    const words = texts[lang].train.memberWords["two-cll"];
+    for (const [set, word] of [
+      ["two-adj", words.adj],
+      ["two-diag", words.diag],
+    ] as const) {
+      const labels = caseLabels(set, words);
+      const cases = trainerSet(set);
+      expect(cases.map((c) => labels.get(c.id))).toEqual(
+        cases.map((_, i) => `${word} ${i + 1}`),
+      );
+    }
+    // The solved bottom's cases keep CLL, as the set row's word says.
+    expect(
+      caseLabels("two-cll", words).get(trainerSet("two-cll")[0]?.id ?? ""),
+    ).toBe("CLL 1");
+  }
+  expect(
+    caseLabels("two-adj", texts.ru.train.memberWords["two-cll"]).get(
+      trainerSet("two-adj")[2]?.id ?? "",
+    ),
+  ).toBe("Сосед 3");
 });
 
 test("a case whose main algorithm changed keeps the one chosen as mine, and says how many others there are", () => {

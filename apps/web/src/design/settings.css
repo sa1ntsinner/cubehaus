@@ -666,20 +666,27 @@ li[data-setting="training"] > span:first-child {
   margin-inline-end: 0;
 }
 
-/* Colours in play: six words, each with its sticker; the colours in play in `ink`, the
-   rest `dim` with their sticker greyed, so the state never rests on hue alone. */
+/* Colours in play: six words, each after its sticker, in three columns of two, opposite
+   colours sharing a column (white over yellow) as the pick in inspection has them. A
+   colour in play is `ink` with its sticker at full strength; one out of play is `dim`
+   with its sticker faint but in its own hue (a ring would leave white on a white ground
+   looking the same on and off), so the colour to turn on still shows and the state never
+   rests on hue alone. */
 li[data-setting="crossColours"] > span:first-child {
   color: var(--dim);
 }
 [data-part="cross-colours"] {
   min-width: 0;
+  margin: 0;
+  margin-inline-start: auto;
   padding: 0;
   border: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  column-gap: var(--s4);
-  margin-inline-start: auto;
+  display: grid;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(max-content, 1fr);
+  column-gap: var(--s5);
+  justify-items: start;
 }
 [data-action="cross-colour"] {
   display: inline-flex;
@@ -694,20 +701,19 @@ li[data-setting="crossColours"] > span:first-child {
 }
 [data-action="cross-colour"][aria-pressed="false"]
   > [data-part="cross-swatch"] {
-  filter: grayscale(1);
-  opacity: 0.45;
+  opacity: 0.4;
 }
 [data-action="cross-colour"]:hover:enabled {
   color: var(--ink);
 }
-/* Narrow: two rows of three, each opposite pair in one column (white over yellow), so no
-   colour is left alone on a line. */
+/* Narrow: the colours take a line of their own under the label, the first column on the
+   labels' edge and the last on the choices' edge. */
 @media (max-width: 599px) {
   [data-part="cross-colours"] {
-    display: grid;
-    grid-template-rows: repeat(2, auto);
-    grid-auto-flow: column;
-    justify-content: end;
-    justify-items: start;
+    flex-basis: 100%;
+    grid-auto-columns: max-content;
+    justify-content: space-between;
+    column-gap: var(--s3);
+    margin-inline-start: 0;
   }
 }

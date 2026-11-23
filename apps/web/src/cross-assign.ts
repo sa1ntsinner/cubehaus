@@ -1,5 +1,11 @@
 import { type CrossColour, resultValue, type Solve } from "@cubehaus/core";
-import { assignColour, type ColourEntry, seedOf } from "@cubehaus/stats";
+import {
+  ASSIGN,
+  assignColour,
+  type ColourEntry,
+  colourSummary,
+  seedOf,
+} from "@cubehaus/stats";
 
 /**
  * The session's solves that have a cross colour, oldest first, from the newest solves
@@ -54,4 +60,34 @@ export function createCrossAssigner() {
     keep: remember,
     known: (scramble: string) => kept.get(scramble),
   };
+}
+
+/** What changed with the scramble on screen: a new colour's block, or the mix beginning. */
+export type ColourNews<C extends string> =
+  | { kind: "block"; colour: C }
+  | { kind: "mixed" };
+
+const isMixed = <C extends string>(
+  history: readonly ColourEntry<C>[],
+  colours: readonly C[],
+) =>
+  colourSummary(history, colours).every(({ gap }) => gap <= ASSIGN.mixWithin);
+
+/**
+ * One quiet line when the plan changes, said once with the scramble it changes on: a block
+ * of another colour begins (the colour furthest behind), or every colour has come within
+ * reach of the best and the colours mix from here. Nothing for the first block (nothing
+ * is known yet, so it is the person's own colour) or inside a block or the mix.
+ */
+export function colourNews<C extends string>(
+  history: readonly ColourEntry<C>[],
+  colours: readonly C[],
+  colour: C,
+): ColourNews<C> | null {
+  const played = history.filter((entry) => colours.includes(entry.colour));
+  const last = played.at(-1);
+  if (!last || colours.length < 2) return null;
+  if (isMixed(played, colours))
+    return isMixed(played.slice(0, -1), colours) ? null : { kind: "mixed" };
+  return last.colour === colour ? null : { kind: "block", colour };
 }

@@ -703,8 +703,9 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
     margin-top: var(--s4);
   }
 }
-/* Short on height (a phone on its side): the picture and the time share what is left. */
-@media (max-height: 520px) {
+/* Short on height (a phone on its side, or a 320 × 568 phone): the picture and the time
+   share what is left, so the choices at the foot stay on the screen. */
+@media (max-height: 600px) {
   main[data-part="train"] {
     padding-block: var(--s3) var(--s5);
   }

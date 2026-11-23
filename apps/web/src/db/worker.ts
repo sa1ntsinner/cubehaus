@@ -1,12 +1,23 @@
-import type { Db, SqlValue, Statement } from "@cubehaus/storage";
+import {
+  type Db,
+  migrate,
+  type SqlValue,
+  type Statement,
+} from "@cubehaus/storage";
 import sqlite3InitModule, {
   type Database,
   type PreparedStatement,
+  type SAHPoolUtil,
 } from "@sqlite.org/sqlite-wasm";
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import type { ImportInput } from "../import";
-import type { LegacyOpenResult } from "./client";
-import { createDbServices } from "./services";
+import type { LegacyOpenResult, OpenResult } from "./client";
+import {
+  type ReadableData,
+  type RecoveryResult,
+  saveReadable,
+} from "./recovery";
+import { createDbServices, restoreFromFile } from "./services";
 
 let database: Database | undefined;
 
@@ -82,17 +93,120 @@ const {
 } = createDbServices(db);
 
 // The published initializer type omits Emscripten's documented options.
+let initialized: ReturnType<typeof sqlite3InitModule> | undefined;
 function initialize() {
-  return (
-    sqlite3InitModule as (options: {
-      locateFile: (path: string) => string;
-    }) => ReturnType<typeof sqlite3InitModule>
-  )({ locateFile: () => wasmUrl });
+  const init = sqlite3InitModule as (options: {
+    locateFile: (path: string) => string;
+  }) => ReturnType<typeof sqlite3InitModule>;
+  initialized ??= init({ locateFile: () => wasmUrl });
+  return initialized;
 }
 
 /** Where the SAH pool keeps its files (its default directory) and the app's name in it. */
 const POOL_DIRECTORY = ".opfs-sahpool";
 const FILE = "/cubehaus.sqlite3";
+const RECOVERY_DIR = "cubehaus-recovery";
+let pool: SAHPoolUtil | undefined;
+let filename: string | undefined;
+
+function recoveryFile(generation: number) {
+  return `/cubehaus-recovered-${generation}.sqlite3`;
+}
+
+async function recoveryDirectory(create = false) {
+  const root = await navigator.storage.getDirectory();
+  try {
+    return await root.getDirectoryHandle(RECOVERY_DIR, { create });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "NotFoundError")
+      return undefined;
+    throw error;
+  }
+}
+
+async function latestGeneration(
+  dir: FileSystemDirectoryHandle | undefined,
+): Promise<number> {
+  if (!dir) return 0;
+  let latest = 0;
+  for await (const entry of dir.values()) {
+    const generation = Number(entry.name);
+    if (entry.kind === "file" && Number.isSafeInteger(generation)) {
+      latest = Math.max(latest, generation);
+    }
+  }
+  return latest;
+}
+
+async function activeFile(pool: SAHPoolUtil) {
+  const latest = await latestGeneration(await recoveryDirectory());
+  if (!latest) return FILE;
+  const current = recoveryFile(latest);
+  if (!pool.getFileNames().includes(current))
+    throw new Error("The recovered database file is missing");
+  return current;
+}
+
+async function saveWebReadable(): Promise<ReadableData | null> {
+  if (database) {
+    const logical = await saveReadable(db).catch(() => null);
+    if (logical) return logical;
+  }
+  if (!pool || !filename || !pool.getFileNames().includes(filename))
+    return null;
+  const bytes = pool.exportFile(filename);
+  return new Blob([Uint8Array.from(bytes)], {
+    type: "application/vnd.sqlite3",
+  });
+}
+
+/** Validate and build away from the damaged file. Publish the new name last. */
+async function restoreDamaged(file: File): Promise<RecoveryResult> {
+  const sqlite = await initialize();
+  const source = database;
+  const replacement = new sqlite.oo1.DB(":memory:");
+  database = replacement;
+  try {
+    replacement.exec("PRAGMA foreign_keys = ON");
+    let migrated: Promise<number> | undefined;
+    function ready() {
+      migrated ??= migrate(db);
+      return migrated;
+    }
+    const result = await restoreFromFile(
+      {
+        ...db,
+        async all<T extends Record<string, SqlValue>>(
+          sql: string,
+          params?: readonly SqlValue[],
+        ) {
+          await ready();
+          return db.all<T>(sql, params);
+        },
+        async batch(statements) {
+          await ready();
+          return db.batch(statements);
+        },
+      },
+      file,
+    );
+    if ("problem" in result) return result;
+    if (!pool) throw new Error("Persistent storage is unavailable");
+    const dir = await recoveryDirectory(true);
+    if (!dir) throw new Error("Recovery storage is unavailable");
+    const generation = (await latestGeneration(dir)) + 1;
+    const filename = recoveryFile(generation);
+    const bytes = sqlite.capi.sqlite3_js_db_export(replacement);
+    // The old file and its journal keep their own names, even if a write fails.
+    await pool.reserveMinimumCapacity(pool.getFileCount() + 2);
+    await pool.importDb(filename, bytes);
+    await dir.getFileHandle(String(generation), { create: true });
+    return { restored: true };
+  } finally {
+    database = source;
+    replacement.close();
+  }
+}
 
 /**
  * The desktop app's earlier history in the webview's OPFS, read without changing it: the
@@ -118,9 +232,10 @@ async function openLegacy(): Promise<LegacyOpenResult> {
     });
     let bytes: Uint8Array;
     try {
-      if (!pool.getFileNames().includes(FILE)) return { kind: "absent" };
+      const filename = await activeFile(pool);
+      if (!pool.getFileNames().includes(filename)) return { kind: "absent" };
       const source = new sqlite.oo1.DB({
-        filename: FILE,
+        filename,
         flags: "r",
         vfs: pool.vfsName,
       });
@@ -158,30 +273,43 @@ async function openLegacy(): Promise<LegacyOpenResult> {
 
 async function execute(method: string, args: unknown[]): Promise<unknown> {
   if (method === "openLegacy") return openLegacy();
+  if (method === "restoreDamaged") return restoreDamaged(args[0] as File);
+  if (method === "saveReadable") return saveWebReadable();
   if (method === "open") {
     if (database) throw new Error("Database is already open");
     const options = args[0] as { opfs: boolean; delay: number };
     if (options.delay > 0)
       await new Promise((resolve) => setTimeout(resolve, options.delay));
     const sqlite = await initialize();
-    let result: { kind: "persistent" } | { kind: "memory"; reason: string };
     if (options.opfs) {
       try {
-        const pool = await sqlite.installOpfsSAHPoolVfs({
+        pool = await sqlite.installOpfsSAHPoolVfs({
           preserveOnInitFailure: true,
         });
-        database = new pool.OpfsSAHPoolDb(FILE);
-        result = { kind: "persistent" };
       } catch (error) {
         database = new sqlite.oo1.DB(":memory:");
-        result = { kind: "memory", reason: String(error) };
+        database.exec("PRAGMA foreign_keys = ON");
+        return { kind: "memory", reason: String(error) } satisfies OpenResult;
       }
-    } else {
-      database = new sqlite.oo1.DB(":memory:");
-      result = { kind: "memory", reason: "OPFS or Web Locks is unavailable" };
+      try {
+        filename = await activeFile(pool);
+        database = new pool.OpfsSAHPoolDb(filename);
+        database.exec("PRAGMA foreign_keys = ON");
+        return { kind: "persistent" } satisfies OpenResult;
+      } catch (error) {
+        return {
+          kind: "failed",
+          reason: String(error),
+          readable: !!filename && pool.getFileNames().includes(filename),
+        } satisfies OpenResult;
+      }
     }
+    database = new sqlite.oo1.DB(":memory:");
     database.exec("PRAGMA foreign_keys = ON");
-    return result;
+    return {
+      kind: "memory",
+      reason: "OPFS or Web Locks is unavailable",
+    } satisfies OpenResult;
   }
   connection();
   if (method === "previewImport") return previewFile(args[0] as ImportInput);

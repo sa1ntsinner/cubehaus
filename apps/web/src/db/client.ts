@@ -7,11 +7,14 @@ import type {
 } from "../import";
 import type { ProgressReader } from "../progress-worker";
 
+import type { ReadableData, RecoveryResult } from "./recovery";
+
 export interface WorkerPort extends EventTarget {
   postMessage(message: unknown): void;
 }
 export type OpenResult =
   | { kind: "persistent" }
+  | { kind: "failed"; reason: string; readable: boolean }
   | { kind: "memory"; reason: string };
 /** The webview's own database, read into memory: none there, a copy open, or failed. */
 export type LegacyOpenResult =
@@ -30,6 +33,8 @@ export type DbClient = Db & {
     sessionId?: string,
   ): Promise<ExportFileResult>;
   restoreBackup(file: File): Promise<RestoreFileResult>;
+  restoreDamaged(file: File): Promise<RecoveryResult>;
+  saveReadable(): Promise<ReadableData | null>;
   progress: ProgressReader;
   dispose(): void;
 };
@@ -88,6 +93,8 @@ export function createDbClient(
         sessionId === undefined ? [format] : [format, sessionId],
       ),
     restoreBackup: (file) => request("restoreBackup", [file]),
+    restoreDamaged: (file) => request("restoreDamaged", [file]),
+    saveReadable: () => request("saveReadable", []),
     progress: {
       counts: (revision) => request("progress.counts", [revision]),
       readProgress: (scope, options) =>

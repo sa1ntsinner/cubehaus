@@ -514,19 +514,19 @@ main > [data-part="time-under"] {
   font-size: 15px;
   color: var(--gutter);
 }
-/* After a solve: each colour's shortest cross, the solve's own colour in `ink`. While the
-   worker counts, the line keeps its place empty, so nothing under it moves. */
+/* After a solve: each colour's shortest cross (training.css), after the word `cross`. While
+   the worker counts, the line keeps its place empty, so nothing under it moves. */
 [data-part="time-cross"] {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--s3);
   font-family: var(--font-mono);
   font-size: 15px;
   color: var(--gutter);
-  white-space: nowrap;
 }
-[data-part="time-cross"] > [data-part="cross-label"] {
-  margin-inline-end: 0.6ch;
-}
-[data-part="time-cross"] > [data-own] {
-  color: var(--ink);
+[data-part="time-cross"][data-pending] {
+  visibility: hidden;
 }
 [data-part="time-comment"] {
   font-size: 16px;

@@ -130,3 +130,26 @@ test("pool failure opens one memory connection with foreign keys and transaction
   await expect(client.columns("SELECT 'text'")).rejects.toThrow("numeric");
   expect(await store.solves.count(session.id)).toBe(1);
 });
+
+test("a newer backup is refused without changing the web database", async () => {
+  await client.open({ opfs: false, delay: 0 });
+  await migrate(client);
+  const store = createStore(client);
+  await store.sessions.create({ name: "Synthetic", event: "333" });
+  const before = JSON.parse(await client.exportBackup());
+  const file = new File(
+    [JSON.stringify({ ...before, schema: before.schema + 1, tables: {} })],
+    "newer.json",
+  );
+  expect(await client.restoreBackup(file)).toEqual({ problem: "newer" });
+  expect(JSON.parse(await client.exportBackup()).tables).toEqual(before.tables);
+});
+
+test("recovery refuses a newer backup before staging a replacement", async () => {
+  const file = new File(
+    ['{"format":"cubehaus","version":1,"schema":999,"tables":{}}'],
+    "newer.json",
+  );
+  await client.open({ opfs: false, delay: 0 });
+  expect(await client.restoreDamaged(file)).toEqual({ problem: "newer" });
+});

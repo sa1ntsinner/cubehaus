@@ -283,6 +283,18 @@ const en = {
   unsavedDownload: "Download",
   dbBusy:
     "Open in another tab. Solves made here are saved when that tab closes.",
+  dbOpenFailed: "Could not open the database.",
+  dbNewer: "This database needs a newer version of cubehaus.",
+  dbRestoreLatest: "Restore latest backup",
+  dbRestoreFile: "Restore from file",
+  dbSaveReadable: "Save readable data",
+  dbRecoveryFeedback: {
+    newer: "This backup needs a newer version of cubehaus.",
+    format: "Invalid cubehaus backup file.",
+    reference: "This backup is incomplete.",
+    restore: "The backup could not be restored.",
+    save: "No readable data could be saved.",
+  },
   dbFailed:
     "The database could not be opened or written. Solves made here wait in this browser and are saved when it opens.",
   // Official terms (WCA Regulations; research A2) and DESIGN.md section 17.
@@ -386,6 +398,10 @@ const en = {
     line: "cross",
     lineLabel: "Shortest cross by colour",
     alwaysShown: "The cross lengths show after every solve",
+    // Said once when the plan changes: a block of the colour furthest behind begins, or
+    // every colour is close enough to the best to mix.
+    nextBlock: (cross: string) => `Next 12: ${cross}`,
+    mixed: "Colours mixed from here",
     pickLabel: "Colour to start on",
     overTip: (n: number) =>
       n === 0
@@ -1070,6 +1086,18 @@ const ru: Text = {
   unsavedDownload: "Скачать",
   dbBusy:
     "Открыто в другой вкладке. Сборки отсюда сохранятся, когда та вкладка закроется.",
+  dbOpenFailed: "Не удалось открыть базу.",
+  dbNewer: "Для этой базы нужна новая версия cubehaus.",
+  dbRestoreLatest: "Восстановить из последней копии",
+  dbRestoreFile: "Восстановить из файла",
+  dbSaveReadable: "Сохранить доступные данные",
+  dbRecoveryFeedback: {
+    newer: "Для этой копии нужна новая версия cubehaus.",
+    format: "Неверный формат резервной копии.",
+    reference: "Резервная копия неполная.",
+    restore: "Не удалось восстановить копию.",
+    save: "Не удалось сохранить доступные данные.",
+  },
   dbFailed:
     "Не удалось открыть или записать базу. Сборки отсюда ждут в браузере и сохранятся, когда база откроется.",
   inspection: "Инспекция",
@@ -1170,6 +1198,8 @@ const ru: Text = {
     line: "крест",
     lineLabel: "Самый короткий крест по цветам",
     alwaysShown: "Длины крестов видны после каждой сборки",
+    nextBlock: (cross: string) => `Следующие 12: ${cross}`,
+    mixed: "Дальше цвета вперемешку",
     pickLabel: "Цвет, с которого начать",
     overTip: (n: number) =>
       n === 0

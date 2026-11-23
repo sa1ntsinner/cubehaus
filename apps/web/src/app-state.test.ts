@@ -150,10 +150,10 @@ test("deleting the open session prefers the previous neighbour, then the next, a
     ok(second);
     await app.newSession("Four", "444");
     await app.selectSession(second.id);
-    await app.deleteSession(second.id);
+    await app.deleteSessions([second.id]);
     expect(app.view.current?.id).toBe(first.id);
     expect(await store.settings.get("session.current")).toBe(first.id);
-    await app.deleteSession(first.id);
+    await app.deleteSessions([first.id]);
     expect(app.view.current?.event).toBe("444");
     await app.undo();
     expect(app.view.current?.id).toBe(first.id);
@@ -168,7 +168,7 @@ test("deleting the only session opens a fresh 3×3", async () => {
     await open();
     const first = app.view.current;
     ok(first);
-    await app.deleteSession(first.id);
+    await app.deleteSessions([first.id]);
     expect(app.view.sessions).toEqual([app.view.current]);
     expect(app.view.current).toMatchObject({ event: "333", name: "3×3" });
     expect(app.view.current?.id).not.toBe(first.id);
@@ -216,7 +216,7 @@ test("archive and trash: out of the list, back by undo or from the trash, the la
     expect(app.view.current).toMatchObject({ id: a.id, archived: false });
 
     // Into the trash and back out of it, with all three solves in order.
-    await app.deleteSession(a.id);
+    await app.deleteSessions([a.id]);
     const [entry] = await app.trash();
     expect(entry).toMatchObject({ kind: "session", id: a.id, count: 3 });
     ok(entry);

@@ -10,6 +10,7 @@ import type { ColourSeries, ProgressScope } from "@cubehaus/storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppView } from "../app-state";
 import { localDayKey } from "../day";
+import { DbFailure } from "../db/DbFailure";
 import { actionKey } from "../keys/keymap";
 import {
   formatProgressDifference,
@@ -304,7 +305,8 @@ export function Progress({
         <a href="#/">{text.backToTimer}</a>
       </nav>
       <h1>{labels.title}</h1>
-      {db?.kind !== "persistent" && (
+      {db?.kind === "failed" && <DbFailure state={db} words={text} />}
+      {db?.kind !== "persistent" && db?.kind !== "failed" && (
         <p data-part="db-state" data-kind={db?.kind ?? "opening"}>
           {dbMessage}
         </p>

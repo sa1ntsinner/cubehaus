@@ -74,24 +74,6 @@ export function createDbServices(db: Db) {
     };
   }
 
-  async function restoreBackup(file: File): Promise<RestoreFileResult> {
-    let doc: unknown;
-    try {
-      doc = JSON.parse(await file.text());
-    } catch {
-      return { problem: "format" };
-    }
-    try {
-      return await restore(db, doc);
-    } catch (error) {
-      if (error instanceof NewerBackupError) return { problem: "newer" };
-      if (error instanceof BackupFormatError) return { problem: "format" };
-      if (error instanceof BackupReferenceError)
-        return { problem: "reference" };
-      throw error;
-    }
-  }
-
   return {
     store,
     progress,
@@ -99,8 +81,28 @@ export function createDbServices(db: Db) {
     importFile,
     exportBackup,
     exportFile,
-    restoreBackup,
+    restoreBackup: (file: File) => restoreFromFile(db, file),
   };
+}
+
+export async function restoreFromFile(
+  db: Db,
+  file: File,
+): Promise<RestoreFileResult> {
+  let doc: unknown;
+  try {
+    doc = JSON.parse(await file.text());
+  } catch {
+    return { problem: "format" };
+  }
+  try {
+    return await restore(db, doc);
+  } catch (error) {
+    if (error instanceof NewerBackupError) return { problem: "newer" };
+    if (error instanceof BackupFormatError) return { problem: "format" };
+    if (error instanceof BackupReferenceError) return { problem: "reference" };
+    throw error;
+  }
 }
 
 export type DbServices = ReturnType<typeof createDbServices>;

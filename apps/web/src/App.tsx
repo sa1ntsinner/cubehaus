@@ -1,4 +1,5 @@
 import {
+  CROSS_COLOURS,
   type CrossColour,
   type EventId,
   eventInfo,
@@ -15,7 +16,6 @@ import {
   type StatId,
 } from "@cubehaus/stats";
 import {
-  Fragment,
   lazy,
   Suspense,
   startTransition,
@@ -29,7 +29,8 @@ import {
 import { type AppState, type AppView, createAppState } from "./app-state";
 import { formatSolveLine } from "./average-copy";
 import { backupFileName, download } from "./backup-file";
-import { createCrossAssigner, crossHistory } from "./cross-assign";
+import { colourNews, createCrossAssigner, crossHistory } from "./cross-assign";
+import { DbFailure } from "./db/DbFailure";
 import { backupDue } from "./db/native";
 import { openDatabase } from "./db/open";
 import { createPendingJournal, memoryStorage } from "./db/pending";
@@ -61,6 +62,7 @@ import {
   type WorkerLike,
 } from "./scramble/training-client";
 import { AverageDetail } from "./screens/AverageDetail";
+import { CrossCells } from "./screens/CrossCells";
 import { Entry } from "./screens/Entry";
 import { SessionGrid } from "./screens/SessionGrid";
 import { SessionSwitch } from "./screens/SessionSwitch";
@@ -265,9 +267,7 @@ export function App({
         ? words.dbMemory
         : dbKind === "busy"
           ? words.dbBusy
-          : dbKind === "failed"
-            ? words.dbFailed
-            : null;
+          : null;
 
   // One boundary for every screen, so a transition keeps the shown one in place.
   return <Suspense fallback={null}>{screen()}</Suspense>;
@@ -683,6 +683,23 @@ function TimerPage({
       : scramble === null
         ? null
         : assigner.colourFor(scramble, inPlay, crossNow.current.history);
+  // One quiet line when the plan changes with this scramble: a new colour's block, or the
+  // mix beginning. Said once per scramble, never for a scramble timed again.
+  const newsShown = useRef<string | null>(null);
+  useEffect(() => {
+    if (!crossColour || view.repeat || scramble === null) return;
+    if (newsShown.current === scramble) return;
+    newsShown.current = scramble;
+    const news = colourNews(crossNow.current.history, inPlay, crossColour);
+    if (news)
+      setNotice(
+        news.kind === "mixed"
+          ? words.cross.mixed
+          : words.cross.nextBlock(
+              words.cross.mark(words.cross.name[news.colour]),
+            ),
+      );
+  }, [crossColour, scramble, view.repeat, inPlay, words]);
   const measuredMs =
     timedMulti?.sessionId === sessionId && timedMulti?.scramble === scramble
       ? timedMulti?.timeMs
@@ -1065,12 +1082,16 @@ function TimerPage({
   const [crossAsked, setCrossAsked] = useState(false);
   const lineSolve =
     event === "333" && (crossAssigned || crossAsked) ? target : undefined;
+  // With an assigned colour, the colours in play (and the solve's own, if it has left
+  // play); with Any, X asks about every colour: which would have been the shortest.
   const lineColours = useMemo(
     () =>
-      lineSolve?.crossColour && !inPlay.includes(lineSolve.crossColour)
-        ? [...inPlay, lineSolve.crossColour]
-        : inPlay,
-    [inPlay, lineSolve?.crossColour],
+      !crossAssigned
+        ? CROSS_COLOURS
+        : lineSolve?.crossColour && !inPlay.includes(lineSolve.crossColour)
+          ? [...inPlay, lineSolve.crossColour]
+          : inPlay,
+    [crossAssigned, inPlay, lineSolve?.crossColour],
   );
   const [crossLengths, setCrossLengths] = useState<{
     key: string;
@@ -1091,10 +1112,15 @@ function TimerPage({
       stale = true;
     };
   }, [crossClient, lineSolve, lineKey, lineColours]);
-  const crossLine: CrossLine | "pending" | null = !lineSolve
+  const crossLine: CrossLine | null = !lineSolve
     ? null
     : crossLengths?.key !== lineKey
-      ? "pending"
+      ? {
+          lengths: lineColours.map((colour) => ({ colour, length: 0 })),
+          own: null,
+          shortest: 0,
+          pending: true,
+        }
       : crossLengths.lengths
         ? (() => {
             const lengths = lineColours.flatMap((colour) => {
@@ -2055,16 +2081,21 @@ function TimerPage({
               </button>
             </p>
           )}
-        {(dbKind !== "persistent" || dbMessage) && view.unsaved === 0 && (
-          <p
-            data-part="db-state"
-            data-kind={
-              dbKind === "persistent" ? "earlier" : (dbKind ?? "opening")
-            }
-          >
-            {dbMessage}
-          </p>
+        {view.dbState?.kind === "failed" && (
+          <DbFailure state={view.dbState} words={words} />
         )}
+        {dbKind !== "failed" &&
+          (dbKind !== "persistent" || dbMessage) &&
+          view.unsaved === 0 && (
+            <p
+              data-part="db-state"
+              data-kind={
+                dbKind === "persistent" ? "earlier" : (dbKind ?? "opening")
+              }
+            >
+              {dbMessage}
+            </p>
+          )}
         {view.unsaved > 0 && (
           <p data-part="db-state" data-kind="unsaved" role="alert">
             {words.unsaved(view.unsaved)}{" "}
@@ -2142,8 +2173,8 @@ const PICK_KEYS: Record<CrossColour, string> = {
 };
 
 /**
- * After a pick: every colour in play with its shortest cross, the pick in `ink`, the
- * shortest in `pb`, then how many turns the pick's cross is longer than the shortest.
+ * After a pick: every colour in play with its shortest cross, the shortest in `pb`, the
+ * pick underlined in `ink` with how many turns its cross is longer than the shortest.
  */
 function ChoiceResult({
   lengths,
@@ -2156,26 +2187,21 @@ function ChoiceResult({
   colours: readonly CrossColour[];
   words: Text;
 }) {
-  const known = colours.filter((colour) => lengths[colour] !== undefined);
-  const shortest = Math.min(...known.map((colour) => lengths[colour] ?? 99));
+  const cells = colours.flatMap((colour) => {
+    const length = lengths[colour];
+    return length === undefined ? [] : [{ colour, length }];
+  });
+  const shortest = Math.min(...cells.map(({ length }) => length));
   const over = (lengths[pick] ?? shortest) - shortest;
   return (
-    <output data-part="choice-result" data-near={over <= 1 || undefined}>
-      {known.map((colour, index) => (
-        <Fragment key={colour}>
-          {index > 0 && " · "}
-          <span
-            data-colour={colour}
-            data-picked={colour === pick || undefined}
-            data-shortest={lengths[colour] === shortest || undefined}
-          >
-            {words.cross.name[colour]} {lengths[colour]}
-          </span>
-        </Fragment>
-      ))}{" "}
-      <span data-part="choice-over" title={words.cross.overTip(over)}>
-        +{over}
-      </span>
+    <output data-part="choice-result">
+      <CrossCells
+        cells={cells}
+        words={words}
+        pick={pick}
+        over={over}
+        overTip={words.cross.overTip(over)}
+      />
     </output>
   );
 }

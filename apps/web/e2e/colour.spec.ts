@@ -64,7 +64,7 @@ test("an assigned colour is shown, kept with the solve, and survives reload and 
   // The line after the solve: each colour's shortest cross, the solve's own marked.
   const lengths = crossLengths(timed, ["U", "D"]);
   await expect(crossLine(page)).toHaveText(
-    `cross white ${lengths?.U} · yellow ${lengths?.D}`,
+    `cross white ${lengths?.U} yellow ${lengths?.D}`,
   );
   await expect(crossLine(page).locator("[data-own]")).toHaveAttribute(
     "data-colour",
@@ -124,9 +124,10 @@ test("with Any, X asks for each colour's shortest cross after a solve", async ({
   await expect(page.locator('[data-part="time-cross"]')).toHaveCount(0);
   await page.waitForTimeout(250);
   await page.keyboard.press("KeyX");
-  const lengths = crossLengths(timed, ["U", "D"]);
+  // Every colour: which would have been the shortest.
+  const lengths = crossLengths(timed, ["U", "D", "F", "B", "R", "L"]);
   await expect(crossLine(page)).toHaveText(
-    `cross white ${lengths?.U} · yellow ${lengths?.D}`,
+    `cross white ${lengths?.U} yellow ${lengths?.D} green ${lengths?.F} blue ${lengths?.B} red ${lengths?.R} orange ${lengths?.L}`,
   );
   // The solve had no colour: none is marked as its own.
   await expect(crossLine(page).locator("[data-own]")).toHaveCount(0);
@@ -208,7 +209,7 @@ test("choosing the cross: a colour key in inspection, then every colour's shorte
   const lengths = crossLengths(shown, ["U", "D"]);
   const result = page.locator('[data-part="choice-result"]');
   await expect(result).toContainText(
-    `white ${lengths?.U} · yellow ${lengths?.D}`,
+    `white ${lengths?.U} yellow ${lengths?.D}`,
   );
   const over = (lengths?.D ?? 0) - Math.min(lengths?.U ?? 0, lengths?.D ?? 0);
   await expect(result.locator('[data-part="choice-over"]')).toHaveText(

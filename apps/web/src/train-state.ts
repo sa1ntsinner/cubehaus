@@ -3,6 +3,8 @@ import {
   type F2lSetId,
   f2lGroups,
   f2lOrder,
+  MAIN_BEFORE_REVIEW,
+  REVIEW_LIVE_AT,
   type SetId,
   slotOf,
   trainerSet,
@@ -173,18 +175,46 @@ export function otherAlgs<A extends { moves: string }>(
   return c.algs.filter((a) => a !== mine);
 }
 
-/** The choices after choosing `moves`; choosing the best one forgets the choice. */
+/**
+ * The choices after choosing `moves`; choosing what the case shows with no choice (the
+ * best one, or the one `learnt` keeps) forgets the choice.
+ */
 export function chooseAlg<A extends { moves: string }>(
   choices: AlgChoices,
   set: string,
   c: WithAlgs<A>,
   moves: string,
+  learnt: AlgChoices = {},
 ): Record<string, string> {
   const next: Record<string, string> = { ...choices };
   const key = choiceKey(set, c.id);
-  if (moves === c.algs[0]?.moves) delete next[key];
+  if (moves === (learnt[key] ?? c.algs[0]?.moves)) delete next[key];
   else next[key] = moves;
   return next;
+}
+
+/**
+ * The choices to show with: the person's own, and for each case whose main algorithm the
+ * review replaced, drilled before the change went live and with no choice of theirs, the
+ * old main algorithm, which is what they learnt. It is still among the case's algorithms,
+ * so the new one leads the others. Read from the attempts alone, so the same data always
+ * gives the same answer.
+ */
+export function learntChoices(
+  choices: AlgChoices,
+  set: string,
+  attempts: readonly { caseId: string; at: number }[],
+): AlgChoices {
+  let next: Record<string, string> | null = null;
+  for (const { caseId, at } of attempts) {
+    const old = MAIN_BEFORE_REVIEW[caseId];
+    const key = choiceKey(set, caseId);
+    if (!old || at >= REVIEW_LIVE_AT || !caseId.startsWith(`${set}-`)) continue;
+    if (key in choices || next?.[key]) continue;
+    next ??= { ...choices };
+    next[key] = old;
+  }
+  return next ?? choices;
 }
 
 export function parseChoices(json: string | null): Record<string, string> {
@@ -281,13 +311,31 @@ export function storedMember<F extends Family>(
   ) as Choice<F>;
 }
 
-/** Case names as Learn and the drill show them: F2L numbered in the learner's order. */
-export function caseLabels(set: SetId): ReadonlyMap<string, string> {
+/**
+ * Case names as Learn and the drill show them: F2L numbered in the learner's order; the
+ * 2×2's swapped bottoms by the set row's own words in the interface's language (`Adj 3`,
+ * `Сосед 3`), so a title, its tile and what a screen reader hears name the set alike.
+ */
+export function caseLabels(
+  set: SetId,
+  bottoms?: { adj: string; diag: string },
+): ReadonlyMap<string, string> {
   if (slotOf(set) !== null)
     return new Map(
       f2lOrder(set as F2lSetId).map((place) => [place.id, place.label]),
     );
-  return new Map(trainerSet(set).map((c) => [c.id, c.label]));
+  const word =
+    set === "two-adj"
+      ? bottoms?.adj
+      : set === "two-diag"
+        ? bottoms?.diag
+        : null;
+  return new Map(
+    trainerSet(set).map((c) => [
+      c.id,
+      word ? c.label.replace(/^\S+(?= \d+$)/, word) : c.label,
+    ]),
+  );
 }
 
 /** F2L's list in Learn: the learner's order in four groups. Other sets: one list. */

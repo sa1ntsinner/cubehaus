@@ -1,0 +1,33 @@
+[data-part="db-recovery-actions"] {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2);
+}
+
+[data-part="db-recovery-actions"] > button {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (hover: none) {
+  [data-part="db-recovery-actions"] > button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 699px) {
+  footer[data-part="status-line"] > [data-db-recovery]:has(button) {
+    padding-bottom: var(--s2);
+  }
+}
+
+/* The ordinary status message is clamped in landscape. Recovery actions and errors wrap. */
+@media (hover: none) and (min-width: 700px) {
+  footer[data-part="status-line"] > [data-db-recovery] {
+    display: block;
+    overflow: visible;
+  }
+}

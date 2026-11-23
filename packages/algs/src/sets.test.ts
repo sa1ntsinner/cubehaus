@@ -27,29 +27,47 @@ describe("last-slot sets in the trainer", () => {
     }
   });
 
-  it("show the top with the pair in colour and the last layer as up or not", () => {
+  it("show the three corners' twist, the pair and nothing else, and no two tiles alike", () => {
     for (const set of LS) {
       const tops = new Set<string>();
+      const twists = new Set<string>();
+      const pairs = new Set<string>();
       for (const c of trainerSet(set)) {
         const top = lastSlotTop(c);
         const full = c.pictures?.top as string;
         const slot = c.pictures?.slot as string;
         expect(top).toHaveLength(21);
         tops.add(top);
-        // The U face and the front and right top rows are the slot picture's own.
-        expect(top.slice(0, 9)).toBe(slot.slice(0, 9));
-        expect(top.slice(9, 12)).toBe(slot.slice(9, 12));
-        expect(top.slice(12, 15)).toBe(slot.slice(18, 21));
+        // The U face's corners and the front and right top rows' ends are the slot
+        // picture's own.
+        for (const i of [0, 2, 6, 8]) expect(top[i]).toBe(slot[i]);
+        const edges = [1, 3, 5, 7, 10, 13, 16, 19];
         for (let i = 0; i < 21; i++) {
-          // A sticker is the full picture's colour, or for the last layer only U or x.
-          if (top[i] === "x") expect(full[i]).not.toBe("U");
-          else expect(top[i]).toBe(full[i]);
+          // A sticker is the full picture's colour; a corner's is U or x, an edge's x.
+          if (top[i] !== "x") expect(top[i]).toBe(full[i]);
+          else if (!edges.includes(i)) expect(full[i]).not.toBe("U");
         }
+        expect(top[4]).toBe("U");
         // The pair: one corner and one edge, three and two stickers in colour (no U, no x).
-        const coloured = [...top].filter((l) => l !== "U" && l !== "x");
-        expect(coloured, c.label).toHaveLength(5);
+        const at = Array.from(top, (_, i) => i).filter(
+          (i) => top[i] !== "U" && top[i] !== "x",
+        );
+        expect(at, c.label).toHaveLength(5);
+        pairs.add(at.map((i) => `${i}${top[i]}`).join(","));
+        // Every other top edge sticker says nothing.
+        for (const i of edges)
+          if (!at.includes(i)) expect(top[i], `${c.label} ${i}`).toBe("x");
+        // What is left is the three corners' twist: where the top colour faces.
+        twists.add(
+          [...top]
+            .map((l, i) => (at.includes(i) || i === 4 ? "." : l))
+            .join(""),
+        );
       }
+      // The pair stands the same in every case of the set; the twist alone differs.
+      expect(pairs.size).toBe(1);
       expect(tops.size).toBe(26);
+      expect(twists.size).toBe(26);
     }
   });
 });

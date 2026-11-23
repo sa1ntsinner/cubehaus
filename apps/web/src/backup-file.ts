@@ -22,14 +22,16 @@ export function backupFileName(
   return `cubehaus-${kind}-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.${extension}`;
 }
 
-/** Hands a text file to the browser's download. */
+/** Hands a file to the browser's download. */
 export function download(
   name: string,
-  text: string,
+  contents: string | Blob,
   type = "application/json",
 ) {
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([text], { type }));
+  link.href = URL.createObjectURL(
+    typeof contents === "string" ? new Blob([contents], { type }) : contents,
+  );
   link.download = name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 0);

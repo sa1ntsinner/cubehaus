@@ -30,6 +30,7 @@ import type { LastSlotSetId, SetId, TrainerCaseData } from "./types";
  * cube library behind them.
  */
 export type { Metrics } from "./metrics";
+export { MAIN_BEFORE_REVIEW, REVIEW_LIVE_AT } from "./replaced";
 export type {
   LastSlotSetId,
   SetId,
@@ -118,10 +119,13 @@ export function lastSlotSet(id: LastSlotSetId): readonly (TrainerCaseData & {
 const ROW_PLACES = [6, 7, 8, 8, 5, 2, 2, 1, 0, 0, 3, 6];
 
 /**
- * A last-slot case's top as the person reads it: the pair's stickers in their colours,
- * every other last-layer sticker the top colour (`U`) or saying nothing (`x`), since only
- * the corners' twists tell the cases apart. 21 letters, as the OLL pictures. The pair is
- * where the slot picture shows a top place in a colour that is not the top's.
+ * A last-slot case's top as the person reads it: the case is the twist of the three top
+ * corners outside the pair, so those corners show where the top colour faces (`U` where it
+ * is, `x` on their other stickers), the pair its colours and the centre the top colour.
+ * The top edges are always oriented here and say nothing, so they are `x` too: with them
+ * the top colour's cross filled every tile and 26 tiles looked alike at 60 px. 21 letters,
+ * as the OLL pictures. The pair is where the slot picture shows a top place in a colour
+ * that is not the top's.
  */
 export function lastSlotTop(c: TrainerCaseData): string {
   const top = c.pictures?.top ?? "";
@@ -130,7 +134,11 @@ export function lastSlotTop(c: TrainerCaseData): string {
   return [...top]
     .map((letter, i) => {
       const place = i < 9 ? i : (ROW_PLACES[i - 9] as number);
-      return pair(place) || letter === "U" ? letter : "x";
+      if (pair(place)) return letter;
+      if (place === 4) return letter;
+      // An edge: a U place 1, 3, 5 or 7, or the middle of a side's top row.
+      const edge = i < 9 ? i % 2 === 1 : (i - 9) % 3 === 1;
+      return !edge && letter === "U" ? letter : "x";
     })
     .join("");
 }

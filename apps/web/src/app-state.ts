@@ -49,7 +49,6 @@ import {
   listed,
   type Place,
   sessionOrder,
-  stepPlace,
   tree,
 } from "./session-order";
 import {
@@ -1214,26 +1213,6 @@ export function createAppState(
         });
       });
     },
-    /** Alt+Up / Alt+Down: one row up or down as the list shows it. */
-    stepItem(item: LayoutItem, step: 1 | -1): Promise<void> {
-      return edit(async (db) => {
-        const place = stepPlace(
-          tree(listed(sessions, current?.id), folders),
-          item,
-          step,
-        );
-        if (!place) return;
-        const from = sessions.find(({ id }) => id === item.id)?.folderId;
-        await relayout(db, async () => {
-          await db.folders.place(item, place.parent, place.before);
-          if (item.kind === "session" && from && from !== place.parent) {
-            await readLayout(db);
-            await dissolve(db, [from]);
-          }
-          return null;
-        });
-      });
-    },
     /** Every session out of a folder, where it stood, in order; the folder goes. One undo. */
     ungroupFolder(id: string): Promise<void> {
       return edit(async (db) => {
@@ -1271,16 +1250,6 @@ export function createAppState(
         );
       });
     },
-    collapseFolder(id: string, value: boolean): Promise<void> {
-      return edit(async (db) => {
-        const folder = folders.find((item) => item.id === id);
-        if (!folder || folder.collapsed === value) return;
-        await db.folders.collapse(id, value);
-        folders = folders.map((item) =>
-          item.id === id ? { ...item, collapsed: value } : item,
-        );
-      });
-    },
     /** Out of the list (`value`) or back into it; one undo reverses it. */
     archiveSession(id: string, value: boolean): Promise<void> {
       return edit(async (db) => {
@@ -1303,10 +1272,6 @@ export function createAppState(
           },
         });
       });
-    },
-    /** Into the trash: kept 30 days, its solves hidden with it. */
-    deleteSession(id: string): Promise<void> {
-      return removeSessions([id]);
     },
     /** Several sessions into the trash at once, with one undo. */
     deleteSessions: removeSessions,

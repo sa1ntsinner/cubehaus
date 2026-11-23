@@ -1,6 +1,6 @@
 import type { Solve } from "@cubehaus/core";
 import { expect, it } from "vitest";
-import { createCrossAssigner, crossHistory } from "./cross-assign";
+import { colourNews, createCrossAssigner, crossHistory } from "./cross-assign";
 
 const solve = (
   id: string,
@@ -62,4 +62,31 @@ it("keeps the colour a scramble was shown with, while that colour is in play", (
   // A colour set by hand (a drill made for it) stands.
   assign.keep("L B", "green");
   expect(assign.colourFor("L B", ["green", "blue"], twelve)).toBe("green");
+});
+
+it("says when a block of a new colour starts and when the mix begins, and nothing else", () => {
+  const colours = ["white", "yellow"] as const;
+  const run = (colour: "white" | "yellow", n: number, value: number) =>
+    Array.from({ length: n }, () => ({ colour, value }));
+  // Nothing known yet: the first block starts without a word.
+  expect(colourNews([], colours, "white")).toBeNull();
+  // Inside a block: nothing.
+  expect(colourNews(run("white", 5, 9000), colours, "white")).toBeNull();
+  // Twelve whites done: the next block is yellow's.
+  expect(colourNews(run("white", 12, 9000), colours, "yellow")).toEqual({
+    kind: "block",
+    colour: "yellow",
+  });
+  // Yellow's block done and within 25 % of white: the mix begins, once.
+  const both = [...run("white", 12, 9000), ...run("yellow", 12, 11_000)];
+  expect(colourNews(both, colours, "white")).toEqual({ kind: "mixed" });
+  expect(
+    colourNews([...both, { colour: "white", value: 9000 }], colours, "yellow"),
+  ).toBeNull();
+  // Still far behind: blocks go on, the next one white's again.
+  const far = [...run("white", 12, 9000), ...run("yellow", 12, 13_000)];
+  expect(colourNews(far, colours, "white")).toEqual({
+    kind: "block",
+    colour: "white",
+  });
 });

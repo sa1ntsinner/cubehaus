@@ -287,22 +287,54 @@ main > [data-part="drill"] [data-action="cross-pick"] {
 }
 [data-part="choice-result"] {
   flex-basis: 100%;
+}
+
+/* Each colour's shortest cross (after a solve, and after a pick): one colour to a cell,
+   its sticker, name and length kept together. Two colours stand on one line; more stand
+   in two rows, opposite colours sharing a column as in the pick above, the lengths
+   aligned; a narrow phone with five or six gives each opposite pair a row. */
+[data-part="cross-cells"] {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-template-rows: auto;
+  column-gap: var(--s4);
+  row-gap: var(--s1);
+  justify-items: start;
   font: 500 15px var(--font-mono);
   color: var(--gutter);
+  text-align: start;
+}
+[data-part="cross-cells"]:not([data-count="1"], [data-count="2"]) {
+  grid-template-rows: repeat(2, auto);
+}
+@media (max-width: 479px) {
+  [data-part="cross-cells"]:is([data-count="5"], [data-count="6"]) {
+    grid-auto-flow: row;
+    grid-template-rows: none;
+    grid-template-columns: repeat(2, auto);
+  }
+}
+[data-part="cross-cell"] {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+  white-space: nowrap;
+}
+[data-part="cross-cell"][data-own],
+[data-part="cross-cell"][data-picked] {
+  color: var(--ink);
+}
+[data-part="cross-cell"][data-shortest] {
+  color: var(--pb);
 }
 /* The pick is underlined, so it reads apart from the shortest even when it is one. */
-[data-part="choice-result"] > [data-picked] {
-  color: var(--ink);
+[data-part="cross-cell"][data-picked] > [data-part="cross-cell-words"] {
   text-decoration: underline 1px;
   text-underline-offset: 4px;
 }
-[data-part="choice-result"] > [data-shortest] {
-  color: var(--pb);
-}
 [data-part="choice-over"] {
-  margin-inline-start: 1ch;
   color: color-mix(in srgb, var(--warn) 75%, var(--dim));
 }
-[data-part="choice-result"][data-near] > [data-part="choice-over"] {
+[data-part="choice-over"][data-near] {
   color: var(--pb);
 }

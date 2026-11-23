@@ -26,6 +26,7 @@ import { moveRows, movesUpTo, pictureSupport } from "../scramble/picture";
 import type { Settings } from "../settings";
 import { type Text, text } from "../text";
 import { DEFAULT_SIZES, type ViewSizes } from "../view-size";
+import { CrossCells } from "./CrossCells";
 import { formatFileResult, spokenResult } from "./file-result";
 
 /** Each colour's shortest cross after a scramble, and the colour the solve was built on. */
@@ -33,6 +34,8 @@ export type CrossLine = {
   lengths: readonly { colour: CrossColour; length: number }[];
   own: CrossColour | null;
   shortest: number;
+  /** Still being counted: the cells keep their room, unseen, so nothing under them moves. */
+  pending?: boolean;
 };
 
 export function Timer({
@@ -109,9 +112,9 @@ export function Timer({
   onRepeat?: (() => void) | undefined;
   /**
    * The shortest cross of each colour in play on the solve on show, its own colour named;
-   * "pending" holds the line's place while the worker counts.
+   * A pending line holds its place while the worker counts.
    */
-  crossLine?: CrossLine | "pending" | null;
+  crossLine?: CrossLine | null;
   /** Each part's size in percent: `data-size` on the scramble, picture and time. */
   sizes?: ViewSizes;
 }) {
@@ -385,7 +388,7 @@ function TimeUnder({
   onRepeat,
   crossLine,
 }: {
-  crossLine: CrossLine | "pending" | null;
+  crossLine: CrossLine | null;
   solve: Solve;
   precision: Settings["precision"];
   no: number | undefined;
@@ -419,25 +422,19 @@ function TimeUnder({
         </p>
       )}
       {crossLine &&
-        (crossLine === "pending" ? (
+        (crossLine.pending ? (
           <p data-part="time-cross" data-pending="" aria-hidden="true">
-            {"\u00a0"}
+            <span data-part="cross-label">{words.cross.line}</span>{" "}
+            <CrossCells cells={crossLine.lengths} words={words} />
           </p>
         ) : (
           <p data-part="time-cross">
             <span data-part="cross-label">{words.cross.line}</span>{" "}
-            {crossLine.lengths.map(({ colour, length }, index) => (
-              <Fragment key={colour}>
-                {index > 0 && " · "}
-                <span
-                  data-colour={colour}
-                  data-own={colour === crossLine.own || undefined}
-                  data-shortest={length === crossLine.shortest ? "" : undefined}
-                >
-                  {words.cross.name[colour]} {length}
-                </span>
-              </Fragment>
-            ))}
+            <CrossCells
+              cells={crossLine.lengths}
+              words={words}
+              own={crossLine.own}
+            />
           </p>
         ))}
       {repeat ? (

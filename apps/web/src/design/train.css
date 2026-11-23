@@ -517,6 +517,16 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   font-size: 14px;
   color: var(--gutter);
 }
+/* A sentence in mono runs wide: on a phone it wraps into balanced lines clear of the
+   screen's edges instead of one line that nearly touches both. */
+@media (max-width: 699px) {
+  [data-part="train-hint"] {
+    max-width: min(100%, 32ch);
+    margin-inline: auto;
+    text-align: center;
+    text-wrap: balance;
+  }
+}
 [data-part="train-hint"] [data-input="touch"] {
   display: none;
 }
@@ -779,4 +789,17 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   main[data-part="train"] button:active:not(:disabled) {
     transform: none;
   }
+}
+/* Running display `hidden`: the clock runs unseen, as on the timer. */
+[data-part="train-time"][data-hidden] {
+  color: var(--gutter);
+}
+[data-part="train-said"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

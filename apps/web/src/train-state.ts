@@ -122,6 +122,18 @@ export function drillStep(state: Drill, event: DrillEvent): Drill {
 }
 
 /**
+ * What the clock on screen reads at `now` (same clock as the events), or null when it
+ * does not run. Only for display: results come from drillStep. In a split the count
+ * starts again at the press that marks the case recognised, so the figures that stop are
+ * the execution the result gives.
+ */
+export function drillElapsed(state: Drill, now: number): number | null {
+  if (state.phase !== "running" && state.phase !== "recognising") return null;
+  const from = state.recognisedAt ?? state.startAt;
+  return from === null ? null : Math.max(0, now - from);
+}
+
+/**
  * The algorithm a person chose as theirs for a case, by set and case (`pll/<id>`): what
  * Learn shows first and the drill's answer gives. Stored as the setting `trainer.algs`,
  * so it is in the backup; a choice of an algorithm no longer shipped falls back to the

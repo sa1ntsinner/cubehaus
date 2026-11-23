@@ -120,3 +120,16 @@ test("a navigator without service workers is unsupported", () => {
   watchOffline(change);
   expect(change).toHaveBeenCalledExactlyOnceWith("unsupported");
 });
+
+test("the files are fetched for offline use only once the page says it is ready", async () => {
+  const { services, change } = setup();
+  let ready!: () => void;
+  watchOffline(change, new Promise<void>((resolve) => (ready = resolve)));
+  await Promise.resolve();
+  // The first scramble is not on screen yet: nothing competes with the first load.
+  expect(services.register).not.toHaveBeenCalled();
+  ready();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(services.register).toHaveBeenCalledTimes(1);
+});

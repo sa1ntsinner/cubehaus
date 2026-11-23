@@ -4,7 +4,15 @@ export type OfflineState =
   | "ready"
   | "update-waiting";
 
-export function watchOffline(onChange: (state: OfflineState) => void): {
+/**
+ * `ready` holds the registration back until the page has what it shows first (the first
+ * scramble): installing the worker fetches every file, which would compete with the first
+ * load for the network and the CPU.
+ */
+export function watchOffline(
+  onChange: (state: OfflineState) => void,
+  ready?: Promise<void>,
+): {
   applyUpdate(): void;
 } {
   const services = globalThis.navigator?.serviceWorker;
@@ -44,21 +52,24 @@ export function watchOffline(onChange: (state: OfflineState) => void): {
 
   // The same scope works when the app is deployed under a subdirectory.
   const url = `${import.meta.env.BASE_URL}sw.js`;
-  void services.register(url, { updateViaCache: "none" }).then((result) => {
-    registration = result;
-    result.addEventListener("updatefound", refreshState);
-    refreshState();
+  const register = () =>
+    services.register(url, { updateViaCache: "none" }).then((result) => {
+      registration = result;
+      result.addEventListener("updatefound", refreshState);
+      refreshState();
 
-    if (typeof window !== "undefined") {
-      const checkForUpdate = () => {
-        if (!document.hidden && navigator.onLine)
-          void result.update().catch(() => {});
-      };
-      window.addEventListener("online", checkForUpdate);
-      window.addEventListener("focus", checkForUpdate);
-      window.setInterval(checkForUpdate, 60_000);
-    }
-  }, refreshState);
+      if (typeof window !== "undefined") {
+        const checkForUpdate = () => {
+          if (!document.hidden && navigator.onLine)
+            void result.update().catch(() => {});
+        };
+        window.addEventListener("online", checkForUpdate);
+        window.addEventListener("focus", checkForUpdate);
+        window.setInterval(checkForUpdate, 60_000);
+      }
+    }, refreshState);
+  if (ready) void ready.then(register);
+  else void register();
 
   return {
     applyUpdate() {

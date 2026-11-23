@@ -504,6 +504,16 @@ export const SolveList = memo(function SolveList({
               <span data-input="touch">
                 {`// ${text.empty}.${emptyHint.touch ? ` ${emptyHint.touch}.` : ""}`}
               </span>
+              {/* The first visit (one session, nothing timed): old solves can come in.
+                  Gone with the first solve, like the rest of the comment. */}
+              {view.sessions.length === 1 && (
+                <span data-part="solves-import">
+                  {`// ${text.emptyImport} `}
+                  <a href="#/settings/data" data-action="empty-import">
+                    {`${text.settings.title} › ${text.settings.data}`}
+                  </a>
+                </span>
+              )}
             </p>
           )}
           {count > view.rows.length && (
@@ -1030,7 +1040,8 @@ function Stats({
               <button
                 type="button"
                 data-action="average-inspect-best"
-                aria-label={`${text.averageDetail.inspectBest} ${name}`}
+                // The name starts with the figures it shows (WCAG 2.5.3).
+                aria-label={`${average(stats[`${name}-best`] ?? NaN)}, ${text.averageDetail.inspectBest} ${name}`}
                 onClick={(event) => onAverage(name, true, event.currentTarget)}
               >
                 {average(stats[`${name}-best`] ?? NaN)}

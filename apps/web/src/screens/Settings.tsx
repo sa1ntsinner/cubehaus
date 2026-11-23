@@ -1,7 +1,13 @@
 import { eventInfo } from "@cubehaus/core";
 import { type FaceLetter, frontsFor } from "@cubehaus/cube/holding";
 import { eventOfScrType } from "@cubehaus/importers";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { AppState, AppView } from "../app-state";
 import { backupFileName, download } from "../backup-file";
 import type { BackupMeta, NativeBackups } from "../db/native";
@@ -235,6 +241,16 @@ export function Settings({
   view: AppView;
   words: Text;
 }) {
+  // Opened at its Data (the first visit's "Solves from another timer"): the list scrolls
+  // there and the keyboard is on the import.
+  const dataHeading = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => {
+    if (location.hash !== "#/settings/data") return;
+    dataHeading.current?.scrollIntoView({ block: "start" });
+    dataHeading.current?.parentElement
+      ?.querySelector<HTMLInputElement>('[data-action="import-file"] input')
+      ?.focus({ preventScroll: true });
+  }, []);
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
       if (
@@ -785,7 +801,7 @@ export function Settings({
         </button>
       )}
       <ShortcutSettings app={app} view={view} words={words} enabled={enabled} />
-      <h2>{t.data}</h2>
+      <h2 ref={dataHeading}>{t.data}</h2>
       <ul data-part="data">
         <li data-setting="backup">
           <span>{t.backup}</span>{" "}

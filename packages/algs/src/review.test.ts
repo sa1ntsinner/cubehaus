@@ -138,4 +138,19 @@ describe("review", () => {
       }),
     ).toEqual({ order: [], counts: { due: 0, slow: 0, missed: 0 } });
   });
+
+  it("ties do not depend on the order the cases were stored in", () => {
+    const ids = ["P", "Q", "R", "S", "T"];
+    const run = (caseIds: string[]) =>
+      reviewQueue({
+        caseIds,
+        cards: caseIds.map((caseId) => ({ caseId, dueAt: 100 })),
+        attempts: [],
+        now: 1000,
+        lookalikes: new Map(),
+        seed: 7,
+      }).order;
+    expect(run([...ids].reverse())).toEqual(run(ids));
+    expect(run(["R", "P", "T", "Q", "S"])).toEqual(run(ids));
+  });
 });

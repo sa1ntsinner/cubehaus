@@ -532,6 +532,12 @@ li[data-setting="training"] > span:first-child {
   max-width: 100%;
   margin-inline-start: auto;
 }
+/* The word keeps its width; the value before it is what gives way (it is cut from the
+   left), so at 320 px the folder no longer runs into Change. */
+[data-part="backup-value"] button {
+  flex: none;
+  white-space: nowrap;
+}
 [data-part="backup-value"] output {
   overflow: hidden;
   min-width: 0;

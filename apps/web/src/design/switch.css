@@ -263,6 +263,14 @@ li[data-row="view"] + li[data-row="event"] {
 li:is([data-row="view"], [data-row="trashed"]) > [data-action="switch-pick"] {
   padding-inline-end: calc(var(--s3) + 40px);
 }
+/* A trashed row's note never narrows below its longest word (at 320 px it stood a letter a
+   line): when the row is short of room, the time left goes to a line of its own. */
+li[data-row="trashed"] > [data-action="switch-pick"] {
+  flex-wrap: wrap;
+}
+li[data-row="trashed"] [data-part="switch-note"] {
+  min-width: min-content;
+}
 /* How long the trash keeps a row, at the right where a result stands. */
 [data-part="switch-left"] {
   flex: none;

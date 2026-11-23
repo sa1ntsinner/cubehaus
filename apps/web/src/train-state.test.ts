@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   chooseAlg,
+  drillElapsed,
   drillStep,
   HOLD_MS,
   myAlg,
@@ -105,4 +106,25 @@ test("the algorithm chosen as mine is the one shown, the others are one tap away
     "pll/pll-T": "C D",
   });
   expect(parseChoices("nonsense")).toEqual({});
+});
+
+test("the clock on screen runs from the start, and from the recognising press in a split", () => {
+  let s = showCase(false);
+  expect(drillElapsed(s, 5000)).toBeNull();
+  s = drillStep(s, { type: "down", at: 1000 });
+  expect(drillElapsed(s, 1200)).toBeNull();
+  s = drillStep(s, { type: "up", at: 1000 + HOLD_MS });
+  expect(drillElapsed(s, 2550)).toBe(1250);
+  // A frame stamped before the start never shows a negative time.
+  expect(drillElapsed(s, 1200)).toBe(0);
+  s = drillStep(s, { type: "down", at: 3000 });
+  // Stopped: the result shows, not the clock.
+  expect(drillElapsed(s, 4000)).toBeNull();
+
+  let p = showCase(true, true);
+  p = drillStep(p, { type: "shown", at: 100 });
+  expect(drillElapsed(p, 700)).toBe(600);
+  p = drillStep(p, { type: "down", at: 900 });
+  // Recognised: the count starts again for the execution the result will give.
+  expect(drillElapsed(p, 1400)).toBe(500);
 });

@@ -538,7 +538,7 @@ main > [data-part="time-under"] {
   color: var(--gutter);
 }
 /* Said to a screen reader only: why an action did nothing. */
-main > [data-part="time-status"] {
+main > :is([data-part="time-status"], [data-part="time-said"]) {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -709,6 +709,29 @@ main > [data-part="file"] > [data-part="solves"] {
 [data-part="solves-empty"] > [data-input="touch"] {
   display: none;
 }
+/* The first visit's second comment line: where old solves come in. */
+[data-part="solves-import"] {
+  display: block;
+  margin-top: var(--s2);
+}
+[data-part="solves-import"] a {
+  color: var(--dim);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--gutter);
+  text-underline-offset: 0.25em;
+}
+[data-part="solves-import"] a:hover {
+  color: var(--ink);
+}
+@media (hover: none), (pointer: coarse) {
+  /* A finger's target, without moving the line's text. */
+  [data-part="solves-import"] a {
+    display: inline-block;
+    padding-block: 12px;
+    margin-block: -12px;
+  }
+}
 /* Gone while the timer is busy: inspecting, held or running. */
 main:not([data-phase="idle"], [data-phase="stopped"])
   [data-part="solves-empty"] {
@@ -742,6 +765,11 @@ main:not([data-phase="idle"], [data-phase="stopped"])
   white-space: nowrap;
 }
 /* The solve on show and the picked ones read in ink, unless a penalty colours them. */
+/* On the picked lines' fill the line number steps up from `gutter` to `dim`: `gutter` on
+   `sel` falls under 4.5:1 in the dark theme. */
+[data-part="solves"] > li[data-selected] [data-part="solve-no"] {
+  color: var(--dim);
+}
 li:is([data-shown], [data-selected]) [data-part="solve-time"] {
   color: var(--ink);
 }
@@ -977,7 +1005,10 @@ main > footer[data-part="status-line"] {
   opacity: 0;
   transition: opacity 140ms ease;
 }
-[data-part="status-line"]:is(:hover, :focus-within) > label {
+/* Focus reveals it only when it is the select's own: a link in the line that takes focus on
+   its way to another screen (Algorithms, Progress) must not light the entry mode up. */
+[data-part="status-line"]:hover > label,
+[data-part="status-line"] > label:focus-within {
   opacity: 1;
 }
 [data-part="status-line"] select:hover {
@@ -1200,6 +1231,41 @@ main:is([data-phase="holding"], [data-phase="ready"]) > [data-part="scramble"] {
   }
   [data-part="last-actions"] [data-action="solve-delete"] {
     color: var(--ink);
+  }
+  /* +2, DNF and Delete keep their places under the thumb: OK (a penalty to clear) and Undo
+     come in at their sides instead of pushing them along the row. */
+  main > [data-part="last-actions"]:not([data-selecting]) {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto 1fr;
+    column-gap: var(--s5);
+    align-items: center;
+  }
+  main
+    > [data-part="last-actions"]:not([data-selecting])
+    > [data-action="penalty-ok"] {
+    grid-column: 1;
+    justify-self: end;
+  }
+  main
+    > [data-part="last-actions"]:not([data-selecting])
+    > [data-action="penalty-plus2"] {
+    grid-column: 2;
+  }
+  main
+    > [data-part="last-actions"]:not([data-selecting])
+    > [data-action="penalty-dnf"] {
+    grid-column: 3;
+  }
+  main
+    > [data-part="last-actions"]:not([data-selecting])
+    > [data-action="solve-delete"] {
+    grid-column: 4;
+  }
+  main
+    > [data-part="last-actions"]:not([data-selecting])
+    > [data-action="undo"] {
+    grid-column: 5;
+    justify-self: start;
   }
   /* The entry mode is a setting; on a phone it lives only in Settings. */
   [data-part="status-line"] > label {

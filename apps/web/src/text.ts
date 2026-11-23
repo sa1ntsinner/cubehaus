@@ -277,6 +277,8 @@ const en = {
   /** The start keys when they are not Space alone. */
   emptyHintKeys: (keys: string) => `Hold ${keys}, let go to start`,
   emptyHintHands: "Hold both keys, let go to start",
+  /** The first visit's empty file: where old solves come in. */
+  emptyImport: "Solves from another timer:",
   drill: {
     title: "Drill scrambles",
     kind: {
@@ -839,7 +841,7 @@ const ru: Text = {
   undoMerge: "Объединение сессий",
   undoSplit: "Разделение сессии",
   timer: "Таймер",
-  backToTimer: "К таймеру",
+  backToTimer: "Таймер",
   locale: "ru-RU",
   train: {
     title: "Алгоритмы",
@@ -993,6 +995,7 @@ const ru: Text = {
   leftHand: "Левый Ctrl",
   rightHand: "Правый Ctrl",
   emptyHintTouch: "Зажмите экран и отпустите",
+  emptyImport: "Сборки из другого таймера:",
   emptyHintKeys: (keys: string) => `Зажмите ${keys} и отпустите`,
   emptyHintHands: "Зажмите обе клавиши и отпустите",
   drill: {
@@ -1032,7 +1035,7 @@ const ru: Text = {
       n === 0
         ? `${set}: случаи не выбраны`
         : `${set}, ${n} ${plural(n, "случай", "случая", "случаев")}`,
-    line: "Тренировка",
+    line: "Отработка",
     change: "Изменить",
     find: "Найти случай",
     all: "Все",

@@ -45,7 +45,6 @@ import { AverageDetail } from "./screens/AverageDetail";
 import { Entry } from "./screens/Entry";
 import { SessionSwitch } from "./screens/SessionSwitch";
 import { Sessions } from "./screens/Sessions";
-import { Settings } from "./screens/Settings";
 import { SolveList } from "./screens/SolveList";
 import { Timer } from "./screens/Timer";
 import { listed } from "./session-order";
@@ -76,8 +75,15 @@ const Training = lazy(() =>
 );
 const loadTrain = () => import("./screens/Train");
 const Train = lazy(() => loadTrain().then(({ Train }) => ({ default: Train })));
+// Settings loads on its own like Progress: the timer's first load does not carry it, and
+// its code starts loading when the pointer or focus reaches the link.
+const loadSettings = () => import("./screens/Settings");
+const Settings = lazy(() =>
+  loadSettings().then(({ Settings }) => ({ default: Settings })),
+);
+const loadProgress = () => import("./screens/Progress");
 const Progress = lazy(() =>
-  import("./screens/Progress").then(({ Progress }) => ({ default: Progress })),
+  loadProgress().then(({ Progress }) => ({ default: Progress })),
 );
 
 export function App({
@@ -218,6 +224,7 @@ export function App({
     const update = () => {
       const next = location.hash;
       const same = screenOf(shown) === screenOf(next);
+      if (!same && screenOf(next) === "timer") returnTo = true;
       shown = next;
       if (same) setRoute(next);
       else startTransition(() => setRoute(next));
@@ -248,7 +255,7 @@ export function App({
       return <Progress view={view} dbMessage={dbMessage} words={words} />;
     if (route === "#/train" || route.startsWith("#/train/"))
       return <Train app={app} view={view} words={words} route={route} />;
-    if (route === "#/settings")
+    if (route === "#/settings" || route === "#/settings/data")
       return <Settings app={app} view={view} words={words} />;
     return (
       <TimerPage
@@ -264,9 +271,13 @@ export function App({
   }
 }
 
+/** The timer takes focus when it comes back from another screen, once. */
+let returnTo = false;
+
 /** Which screen a route shows. */
 function screenOf(route: string) {
   if (route === "#/train" || route.startsWith("#/train/")) return "train";
+  if (route === "#/settings/data") return "#/settings";
   if (route === "#/progress" || route === "#/settings") return route;
   return "timer";
 }
@@ -524,6 +535,13 @@ function TimerPage({
   // The switch opened by M picks where solves go.
   const [moveOpen, setMoveOpen] = useState(seed?.state === "move");
   const timerPage = useRef<HTMLElement>(null);
+  // Back from another screen, the keyboard is on the timer itself (not lost on the page),
+  // so Space times the next solve at once.
+  useLayoutEffect(() => {
+    const back = returnTo;
+    returnTo = false;
+    if (back) timerPage.current?.focus({ preventScroll: true });
+  }, []);
   const dialogOpener = useRef<HTMLElement | null>(null);
   const [average, setAverage] = useState<{
     name: StatId;
@@ -553,12 +571,26 @@ function TimerPage({
     if (openCommands || openDrills) location.hash = "#/";
     setMoveOpen(false);
     setAverage(null);
-    const opener = dialogOpener.current;
+    // Focus goes back once the sheet has left: a modal sheet keeps the page inert until
+    // then, and an inert element takes no focus.
+    const back = dialogOpener.current ?? timerPage.current;
     dialogOpener.current = null;
-    (opener?.isConnected ? opener : timerPage.current)?.focus({
+    if (modal !== null) focusBack.current = back;
+    else
+      (back?.isConnected ? back : timerPage.current)?.focus({
+        preventScroll: true,
+      });
+  };
+  const focusBack = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (modal !== null) return;
+    const back = focusBack.current;
+    focusBack.current = null;
+    if (!back) return;
+    (back.isConnected ? back : timerPage.current)?.focus({
       preventScroll: true,
     });
-  };
+  }, [modal]);
   const [notice, setNotice] = useState<string | null>(null);
   const hoveredPart = useRef<ReturnType<typeof partOf>>(null);
   const pendingSizes = useRef<ViewSizes | null>(null);
@@ -1678,7 +1710,13 @@ function TimerPage({
             <span data-word="long">{words.train.title}</span>
             <span data-word="short">{words.train.short}</span>
           </a>{" "}
-          <a href="#/progress" data-action="progress">
+          <a
+            href="#/progress"
+            data-action="progress"
+            onPointerEnter={() => void loadProgress()}
+            onPointerDown={() => void loadProgress()}
+            onFocus={() => void loadProgress()}
+          >
             {words.progress.title}
           </a>{" "}
           <button
@@ -1692,7 +1730,13 @@ function TimerPage({
           >
             {words.keysTitle}
           </button>{" "}
-          <a href="#/settings" data-action="settings">
+          <a
+            href="#/settings"
+            data-action="settings"
+            onPointerEnter={() => void loadSettings()}
+            onPointerDown={() => void loadSettings()}
+            onFocus={() => void loadSettings()}
+          >
             {words.settings.title}
           </a>
         </nav>

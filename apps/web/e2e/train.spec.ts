@@ -476,3 +476,50 @@ test("a split drill times recognition and execution in one run, and Learn shows 
   await expect(keys).toHaveCount(0);
   await expect(page).toHaveURL(/#\/train\/pll\/learn$/);
 });
+
+test("the drill's clock runs as the timer's does, in whole seconds", async ({
+  page,
+}) => {
+  await page.goto("/#/train/pll/learn");
+  await expect(part(page, "train-case-list").locator("li")).toHaveCount(21);
+  await addCase(page, "T");
+  await action(page, "train-mode").filter({ hasText: "Drill" }).click();
+  const drill = part(page, "train-drill");
+  const time = part(page, "train-time");
+  await expect(drill).toHaveAttribute("data-phase", "shown");
+  await page.keyboard.down("Space");
+  await page.waitForTimeout(400);
+  await page.keyboard.up("Space");
+  await expect(drill).toHaveAttribute("data-phase", "running");
+  // Never a frozen zero: the figures count up while the clock runs.
+  await expect(time).toHaveText("0");
+  await expect(time).toHaveText("1", { timeout: 3_000 });
+  await page.keyboard.press("Space");
+  await expect(drill).toHaveAttribute("data-phase", "stopped");
+  expect(Number(await time.textContent())).toBeGreaterThanOrEqual(1);
+});
+
+test("opening Algorithms from the keyboard lights nothing else in the status line", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(sessionButton(page)).toBeEnabled();
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (window as unknown as { seen: string[] }).seen = seen;
+    const frame = () => {
+      const label = document.querySelector('[data-part="status-line"] > label');
+      if (label) seen.push(getComputedStyle(label).opacity);
+      requestAnimationFrame(frame);
+    };
+    frame();
+  });
+  await page.locator('[data-action="train"]').focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("h1")).toHaveText("Algorithms");
+  const seen = await page.evaluate(
+    () => (window as unknown as { seen: string[] }).seen,
+  );
+  expect(seen.length).toBeGreaterThan(0);
+  expect(seen.every((opacity) => opacity === "0")).toBe(true);
+});

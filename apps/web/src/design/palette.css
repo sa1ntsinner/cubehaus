@@ -28,6 +28,8 @@ dialog:is(
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 15px;
+  /* It holds focus itself while it is open (a sheet over the screen): no ring round it. */
+  outline: none;
   animation: sheet-in 110ms var(--ease);
 }
 @keyframes sheet-in {
@@ -42,6 +44,12 @@ dialog:is([data-part="palette"], [data-part="keys-help"]) kbd {
   font-weight: 600;
   color: var(--dim);
   white-space: nowrap;
+}
+/* A touch screen has no keys to list (DESIGN.md section 5): the palette is its words. */
+@media (hover: none) and (pointer: coarse) {
+  dialog[data-part="palette"] kbd {
+    display: none;
+  }
 }
 
 /* The way back, top left of the column as in Settings and Progress; Esc does the same. */

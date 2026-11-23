@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "cubehaus",
   "short_name": "cubehaus",
   "display": "standalone",
@@ -24,5 +25,6 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": "./"
+  "start_url": "./",
+  "scope": "./"
 }

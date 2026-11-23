@@ -25,7 +25,7 @@ import { moveRows, movesUpTo, pictureSupport } from "../scramble/picture";
 import type { Settings } from "../settings";
 import { type Text, text } from "../text";
 import { DEFAULT_SIZES, type ViewSizes } from "../view-size";
-import { formatFileResult } from "./file-result";
+import { formatFileResult, spokenResult } from "./file-result";
 
 export function Timer({
   scramble,
@@ -131,6 +131,26 @@ export function Timer({
           : formatTime(displayMs, { precision });
   const timeBox = useRef<HTMLOutputElement>(null);
   useLanding(timeBox, phase, time);
+  // What a screen reader hears: a finished solve, and a penalty set or taken off, once
+  // each. The large time itself is not live, so the running figures say nothing.
+  const [said, setSaid] = useState("");
+  const heard = useRef<{ id: string; penalty: string } | null>(null);
+  // A solve was timed since the last one heard: the next new result is its result.
+  const timed = useRef(false);
+  if (phase === "running") timed.current = true;
+  useEffect(() => {
+    if (!shown) return;
+    const penalty = `${shown.plus2}:${shown.dnf}`;
+    const before = heard.current;
+    heard.current = { id: shown.id, penalty };
+    if (!before) return;
+    const changed =
+      before.id === shown.id
+        ? before.penalty !== penalty
+        : shownNo === undefined && timed.current;
+    if (before.id !== shown.id) timed.current = false;
+    if (changed) setSaid(spokenResult(shown, precision));
+  }, [shown, shownNo, precision]);
   return (
     <>
       <p
@@ -248,6 +268,7 @@ export function Timer({
             data-part="time"
             data-size-part="time"
             data-size={sizes.time}
+            aria-live="off"
             data-phase="inspecting"
             data-band={inspection.band}
             data-penalty={inspection.penalty}
@@ -258,6 +279,7 @@ export function Timer({
           <output
             ref={timeBox}
             key={feedback?.key}
+            aria-live="off"
             data-part="time"
             data-size-part="time"
             data-size={sizes.time}
@@ -290,6 +312,9 @@ export function Timer({
       )}
       <p data-part="time-status" role="status">
         {feedback?.reason}
+      </p>
+      <p data-part="time-said" aria-live="polite">
+        {said}
       </p>
     </>
   );

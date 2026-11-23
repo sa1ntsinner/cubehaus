@@ -41,6 +41,7 @@ import {
 import type { AppView, createAppState } from "../app-state";
 import type { Action } from "../keys/engine";
 import { Help } from "../keys/Help";
+import { formatRunning } from "../running";
 import { CaseDiagram, SlotDiagram } from "../scramble/Training";
 import {
   createTrainingClient,
@@ -48,11 +49,13 @@ import {
   type TrainingClient,
   type WorkerLike,
 } from "../scramble/training-client";
+import type { Settings } from "../settings";
 import type { Text } from "../text";
 import {
   type AlgChoices,
   chooseAlg,
   type Drill,
+  drillElapsed,
   drillStep,
   myAlg,
   otherAlgs,
@@ -380,6 +383,7 @@ export function Train({
             attempts={attempts}
             words={words}
             precision={view.settings.precision}
+            running={view.settings.running}
             byPicture={byPicture}
             choices={choices}
             holding={holding}
@@ -513,17 +517,17 @@ function Learn({
     setOpen(id);
     setMore(false);
     const was = open;
-    if (narrow)
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: id ? 0 : listScroll.current });
-        // Back on the list, the keyboard is on the case it came from.
-        if (!id && was)
-          document
-            .querySelector<HTMLElement>(
-              `[data-part="train-case-list"] [data-case-id="${was}"] button`,
-            )
-            ?.focus({ preventScroll: true });
-      });
+    requestAnimationFrame(() => {
+      if (narrow) window.scrollTo({ top: id ? 0 : listScroll.current });
+      // Back on the list, the keyboard is on the case it came from (beside the list too:
+      // the case's column it was in has gone).
+      if (!id && was)
+        document
+          .querySelector<HTMLElement>(
+            `[data-part="train-case-list"] [data-case-id="${was}"] button`,
+          )
+          ?.focus({ preventScroll: true });
+    });
   };
 
   const chooseRef = useRef(choose);
@@ -535,8 +539,9 @@ function Learn({
       event.preventDefault();
       chooseRef.current(null);
     }
-    window.addEventListener("keydown", back);
-    return () => window.removeEventListener("keydown", back);
+    // Captured, so it comes before the screen's own Escape, which leaves Algorithms.
+    window.addEventListener("keydown", back, true);
+    return () => window.removeEventListener("keydown", back, true);
   }, [open]);
 
   return (
@@ -803,6 +808,7 @@ function Practice({
   attempts,
   words,
   precision,
+  running,
   byPicture,
   choices,
   holding,
@@ -822,6 +828,7 @@ function Practice({
   attempts: readonly TrainerAttempt[];
   words: Text;
   precision: 2 | 3;
+  running: Settings["running"];
   byPicture: boolean;
   choices: AlgChoices;
   holding: string;
@@ -847,6 +854,25 @@ function Practice({
   }, []);
   const [saved, setSaved] = useState<Saved | null>(null);
   const [missed, setMissed] = useState(false);
+  // The running figures, as the timer shows them (the running display setting). Drawn
+  // from the attempt's own start; a render happens only when the figures change.
+  const [clock, setClock] = useState<string | null>(null);
+  const counting = drill.phase === "running" || drill.phase === "recognising";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a recognising press restarts the count.
+  useEffect(() => {
+    if (!counting) {
+      setClock(null);
+      return;
+    }
+    let frame = 0;
+    const tick = () => {
+      const elapsed = drillElapsed(drillNow.current, performance.now());
+      setClock(elapsed === null ? null : formatRunning(elapsed, running));
+      frame = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => cancelAnimationFrame(frame);
+  }, [counting, drill.recognisedAt, running]);
   const client = useRef<TrainingClient | null>(null);
   const sequence = useRef(0);
   const live = useRef({ rows, attempts });
@@ -1292,11 +1318,21 @@ function Practice({
         )}
         <output
           data-part="train-time"
+          aria-live="off"
           data-missed={missed ? "" : undefined}
           data-faster={faster && !missed ? "" : undefined}
+          data-hidden={
+            !result && clock !== null && running === "hidden" ? "" : undefined
+          }
         >
-          {result ? format(result.execMs) : "0.00"}
+          {result ? format(result.execMs) : (clock ?? "0.00")}
         </output>
+        {/* Heard once the clock stops: the case and the time, not the running figures. */}
+        <p data-part="train-said" aria-live="polite">
+          {drill.phase === "stopped" && result && c
+            ? `${c.label}, ${format(result.execMs)}`
+            : ""}
+        </p>
         {drill.phase === "stopped" && result && c ? (
           <div data-part="train-result" ref={resultRef}>
             <p data-part="train-numbers">

@@ -227,7 +227,7 @@ test("the sheet and the line in Russian", async ({ page }) => {
   );
   await pickDrill(page, "easy-cross");
   await closeSheet(page);
-  await expect(line(page)).toContainText("Тренировка: белый крест, 4 хода");
+  await expect(line(page)).toContainText("Отработка: белый крест, 4 хода");
   await readyScramble(page);
   await action(page, "drill-solution").click();
   await expect(solution(page)).toHaveText(/ \(4\)$/);

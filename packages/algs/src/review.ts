@@ -26,7 +26,10 @@ export function reviewQueue(input: {
 }): ReviewQueue {
   const { caseIds, cards, attempts, now, lookalikes, seed } = input;
   const pool = new Set(caseIds);
-  const rank = new Map(seededOrder(caseIds, seed).map((id, i) => [id, i]));
+  // Drawn from the ids in a fixed order: the order they were stored in (two cases added
+  // in the same millisecond) must not change the day's order.
+  const sorted = [...caseIds].sort();
+  const rank = new Map(seededOrder(sorted, seed).map((id, i) => [id, i]));
   const tie = (a: string, b: string) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0);
 
   const due = cards

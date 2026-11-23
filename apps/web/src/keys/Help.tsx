@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { Action } from "./engine";
 import { isMacPlatform, keyLabel } from "./label";
 
@@ -21,8 +22,21 @@ export function Help({
   onClose(): void;
 }) {
   const mac = isMacPlatform();
+  // The list takes focus as it opens, so the keyboard is in it and Escape gives focus
+  // back to what opened it; the list itself, not its first button, so Space closes nothing.
+  const sheet = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    sheet.current?.focus({ preventScroll: true });
+  }, []);
   return (
-    <dialog data-part="keys-help" data-no-timer open aria-label={title}>
+    <dialog
+      ref={sheet}
+      data-part="keys-help"
+      data-no-timer
+      open
+      aria-label={title}
+      tabIndex={-1}
+    >
       <button type="button" data-action="dialog-close" onClick={onClose}>
         {closeLabel}
       </button>

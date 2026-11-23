@@ -14,7 +14,7 @@
   <img src=".github/timer-light.png" alt="The timer after a solve: the scramble on top, the time in the middle, the session's times on the right">
 </picture>
 
-I got tired of timers that feel dated, like csTimer, and of good ones that are no longer maintained. So I am building my own, first of all for myself.
+I wanted a timer that just gets out of the way: fast, clean, zero setup. Never found one I'd happily keep open all day, so I'm building it. It's for my own solves first, but grab it, it's yours too.
 
 It is free and always will be. Use it if you like it. If something is missing or gets in your way, [tell me](https://github.com/sa1ntsinner/cubehaus/issues/new/choose): I read every idea and will try to build the good ones.
 

@@ -297,7 +297,7 @@ const en = {
     official: "Official",
   },
   waiting: (event: string) => `// preparing a ${event} scramble`,
-  toGo: (n: number) => `${n} to go`,
+  toGo: (n: number) => `in ${n}`,
   themeEditor: {
     title: "Custom theme",
     base: "Based on",

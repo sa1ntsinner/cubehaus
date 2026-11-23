@@ -12,8 +12,13 @@ async function addCase(page: Page, label: string) {
     .locator(`li button[aria-label="${label}"]`)
     .click();
   await expect(part(page, "train-case").locator("h2")).toHaveText(label);
-  await action(page, "train-add").click();
-  await expect(action(page, "train-remove")).toBeVisible();
+  // Beside the list, the case's own tile puts it in the drills.
+  const pick = part(page, "train-case-list")
+    .locator("li")
+    .filter({ has: page.locator(`button[aria-label="${label}"]`) })
+    .locator('[data-action="train-pick"]');
+  await pick.check();
+  await expect(pick).toBeChecked();
 }
 
 /** Hold Space past the hold time, let go to start, press to stop. */

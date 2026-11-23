@@ -179,10 +179,9 @@ main
 main > [data-part="entry"]:has([data-part="cubes-solved"]) {
   display: grid;
   grid-template-columns: repeat(5, auto);
-  grid-template-areas:
-    "attempted solved time save cancel"
-    "scrambles scrambles scrambles scrambles scrambles"
-    "note note note note note";
+  /* Show scrambles and a note take a row of their own only while they are there: a named
+     empty row would still keep its gap. */
+  grid-template-areas: "attempted solved time save cancel";
   justify-content: center;
   justify-items: start;
   align-items: end;
@@ -206,7 +205,8 @@ main > [data-part="entry"]:has([data-part="cubes-solved"]) {
 }
 [data-part="entry"]:has([data-part="cubes-solved"])
   [data-action="entry-scrambles"] {
-  grid-area: scrambles;
+  grid-column: 1 / -1;
+  grid-row: auto;
 }
 [data-part="entry"]:has([data-part="cubes-solved"])
   [data-action="entry-scrambles"]:disabled {
@@ -214,7 +214,8 @@ main > [data-part="entry"]:has([data-part="cubes-solved"]) {
 }
 [data-part="entry"]:has([data-part="cubes-solved"])
   :is([data-part="entry-error"], [data-part="entry-feedback"]) {
-  grid-area: note;
+  grid-column: 1 / -1;
+  grid-row: auto;
   justify-self: center;
 }
 [data-part="entry"]:has([data-part="cubes-solved"]) [data-part="entry-input"] {
@@ -256,13 +257,16 @@ main > [data-part="entry"]:has([data-part="cubes-solved"]) {
     grid-template-columns: repeat(3, auto);
     grid-template-areas:
       "attempted solved solved"
-      "time save cancel"
-      "scrambles scrambles scrambles"
-      "note note note";
+      "time save cancel";
   }
   [data-part="entry"]:has([data-part="cubes-solved"])
     [data-part="entry-input"] {
     width: 10ch;
+  }
+  /* The fields' 44 px include their underline, so the two rows of counts stay short enough
+     for the cubes' scrambles above them on a 320 × 568 phone. */
+  [data-part="entry"]:has([data-part="cubes-solved"]) input {
+    box-sizing: border-box;
   }
 }
 

@@ -319,8 +319,10 @@ main > [data-part="scramble"][data-event="333mbf"] {
   line-height: round(1.6em, 1px);
   max-width: calc((var(--per) * var(--slot) + 3) * 1ch);
   counter-reset: cube;
-  /* As many lines as cubes: nothing to reserve. */
-  min-height: 0;
+  /* As many lines as cubes: nothing to reserve, and nothing to give either. A grid row may
+     squeeze an item down to its min-height, which drew the second cube over the counts on a
+     320 px phone; the box keeps the height its cubes take. */
+  min-height: min-content;
 }
 main > [data-part="scramble"][data-event="333mbf"] br {
   display: none;

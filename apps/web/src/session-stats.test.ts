@@ -65,7 +65,10 @@ test("ranked sessions update the current and historical windows after an edit an
 test("an average with too few solves says how many are still to go", () => {
   expect(solvesToGo("ao12", 4)).toBe(8);
   expect(solvesToGo("ao5", 5)).toBeNull();
-  expect(solvesToGo("mo3", 0)).toBe(3);
+  expect(solvesToGo("mo3", 1)).toBe(2);
+  // An empty session keeps the quiet dash: its file already says how to start.
+  expect(solvesToGo("mo3", 0)).toBeNull();
+  expect(solvesToGo("ao5", 0)).toBeNull();
   expect(solvesToGo("ao100", 62)).toBe(38);
   expect(solvesToGo("best", 0)).toBeNull();
   expect(solvesToGo("mean", 0)).toBeNull();

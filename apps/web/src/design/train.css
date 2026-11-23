@@ -120,8 +120,10 @@ main[data-part="train"] button:active:not(:disabled) {
   padding: 0;
   list-style: none;
 }
-/* Each case: its picture opens it; under it the name with a checkbox, which puts it in
-   the drills or takes it out, one tap either way. */
+/* Each case: its picture opens it; under it the name, which puts it in the drills or takes
+   it out, one tap either way. The checkbox is a quiet mark before the name: a ring, filled
+   when the case is drilled, so a grid of 41 cases reads as pictures and names, not as a
+   form. It stays a real checkbox for the keyboard and screen readers. */
 [data-part="train-case-list"] li {
   display: flex;
   flex-direction: column;
@@ -156,7 +158,7 @@ main[data-part="train"] [data-part="case-diagram"][data-shape="slot"] {
   justify-content: center;
   gap: var(--s2);
   min-height: 36px;
-  padding-inline: var(--s1);
+  padding-inline: var(--s2);
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--dim);
@@ -165,44 +167,54 @@ main[data-part="train"] [data-part="case-diagram"][data-shape="slot"] {
 [data-part="train-pick"]:has(input:checked) {
   color: var(--ink);
 }
+/* The checkbox covers the whole name row, unseen, so the row is its target; the mark is
+   drawn before the name. */
+[data-part="train-pick"] {
+  position: relative;
+}
 [data-part="train-pick"] input {
   appearance: none;
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 16px;
-  height: 16px;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  border: 1.5px solid var(--gutter);
-  border-radius: 5px;
-  background: var(--ground);
+  border-radius: 6px;
   cursor: pointer;
+}
+[data-part="train-pick"] span::before {
+  content: "";
+  display: inline-block;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  margin-inline-end: var(--s2);
+  border: 1.5px solid var(--gutter);
+  border-radius: 50%;
+  vertical-align: 0.05em;
   transition:
     background-color 120ms ease,
     border-color 120ms ease;
 }
-[data-part="train-pick"]:hover input {
+[data-part="train-pick"]:hover span::before {
   border-color: var(--ink);
 }
-[data-part="train-pick"] input:checked {
+[data-part="train-pick"]:has(input:checked) span::before {
   border-color: var(--ink);
   background: var(--ink);
 }
-[data-part="train-pick"] input:checked::after {
-  content: "";
-  width: 4px;
-  height: 8px;
-  margin-top: -2px;
-  border: solid var(--ground);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
 [data-part="train-pick"] input:focus-visible {
   outline: 2px solid var(--double);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 @media (pointer: coarse) {
+  /* Two targets a finger can tell apart: the picture and, 8 px under it, the name. */
+  [data-part="train-case-list"] li {
+    gap: var(--s2);
+  }
   [data-part="train-pick"] {
+    box-sizing: border-box;
+    min-width: 44px;
     min-height: 44px;
   }
 }
@@ -334,6 +346,11 @@ main[data-part="train"]
     position: sticky;
     top: var(--s5);
     margin-top: 0;
+  }
+  /* Beside the list the case's own tile, highlighted, already says and switches whether it
+     is drilled; the word under the algorithm would say it twice. */
+  [data-part="train-learn"][data-open] [data-part="train-case-actions"] {
+    display: none;
   }
 }
 @media (max-width: 899px) {
@@ -658,5 +675,24 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   }
   [data-part="train-answer"] {
     font-size: 16px;
+  }
+}
+/* A phone drilling, before the hold: the two choices go to the foot of the screen, under
+   the thumb, and the case with its time stands in the middle of the room above them, so
+   the lower half is not left empty. */
+@media (max-width: 699px) {
+  [data-part="train-drill"]:not([data-phase="stopped"])
+    [data-part="train-stage"] {
+    padding-block-end: var(--s4);
+  }
+  [data-part="train-drill"]:not([data-phase="stopped"])
+    [data-part="train-stage"]
+    > :first-child {
+    margin-top: auto;
+  }
+  [data-part="train-drill"]
+    [data-part="train-stage"]
+    > [data-part="train-show"] {
+    margin-top: auto;
   }
 }

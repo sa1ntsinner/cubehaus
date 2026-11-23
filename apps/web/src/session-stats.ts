@@ -325,9 +325,10 @@ export function createSessionStats(
   };
 }
 
-/** Solves still needed before an average has a value; null when it needs none. */
+/** Solves still needed before an average has a value; null when it needs none, and in an
+ * empty session, whose file already says how to start. */
 export function solvesToGo(name: StatId, count: number): number | null {
   const stat = parseStat(name);
-  if (!stat || count >= stat.n) return null;
+  if (!stat || count === 0 || count >= stat.n) return null;
   return stat.n - count;
 }

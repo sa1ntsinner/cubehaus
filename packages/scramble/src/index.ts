@@ -6,4 +6,9 @@ export {
   type ScrambleSource,
   ScrambleTimeoutError,
 } from "./queue";
-export type { TrainingBase, TrainingLL, TrainingResult } from "./training";
+export type {
+  TrainingBase,
+  TrainingLastSlot,
+  TrainingLL,
+  TrainingResult,
+} from "./training";

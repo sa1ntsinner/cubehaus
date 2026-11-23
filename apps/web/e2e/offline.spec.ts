@@ -177,6 +177,8 @@ test("a drill works offline before any drill was ever asked for", async ({
   await page.reload();
   const scramble = page.locator('[data-part="scramble"]');
   await expect(scramble).toHaveAttribute("data-ready", "true");
+  // A scramble made ahead by the page before shows at once; the drills wait for the store.
+  await expect(sessionButton(page)).toBeEnabled();
   await page.keyboard.press("KeyL");
   const sheet = page.locator('dialog[data-part="training"]');
   await sheet.locator('input[value="easy-xcross"]').check();

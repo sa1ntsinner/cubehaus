@@ -1,4 +1,12 @@
 export {
+  CROSS_COLOURS,
+  type CrossColour,
+  type CrossFace,
+  crossColourOfFace,
+  faceOfCrossColour,
+  isCrossColour,
+} from "./cross-colour";
+export {
   defaultStats,
   EVENTS,
   type EventId,

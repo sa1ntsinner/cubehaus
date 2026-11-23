@@ -1,6 +1,6 @@
 import type { Db } from "./db";
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 export class NewerSchemaError extends Error {}
 
 const schemaV1 = [
@@ -107,6 +107,15 @@ const migrations: readonly (readonly string[])[] = [
     // How a trainer attempt's recognition was marked: 0 from the picture showing to the
     // hold (or none, for a scramble), 1 split, by a press while the clock ran.
     "ALTER TABLE trainer_attempt ADD COLUMN split INTEGER NOT NULL DEFAULT 0 CHECK (split IN (0, 1))",
+  ],
+  [
+    // The colour a 3×3 solve's cross was built on, when the app assigned one; null is
+    // unknown, as for every solve made before.
+    `ALTER TABLE solve ADD COLUMN cross_colour TEXT CHECK (cross_colour IN
+      ('white', 'yellow', 'green', 'blue', 'red', 'orange'))`,
+    // Progress by colour reads only the solves with one; without this it would look up
+    // every solve of a large folder to find none.
+    "CREATE INDEX solve_cross_colour ON solve (session_id, started_at, id) WHERE deleted_at IS NULL AND cross_colour IS NOT NULL",
   ],
 ];
 

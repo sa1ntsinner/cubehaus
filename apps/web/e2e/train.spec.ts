@@ -187,11 +187,12 @@ test("every case of a set can be drilled without adding any", async ({
   await page.keyboard.press("Space");
   await attempt(page);
 
-  // The choice is the set's and stays; nothing was added to the person's own cases.
+  // The choice is the set's and stays; nothing was added to the person's own cases. With
+  // none of their own, Mine and All are no choice, and the drill does not offer it.
   await page.reload();
-  await expect(
-    page.locator('[data-action="train-pool"][data-pool="all"]'),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(part(page, "train-label")).toHaveCount(0);
+  await expect(part(page, "train-picture")).toBeVisible();
+  await expect(page.locator('[data-action="train-pool"]')).toHaveCount(0);
   await page.goto("/#/train/pll/drill");
   await expect(part(page, "train-empty")).toBeVisible();
   await page.goto("/#/train/oll/learn");
@@ -199,10 +200,18 @@ test("every case of a set can be drilled without adding any", async ({
     part(page, "train-case-list").locator("button[data-learning]"),
   ).toHaveCount(0);
 
-  // Back to the person's own: nothing to drill.
+  // One case of their own: Mine and All differ, and Mine drills that case alone.
+  await part(page, "train-pick")
+    .filter({ hasText: /^OLL 1$/ })
+    .locator("input")
+    .check();
   await page.goto("/#/train/oll/drill");
+  await expect(
+    page.locator('[data-action="train-pool"][data-pool="all"]'),
+  ).toHaveAttribute("aria-pressed", "true");
   await page.locator('[data-action="train-pool"][data-pool="mine"]').click();
-  await expect(part(page, "train-empty")).toBeVisible();
+  await attempt(page);
+  await expect(part(page, "train-label")).toHaveText("OLL 1");
 });
 
 test("the colour held on top colours every case picture", async ({ page }) => {
@@ -231,9 +240,12 @@ test("cases go into the drills and out in one tap each", async ({ page }) => {
   await page.goto("/#/train/oll/learn");
   const picked = part(page, "train-case-list").locator("input:checked");
   await expect(picked).toHaveCount(0);
-  await expect(action(page, "train-none")).toHaveAttribute(
+  // No None: All and 2-look are presets, and the one in use, pressed again, empties the
+  // drills.
+  await expect(action(page, "train-none")).toHaveCount(0);
+  await expect(action(page, "train-all")).toHaveAttribute(
     "aria-pressed",
-    "true",
+    "false",
   );
   // 2-look: exactly its ten cases.
   await action(page, "train-two-look").click();
@@ -251,7 +263,15 @@ test("cases go into the drills and out in one tap each", async ({ page }) => {
   await expect(part(page, "train-case")).toHaveCount(0);
   await action(page, "train-all").click();
   await expect(picked).toHaveCount(57);
-  await action(page, "train-none").click();
+  await expect(action(page, "train-all")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await action(page, "train-all").click();
+  await expect(picked).toHaveCount(0);
+  await action(page, "train-two-look").click();
+  await expect(picked).toHaveCount(10);
+  await action(page, "train-two-look").click();
   await expect(picked).toHaveCount(0);
   // PLL has its 2-look too.
   await page.goto("/#/train/pll/learn");
@@ -335,6 +355,16 @@ test("the 41 F2L cases are learnt and drilled like the other sets", async ({
   await expect(sessionButton(page)).toBeEnabled();
   await page.goto("/#/train/f2l/learn");
   await expect(part(page, "train-case-list").locator("li")).toHaveCount(41);
+  // In a learner's order, numbered in it, in four groups by where the pair is.
+  await expect(part(page, "train-group-name")).toHaveText([
+    "Both on top",
+    "Edge in the slot",
+    "Corner in the slot",
+    "Both in the slot",
+  ]);
+  await expect(
+    part(page, "train-case-list").first().locator("li button").first(),
+  ).toHaveAttribute("aria-label", "F2L 1");
   // A case: the slot drawn from above the front right corner, its algorithm in R, U, F.
   await addCase(page, "F2L 13");
   await expect(
@@ -343,6 +373,8 @@ test("the 41 F2L cases are learnt and drilled like the other sets", async ({
   await expect(
     part(page, "train-alg").first().locator('[data-part="train-moves"]'),
   ).toHaveText(/^[RUF'2\s]+$/);
+  // Its one line says what the algorithm does.
+  await expect(part(page, "train-recognise")).not.toBeEmpty();
   await action(page, "train-mode").filter({ hasText: "Drill" }).click();
   await expect(
     part(page, "train-picture").locator('svg[data-shape="slot"]'),
@@ -508,6 +540,144 @@ test("the 2×2: its sets from the puzzle word, learnt and drilled like the 3×3'
   // Back to the 3×3: the set it was left on.
   await action(page, "train-puzzle").click();
   await expect(page).toHaveURL(/#\/train\/pll\/drill$/);
+});
+
+/** Review: what is due, each case followed at once by its look-alike, then nothing. */
+async function reviewInOrder(page: Page, labels: readonly string[]) {
+  await action(page, "train-mode").filter({ hasText: "Review" }).click();
+  await expect(page.locator('main[data-part="train"]')).toHaveAttribute(
+    "data-mode",
+    "review",
+  );
+  await expect(part(page, "train-today")).toHaveText(`${labels.length} due`);
+  for (const label of labels) {
+    await attempt(page);
+    await expect(part(page, "train-label")).toHaveText(label);
+    await page.keyboard.press("Space");
+  }
+  await expect(part(page, "train-empty")).toBeVisible();
+}
+
+test("last slot: one word in the row, two inserts, each learnt, drilled and reviewed", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(sessionButton(page)).toBeEnabled();
+  await page.goto("/#/train/pll/learn");
+  await expect(action(page, "train-set")).toHaveText([
+    "PLL",
+    "OLL",
+    "COLL",
+    "F2L",
+    "LS",
+  ]);
+  await action(page, "train-set").filter({ hasText: "LS" }).click();
+  await expect(page).toHaveURL(/#\/train\/ls-right\/learn$/);
+  await expect(
+    action(page, "train-member").filter({ hasText: "R U' R'" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(part(page, "train-case-list").locator("li")).toHaveCount(26);
+  // A case: its top as it is read, and beside it the cube from above the slot.
+  await addCase(page, "LS-R 1");
+  await expect(
+    part(page, "train-case").locator('svg[data-part="case-diagram"]'),
+  ).toHaveCount(2);
+  await expect(
+    part(page, "train-case").locator('svg[data-shape="slot"]'),
+  ).toBeVisible();
+  await expect(
+    part(page, "train-alg").first().locator('[data-part="train-moves"]'),
+  ).toHaveText(/^[RUF'2\s]+$/);
+  // LS-R 14 looks like LS-R 1; LS-R 2 like neither.
+  await addCase(page, "LS-R 2");
+  await addCase(page, "LS-R 14");
+  await reviewInOrder(page, ["LS-R 1", "LS-R 14", "LS-R 2"]);
+  // Drilled by picture, then by a scramble that leads to the case.
+  await action(page, "train-mode").filter({ hasText: "Drill" }).click();
+  await expect(page).toHaveURL(/#\/train\/ls-right\/drill$/);
+  await attempt(page);
+  await expect(part(page, "train-label")).toHaveText(/^LS-R (1|2|14)$/);
+  await page.keyboard.press("Space");
+  await part(page, "train-show")
+    .locator("button", { hasText: "Scramble" })
+    .click();
+  await expect(part(page, "train-scramble")).toHaveAttribute(
+    "data-ready",
+    "true",
+    { timeout: 20_000 },
+  );
+  await expect(part(page, "train-scramble")).toHaveText(/^[RUFLBD'2\s]+$/);
+  await attempt(page);
+  await page.keyboard.press("Space");
+  await part(page, "train-show")
+    .locator("button", { hasText: "Picture" })
+    .click();
+  // The other insert is a set of its own; the word remembers it.
+  await action(page, "train-mode").filter({ hasText: "Learn" }).click();
+  await action(page, "train-member").filter({ hasText: "F' U F" }).click();
+  await expect(page).toHaveURL(/#\/train\/ls-front\/learn$/);
+  await expect(part(page, "train-case-list").locator("li")).toHaveCount(26);
+  await expect(
+    action(page, "train-set").filter({ hasText: "LS" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await action(page, "train-set").filter({ hasText: "PLL" }).click();
+  await action(page, "train-set").filter({ hasText: "LS" }).click();
+  await expect(page).toHaveURL(/#\/train\/ls-front\/learn$/);
+});
+
+test("the 2×2's top in one go: CLL with the bottom solved, swapped side by side or across", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(sessionButton(page)).toBeEnabled();
+  await page.goto("/#/train/two-cll/learn");
+  // The row stays three words; the bottom is a quiet choice under CLL.
+  await expect(action(page, "train-set")).toHaveText(["OLL", "PBL", "CLL"]);
+  await expect(
+    action(page, "train-member").filter({ hasText: "Solved" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  for (const [word, route] of [
+    ["Diag", "two-diag"],
+    ["Adj", "two-adj"],
+  ] as const) {
+    await action(page, "train-member").filter({ hasText: word }).click();
+    await expect(page).toHaveURL(new RegExp(`#/train/${route}/learn$`));
+    await expect(part(page, "train-case-list").locator("li")).toHaveCount(43);
+    await expect(
+      action(page, "train-set").filter({ hasText: "CLL" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  }
+  // A case shows both layers' sides and how to tell it.
+  await addCase(page, "Adj 1");
+  await expect(
+    part(page, "train-case").locator('svg[data-shape="two"]'),
+  ).toBeVisible();
+  await expect(part(page, "train-recognise")).not.toBeEmpty();
+  // Adj 14 looks like Adj 1; Adj 2 does not come first among its look-alikes.
+  await addCase(page, "Adj 2");
+  await addCase(page, "Adj 14");
+  await reviewInOrder(page, ["Adj 1", "Adj 14", "Adj 2"]);
+  await action(page, "train-mode").filter({ hasText: "Drill" }).click();
+  await attempt(page);
+  await page.keyboard.press("Space");
+  await part(page, "train-show")
+    .locator("button", { hasText: "Scramble" })
+    .click();
+  await expect(part(page, "train-scramble")).toHaveAttribute(
+    "data-ready",
+    "true",
+  );
+  await expect(part(page, "train-scramble")).toHaveText(/^[RUFLBD'2\s]+$/);
+  await attempt(page);
+  await expect(part(page, "train-label")).toHaveText(/^Adj (1|2|14)$/);
+  await page.keyboard.press("Space");
+  await part(page, "train-show")
+    .locator("button", { hasText: "Picture" })
+    .click();
+  // CLL opens the bottom last chosen.
+  await action(page, "train-set").filter({ hasText: "OLL" }).click();
+  await action(page, "train-set").filter({ hasText: "CLL" }).click();
+  await expect(page).toHaveURL(/#\/train\/two-adj\/drill$/);
 });
 
 test("a split drill times recognition and execution in one run, and Learn shows their medians", async ({

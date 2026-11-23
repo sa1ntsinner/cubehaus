@@ -50,6 +50,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -99,6 +100,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the edge, bring the corner over, then insert; the insert joins them.",
+      "ru": "Спрячьте ребро, подведите угол, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -148,6 +153,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the edge, bring the corner over, then insert; the insert joins them.",
+      "ru": "Спрячьте ребро, подведите угол, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -197,6 +206,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -246,6 +256,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the edge, bring the corner over, join them, bring the pair up, then insert.",
+      "ru": "Спрячьте ребро, подведите угол, соедините, поднимите пару, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -295,6 +309,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -344,6 +359,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -393,6 +409,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the edge, bring the corner over, join them, bring the pair up, then insert.",
+      "ru": "Спрячьте ребро, подведите угол, соедините, поднимите пару, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -442,6 +462,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -491,6 +512,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Already joined: insert.",
+      "ru": "Пара уже собрана: вставьте."
+    },
     "subsets": []
   },
   {
@@ -540,6 +565,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the corner, bring the edge over, then insert; the insert joins them.",
+      "ru": "Спрячьте угол, подведите ребро, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -589,6 +618,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the edge, bring the corner over, then insert; the insert joins them.",
+      "ru": "Спрячьте ребро, подведите угол, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -638,6 +671,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Insert as it is; the insert joins them.",
+      "ru": "Вставьте как есть: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -687,6 +724,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the corner, bring the edge over, join them, then insert.",
+      "ru": "Спрячьте угол, подведите ребро, соедините, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -736,6 +777,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the corner, bring the edge over, then insert; the insert joins them.",
+      "ru": "Спрячьте угол, подведите ребро, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -785,6 +830,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the corner, bring the edge over, join them, then insert.",
+      "ru": "Спрячьте угол, подведите ребро, соедините, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -834,6 +883,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the edge, bring the corner over, then insert; the insert joins them.",
+      "ru": "Спрячьте ребро, подведите угол, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -883,6 +936,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the corner, bring the edge over, then insert; the insert joins them.",
+      "ru": "Спрячьте угол, подведите ребро, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -932,6 +989,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Already joined: insert.",
+      "ru": "Пара уже собрана: вставьте."
+    },
     "subsets": []
   },
   {
@@ -981,6 +1042,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -1030,6 +1092,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the corner, bring the edge over, join them, then insert.",
+      "ru": "Спрячьте угол, подведите ребро, соедините, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -1079,6 +1145,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the edge, bring the corner over, then insert; the insert joins them.",
+      "ru": "Спрячьте ребро, подведите угол, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -1128,6 +1198,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Hide the corner, bring the edge over, join them, then insert.",
+      "ru": "Спрячьте угол, подведите ребро, соедините, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -1177,6 +1251,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Insert as it is; the insert joins them.",
+      "ru": "Вставьте как есть: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -1226,6 +1304,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -1275,6 +1354,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Already joined: bring the pair up, then insert.",
+      "ru": "Пара уже собрана: поднимите её, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -1324,6 +1407,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the edge out, hide the corner, bring the edge over, join them, then insert.",
+      "ru": "Достаньте ребро, спрячьте угол, подведите ребро, соедините, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -1373,6 +1460,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the edge out, then insert; the insert joins them.",
+      "ru": "Достаньте ребро, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -1422,6 +1513,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the edge out, then insert; the insert joins them.",
+      "ru": "Достаньте ребро, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -1471,6 +1566,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the edge out, hide the corner, bring the edge over, then insert; the insert joins them.",
+      "ru": "Достаньте ребро, спрячьте угол, подведите ребро, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -1520,6 +1619,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the corner out, join them, then insert.",
+      "ru": "Достаньте угол, соедините, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -1569,6 +1672,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the corner out, then insert; the insert joins them.",
+      "ru": "Достаньте угол, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -1618,6 +1725,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the corner out, join them, then insert.",
+      "ru": "Достаньте угол, соедините, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -1667,6 +1778,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the corner out, hide the edge, bring the corner over, then insert; the insert joins them.",
+      "ru": "Достаньте угол, спрячьте ребро, подведите угол, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -1716,6 +1831,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the corner out, then insert; the insert joins them.",
+      "ru": "Достаньте угол, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   },
   {
@@ -1765,6 +1884,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take the corner out, hide the edge, bring the corner over, join them, bring the pair up, then insert.",
+      "ru": "Достаньте угол, спрячьте ребро, подведите угол, соедините, поднимите пару, затем вставьте."
+    },
     "subsets": []
   },
   {
@@ -1814,6 +1937,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -1863,6 +1987,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -1912,6 +2037,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -1961,6 +2087,7 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": null,
     "subsets": []
   },
   {
@@ -2010,6 +2137,10 @@ export const F2L_BACK: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": null,
+    "idea": {
+      "en": "Take both out, then insert; the insert joins them.",
+      "ru": "Достаньте оба, затем вставьте: пара соберётся при вставке."
+    },
     "subsets": []
   }
 ];

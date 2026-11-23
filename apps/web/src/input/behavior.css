@@ -52,3 +52,12 @@ body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* A long press on a tile lifts it or opens its menu: no text selection or callout first,
+   and once lifted the finger drags it (SessionGrid holds the touch moves). */
+[data-part="switch-grid"] button,
+[data-part="switch-ghost"] {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}

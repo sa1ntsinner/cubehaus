@@ -124,26 +124,36 @@ for (const reason of ["Escape", "window blur"] as const) {
 test("9b, 4b3, 4b3a–f, 12c2, 12f (draft), E2 and H1: all 18 events show official notation or their entry form", async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   await page.goto("/");
   const scramble = part(page, "scramble");
   await expect(sessionButton(page)).toBeEnabled();
 
-  // Each event opens from its row in the switch, as a new session named by its label.
+  // Each event opens from the switch's picker, as a new session named by its label.
   for (const { id, kind, label } of EVENTS) {
     if (id === "333") continue;
     await test.step(id, async () => {
+      // + and the picker make the session in place, named; Enter keeps the name and
+      // Enter again opens it.
       await openSwitch(page);
-      await page
-        .locator(
-          `[data-part="switch-list"] > li[data-row="event"][data-id="${id}"]`,
-        )
+      await part(page, "switch-grid")
+        .locator('li[data-tile="add"] [data-action="switch-pick"]')
+        .click();
+      await part(page, "switch-grid")
+        .locator(`li[data-tile="event"][data-event="${id}"]`)
         .locator('[data-action="switch-pick"]')
         .click();
+      await expect(part(page, "switch-rename")).toHaveValue(label);
+      await part(page, "switch-rename").press("Enter");
+      await page.keyboard.press("Enter");
       await expect(scramble).toHaveAttribute("data-event", id);
       await expect(sessionButton(page)).toHaveText(label);
       if (kind === "time") {
-        await expect(scramble).toHaveAttribute("data-ready", "true");
+        // A puzzle's first scramble in a page builds its search first (4×4, Square-1:
+        // a second or two, many on a busy machine); the app shows it is preparing one.
+        await expect(scramble).toHaveAttribute("data-ready", "true", {
+          timeout: 30_000,
+        });
         await expect(scramble).toHaveText(officialShape[id]);
       } else {
         await expect(part(page, "entry")).toBeVisible();
@@ -193,20 +203,32 @@ test("9b, WCA Russian locale (research A2): the event chooser shows Russian name
   await page.goto("/");
   await openSwitch(page);
 
-  // Every event without a session is a row under its WCA name; 3×3 has the first session.
-  const rows = part(page, "switch-list").locator('> li[data-row="event"]');
-  await expect(rows).toHaveCount(17);
-  for (const [id, name] of Object.entries(russianNames)) {
-    if (id === "333") continue;
+  // The picker names every puzzle by its WCA name for a screen reader, beside the short
+  // label on screen.
+  await part(page, "switch-grid")
+    .locator('li[data-tile="add"] [data-action="switch-pick"]')
+    .click();
+  const tiles = part(page, "switch-grid").locator('li[data-tile="event"]');
+  await expect(tiles).toHaveCount(18);
+  for (const [id, name] of Object.entries(russianNames))
     await expect(
-      rows
-        .and(page.locator(`[data-id="${id}"]`))
-        .locator('[data-part="switch-label"]'),
-    ).toHaveText(name);
-  }
-  // The name answers a Russian query too, with the matched letters marked.
+      tiles
+        .and(page.locator(`[data-event="${id}"]`))
+        .locator('[data-action="switch-pick"]'),
+    ).toHaveAttribute(
+      "aria-label",
+      new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    );
+  await page.keyboard.press("Escape");
+  // A search names a puzzle with no session by its WCA name, the matched letters marked.
+  await page.keyboard.type("m");
   await part(page, "switch-query").fill("мульти");
-  const multi = rows.and(page.locator('[data-id="333mbf"]'));
+  const multi = part(page, "switch-grid").locator(
+    'li[data-tile="event"][data-event="333mbf"]',
+  );
   await expect(multi).toHaveAttribute("data-selected");
+  await expect(multi.locator('[data-part="switch-label"]')).toHaveText(
+    "Мульти-блайнд",
+  );
   await expect(multi.locator("mark")).toHaveText("Мульти");
 });

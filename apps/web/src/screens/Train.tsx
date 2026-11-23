@@ -5,6 +5,7 @@ import {
   type F2lSlot,
   type Grade,
   gradeOf,
+  lastSlotTop,
   lookalikes,
   newCard,
   nextCase,
@@ -26,8 +27,20 @@ import {
   turnScramble,
   weakCases,
 } from "@cubehaus/algs";
-import { formatTime, newId } from "@cubehaus/core";
-import { holdingFaces, renameTurns } from "@cubehaus/cube/holding";
+import {
+  CROSS_COLOURS,
+  type CrossColour,
+  crossColourOfFace,
+  faceOfCrossColour,
+  formatTime,
+  isCrossColour,
+  newId,
+} from "@cubehaus/core";
+import {
+  holdingFaces,
+  holdingWithBottom,
+  renameTurns,
+} from "@cubehaus/cube/holding";
 import type { TrainerAttempt, TrainerCase } from "@cubehaus/storage";
 import {
   createContext,
@@ -46,7 +59,12 @@ import type { AppView, createAppState } from "../app-state";
 import type { Action } from "../keys/engine";
 import { Help } from "../keys/Help";
 import { formatRunning } from "../running";
-import { CaseDiagram, SlotDiagram, TwoDiagram } from "../scramble/Training";
+import {
+  CaseDiagram,
+  SlotDiagram,
+  TwoDiagram,
+  TwoSides,
+} from "../scramble/Training";
 import {
   createTrainingClient,
   heldScramble,
@@ -57,16 +75,22 @@ import type { Settings } from "../settings";
 import type { Text } from "../text";
 import {
   type AlgChoices,
+  caseLabels,
+  choiceOf,
   chooseAlg,
   type Drill,
   drillElapsed,
   drillStep,
+  FAMILIES,
+  type Family,
+  familyOf,
+  learnGroups,
+  memberOf,
   myAlg,
   otherAlgs,
   parseChoices,
-  setOfSlot,
   showCase,
-  storedSlot,
+  storedMember,
 } from "../train-state";
 import "../design/train.css";
 import "../input/train-behavior.css";
@@ -78,27 +102,32 @@ import "../input/train-behavior.css";
  * picture turned and recoloured at random or as a scramble; Review shows only the slow
  * and often missed ones. Attempts are stored apart from solves.
  */
-const SETS: readonly SetId[] = ["pll", "oll", "coll", "f2l"];
+/**
+ * The set row: one word per set, or per family of sets (F2L's slots, last slot's two
+ * inserts, the 2×2's top in one go over three bottoms), whose member is chosen at the far
+ * end of Learn's `All` line.
+ */
+type Tab = SetId | Family;
+const SETS: readonly Tab[] = ["pll", "oll", "coll", "f2l", "ls"];
 /** The 2×2's sets, in the set row while the 2×2 is chosen. */
-const TWO_SETS: readonly SetId[] = ["two-oll", "two-pbl", "two-cll"];
+const TWO_SETS: readonly Tab[] = ["two-oll", "two-pbl", "two-cll"];
 const isTwo = (set: SetId) => set.startsWith("two-");
-const setName = (id: SetId) => id.replace("two-", "").toUpperCase();
-/** F2L's front left slot: the same cases in the mirror, a set of its own under F2L's tab. */
-const ROUTE_SETS: readonly SetId[] = [
-  ...SETS,
-  ...TWO_SETS,
-  "f2l-left",
-  "f2l-back",
-  "f2l-back-left",
-];
+const setName = (id: Tab) => id.replace("two-", "").toUpperCase();
+const isFamily = (tab: Tab): tab is Family => tab in FAMILIES;
+/** Every set a route can open: the row's own and each family's members. */
+const ROUTE_SETS: readonly SetId[] = [...SETS, ...TWO_SETS].flatMap((tab) =>
+  isFamily(tab) ? [...FAMILIES[tab].members] : [tab],
+);
+const FAMILY_IDS = Object.keys(FAMILIES) as Family[];
 const isF2l = (set: SetId) => slotOf(set) !== null;
-const SLOTS: readonly F2lSlot[] = ["fr", "fl", "br", "bl"];
+const isLastSlot = (set: SetId) => set.startsWith("ls-");
 const showKey = "trainer.show";
-const slotKey = "trainer.slot";
 const puzzleKey = "trainer.puzzle";
 const poolKey = (set: SetId) => `trainer.pool.${set}`;
 const algsKey = "trainer.algs";
 const splitKey = "trainer.split";
+/** F2L's pictures and scrambles on another cross colour (`trainer.f2lCross`). */
+const f2lCrossKey = "trainer.f2lCross";
 type Mode = "learn" | "drill" | "review";
 const MODES: readonly Mode[] = ["learn", "drill", "review"];
 type App = ReturnType<typeof createAppState>;
@@ -194,17 +223,30 @@ function AlgLine({
 /** The colours of the faces as the person holds the cube, for every picture here. */
 const Held = createContext<Record<string, string> | undefined>(undefined);
 
+/**
+ * A case's picture: a last-slot case as its top is read (the pair in colour, the corners
+ * up or not; seen from above the slot, 26 cases at 60 px looked alike), every other as
+ * `pictureOf` draws it after `turns` U turns.
+ */
+const stickersOf = (set: SetId, c: TrainerCaseData, turns = 0) =>
+  isLastSlot(set) ? lastSlotTop(c) : pictureOf(c, turns);
+
 function Picture({
   set,
   stickers,
   arrows = false,
+  tile = false,
 }: {
   set: SetId;
   stickers: string;
   /** PLL: arrows on the top for which piece goes where. */
   arrows?: boolean;
+  /** A tile in Learn's list: a PBL case shows its sides alone, large enough to read. */
+  tile?: boolean;
 }) {
   const faces = useContext(Held);
+  if (tile && set === "two-pbl")
+    return <TwoSides stickers={stickers} faces={faces} />;
   if (isTwo(set))
     return (
       <TwoDiagram
@@ -213,7 +255,7 @@ function Picture({
         orientationOnly={set === "two-oll"}
       />
     );
-  if (isF2l(set))
+  if (isF2l(set) || (isLastSlot(set) && stickers.length === 27))
     return (
       <SlotDiagram
         stickers={stickers}
@@ -260,14 +302,24 @@ export function Train({
   const [split, setSplit] = useState(false);
   // The trainer's keys, listed on `?`.
   const [keysOpen, setKeysOpen] = useState(false);
-  // F2L's slot, one of four: the tab opens the one last chosen.
-  const [slot, setSlot] = useState<F2lSlot>("fr");
+  // Each family's member last chosen (F2L's slot, last slot's insert, the 2×2's bottom):
+  // its word in the set row opens that one.
+  const [members, setMembers] = useState<Partial<Record<Family, string>>>({});
   // The set each puzzle was left on: the puzzle switch goes back to it.
   const [puzzleWas, setPuzzleWas] = useState<
     Partial<Record<"333" | "222", SetId>>
   >({});
   const ru = view.settings.language === "ru";
-  const holding = view.settings.holding;
+  // F2L on a chosen cross colour: the whole cube turned so that colour is at the bottom,
+  // so every picture recolours by one rotation and each case keeps its slot. The person's
+  // own colour (the one held at the bottom) unless another is chosen.
+  const [f2lCross, setF2lCross] = useState<CrossColour | null>(null);
+  const ownCross = crossColourOfFace(holdingFaces(view.settings.holding).D);
+  const cross = f2lCross ?? ownCross;
+  const holding =
+    isF2l(set) && cross !== ownCross
+      ? holdingWithBottom(view.settings.holding, faceOfCrossColour(cross))
+      : view.settings.holding;
   const faces = useMemo(() => holdingFaces(holding), [holding]);
 
   // While the database opens there is no store yet: wait for it rather than draw the
@@ -290,9 +342,10 @@ export function Train({
       stored?.get(poolKey(set)) ?? null,
       stored?.get(algsKey) ?? null,
       stored?.get(splitKey) ?? null,
-      stored?.get(slotKey) ?? null,
       stored?.get(puzzleKey) ?? null,
-    ]).then(([c, a, show, pool, algs, splitOn, slotWas, left]) => {
+      Promise.all(FAMILY_IDS.map((f) => stored?.get(FAMILIES[f].key) ?? null)),
+      stored?.get(f2lCrossKey) ?? null,
+    ]).then(([c, a, show, pool, algs, splitOn, left, chosen, crossWas]) => {
       if (stale) return;
       setRows(c);
       setAttempts(a);
@@ -300,7 +353,12 @@ export function Train({
       setWhole(pool === "all");
       setChoices(parseChoices(algs));
       setSplit(splitOn === "on");
-      setSlot(storedSlot(slotWas));
+      setMembers(
+        Object.fromEntries(
+          FAMILY_IDS.map((f, i) => [f, storedMember(f, chosen[i] ?? null)]),
+        ),
+      );
+      setF2lCross(isCrossColour(crossWas) ? crossWas : null);
       // The set last left on the other puzzle (setting `trainer.puzzle`).
       if (left && ROUTE_SETS.includes(left as SetId))
         setPuzzleWas((was) => ({
@@ -332,6 +390,8 @@ export function Train({
     location.hash = `#/train/${next.set ?? set}/${next.mode ?? mode}`;
   };
   const learning = useMemo(() => new Set(rows?.map((r) => r.caseId)), [rows]);
+  const labels = useMemo(() => caseLabels(set), [set]);
+  const family = familyOf(set);
 
   const otherPuzzle = puzzleOf(set) === "222" ? "333" : "222";
   return (
@@ -351,10 +411,12 @@ export function Train({
                 type="button"
                 data-action="train-set"
                 data-set={id}
-                aria-pressed={id === set || (id === "f2l" && isF2l(set))}
+                aria-pressed={id === family}
                 onClick={() =>
                   go({
-                    set: id === "f2l" ? setOfSlot(slot) : id,
+                    set: isFamily(id)
+                      ? memberOf(id, storedMember(id, members[id] ?? null))
+                      : id,
                   })
                 }
               >
@@ -407,15 +469,22 @@ export function Train({
             words={words}
             ru={ru}
             precision={view.settings.precision}
+            labels={labels}
             choices={choices}
             onChoose={(next) => {
               setChoices(next);
               void stored?.set(algsKey, JSON.stringify(next));
             }}
-            onSlot={(next) => {
-              setSlot(next);
-              void stored?.set(slotKey, next);
-              go({ set: setOfSlot(next) });
+            cross={isF2l(set) ? cross : null}
+            crossOrder={crossOrder(ownCross)}
+            onCross={(next) => {
+              setF2lCross(next);
+              void stored?.set(f2lCrossKey, next);
+            }}
+            onMember={(f, next) => {
+              setMembers((was) => ({ ...was, [f]: next }));
+              void stored?.set(FAMILIES[f].key, next);
+              go({ set: memberOf(f, next as never) });
             }}
             onDrill={async (ids, on) => {
               if (!store) return;
@@ -444,6 +513,7 @@ export function Train({
             attempts={attempts}
             words={words}
             precision={view.settings.precision}
+            labels={labels}
             running={view.settings.running}
             byPicture={byPicture}
             choices={choices}
@@ -531,11 +601,19 @@ function Learn({
   words,
   ru,
   precision,
+  labels,
   onDrill,
   choices,
   onChoose,
-  onSlot,
+  onMember,
+  cross,
+  crossOrder: order,
+  onCross,
 }: {
+  /** F2L: the cross colour the pictures are drawn for, and the order a press steps in. */
+  cross: CrossColour | null;
+  crossOrder: readonly CrossColour[];
+  onCross(next: CrossColour): void;
   set: SetId;
   cases: readonly TrainerCaseData[];
   learning: ReadonlySet<string>;
@@ -543,14 +621,30 @@ function Learn({
   words: Text;
   ru: boolean;
   precision: 2 | 3;
+  /** Each case's name (F2L numbered in the learner's order). */
+  labels: ReadonlyMap<string, string>;
   /** Puts the cases into the drills, or takes them out. */
   onDrill(ids: readonly string[], on: boolean): Promise<void>;
   choices: AlgChoices;
   onChoose(next: AlgChoices): void;
-  /** F2L only: the slot, one of four. */
-  onSlot(next: F2lSlot): void;
+  /** A family's member: F2L's slot, last slot's insert, the 2×2's bottom. */
+  onMember(family: Family, choice: string): void;
 }) {
   const t = words.train;
+  const labelOf = (c: TrainerCaseData) => labels.get(c.id) ?? c.label;
+  const family = familyOf(set);
+  // F2L in the learner's order and its four groups; every other set as one list.
+  const groups = useMemo(() => {
+    const found = learnGroups(set);
+    const byId = new Map(cases.map((c) => [c.id, c]));
+    return found
+      ? found.map((g) => ({
+          id: g.id,
+          name: ru ? g.ru : g.en,
+          cases: g.ids.map((id) => byId.get(id) as TrainerCaseData),
+        }))
+      : [{ id: "all", name: null, cases }];
+  }, [set, cases, ru]);
   const [open, setOpen] = useState<string | null>(null);
   // The other algorithms of the open case, one tap away.
   const [more, setMore] = useState(false);
@@ -568,6 +662,7 @@ function Learn({
   const inDrills = (ids: readonly string[]) =>
     ids.length > 0 && ids.every((id) => learning.has(id));
   const current = cases.find((c) => c.id === open) ?? null;
+  const twoLookOnly = inDrills(twoLook) && learning.size === twoLook.length;
 
   // Narrow, the case takes the list's place: show it from its top, and on the way back
   // the list where it was left.
@@ -609,91 +704,123 @@ function Learn({
     <div data-part="train-learn" data-open={current ? "" : undefined}>
       <section data-part="train-cases">
         <p data-part="train-filter">
+          {/* Presets: the one that describes the drills stands pressed, and pressed
+              again it empties them, so no third word is needed for none. */}
           <button
             type="button"
             data-action="train-all"
             aria-pressed={inDrills(all)}
-            onClick={() => void onDrill(all, true)}
+            onClick={() => void onDrill(all, !inDrills(all))}
           >
             {t.all}
-          </button>
-          <button
-            type="button"
-            data-action="train-none"
-            aria-pressed={learning.size === 0}
-            onClick={() => void onDrill(all, false)}
-          >
-            {t.none}
           </button>
           {twoLook.length > 0 && (
             <button
               type="button"
               data-action="train-two-look"
-              aria-pressed={
-                inDrills(twoLook) && learning.size === twoLook.length
-              }
+              aria-pressed={twoLookOnly}
               onClick={() =>
-                void onDrill(twoLook, true).then(() =>
-                  onDrill(
-                    all.filter((id) => !twoLook.includes(id)),
-                    false,
-                  ),
-                )
+                twoLookOnly
+                  ? void onDrill(all, false)
+                  : void onDrill(twoLook, true).then(() =>
+                      onDrill(
+                        all.filter((id) => !twoLook.includes(id)),
+                        false,
+                      ),
+                    )
               }
             >
               {t.twoLook}
             </button>
           )}
-          {isF2l(set) && (
-            <span data-part="train-slot">
-              {SLOTS.map((id) => (
+          {isFamily(family) && (
+            // The family's member, at the line's far end, apart from what goes in drills.
+            // F2L keeps its slot words and data hooks; before them, its cross colour.
+            <span data-part="train-slot" data-family={family}>
+              {family === "f2l" && cross && (
+                // One quiet word that steps to the next colour: the person's own, its
+                // opposite, then the other pairs (DESIGN.md section 14a).
+                <button
+                  type="button"
+                  data-action="train-cross"
+                  data-colour={cross}
+                  aria-label={t.crossOn(words.cross.name[cross])}
+                  onClick={() =>
+                    onCross(
+                      order[(order.indexOf(cross) + 1) % order.length] ?? cross,
+                    )
+                  }
+                >
+                  <span
+                    data-part="cross-swatch"
+                    data-face={faceOfCrossColour(cross)}
+                    aria-hidden="true"
+                  />
+                  <span data-part="train-cross-name">
+                    {words.cross.name[cross]}
+                  </span>
+                </button>
+              )}
+              {FAMILIES[family].choices.map((id) => (
                 <button
                   key={id}
                   type="button"
-                  data-action="train-slot"
-                  data-slot={id}
-                  aria-label={t.slotNames[id]}
-                  aria-pressed={slotOf(set) === id}
-                  onClick={() => onSlot(id)}
+                  data-action={family === "f2l" ? "train-slot" : "train-member"}
+                  data-slot={family === "f2l" ? id : undefined}
+                  data-member={id}
+                  aria-label={
+                    family === "f2l"
+                      ? t.slotNames[id as F2lSlot]
+                      : t.members[family][id as never]
+                  }
+                  aria-pressed={choiceOf(family, set) === id}
+                  onClick={() => onMember(family, id)}
                 >
-                  {t.slots[id]}
+                  {family === "f2l"
+                    ? t.slots[id as F2lSlot]
+                    : t.memberWords[family][id as never]}
                 </button>
               ))}
             </span>
           )}
         </p>
-        <ul data-part="train-case-list">
-          {cases.map((c) => (
-            <li
-              key={c.id}
-              data-case-id={c.id}
-              data-learning={learning.has(c.id) ? "" : undefined}
-            >
-              <button
-                type="button"
-                aria-label={c.label}
-                aria-current={c.id === open ? "true" : undefined}
-                data-learning={learning.has(c.id) ? "" : undefined}
-                onClick={() => choose(c.id)}
-              >
-                <Picture set={set} stickers={pictureOf(c)} />
-              </button>
-              <label data-part="train-pick">
-                <input
-                  type="checkbox"
-                  data-action="train-pick"
-                  checked={picked(c.id)}
-                  onChange={(event) => {
-                    const on = event.currentTarget.checked;
-                    setPending((was) => new Map(was).set(c.id, on));
-                    void onDrill([c.id], on);
-                  }}
-                />
-                <span>{c.label}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
+        {groups.map((group) => (
+          <Fragment key={group.id}>
+            {group.name && <h2 data-part="train-group-name">{group.name}</h2>}
+            <ul data-part="train-case-list">
+              {group.cases.map((c) => (
+                <li
+                  key={c.id}
+                  data-case-id={c.id}
+                  data-learning={learning.has(c.id) ? "" : undefined}
+                >
+                  <button
+                    type="button"
+                    aria-label={labelOf(c)}
+                    aria-current={c.id === open ? "true" : undefined}
+                    data-learning={learning.has(c.id) ? "" : undefined}
+                    onClick={() => choose(c.id)}
+                  >
+                    <Picture set={set} stickers={stickersOf(set, c)} tile />
+                  </button>
+                  <label data-part="train-pick">
+                    <input
+                      type="checkbox"
+                      data-action="train-pick"
+                      checked={picked(c.id)}
+                      onChange={(event) => {
+                        const on = event.currentTarget.checked;
+                        setPending((was) => new Map(was).set(c.id, on));
+                        void onDrill([c.id], on);
+                      }}
+                    />
+                    <span>{labelOf(c)}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </Fragment>
+        ))}
       </section>
       {current && (
         <article data-part="train-case" data-case-id={current.id}>
@@ -705,8 +832,12 @@ function Learn({
             {t.back}
           </button>
           <div data-part="train-case-head">
-            <Picture set={set} stickers={pictureOf(current)} arrows />
-            <h2>{current.label}</h2>
+            <Picture set={set} stickers={stickersOf(set, current)} arrows />
+            {/* Last slot: beside its top, the cube from above the slot, the pair ready. */}
+            {isLastSlot(set) && current.pictures && (
+              <Picture set={set} stickers={current.pictures.slot} />
+            )}
+            <h2>{labelOf(current)}</h2>
           </div>
           <CaseNumbers
             attempts={attempts}
@@ -714,9 +845,12 @@ function Learn({
             words={words}
             precision={precision}
           />
-          {current.recognise && (
+          {/* One line: how to recognise it, or for F2L what the algorithm does. */}
+          {(current.recognise ?? current.idea) && (
             <p data-part="train-recognise">
-              {ru ? current.recognise.ru : current.recognise.en}
+              {ru
+                ? (current.recognise ?? current.idea)?.ru
+                : (current.recognise ?? current.idea)?.en}
             </p>
           )}
           {current.algs.length === 0 ? (
@@ -869,6 +1003,7 @@ function Practice({
   attempts,
   words,
   precision,
+  labels,
   running,
   byPicture,
   choices,
@@ -889,6 +1024,7 @@ function Practice({
   attempts: readonly TrainerAttempt[];
   words: Text;
   precision: 2 | 3;
+  labels: ReadonlyMap<string, string>;
   running: Settings["running"];
   byPicture: boolean;
   choices: AlgChoices;
@@ -963,6 +1099,8 @@ function Practice({
   }, [whole, cases, set]);
   const queue = useRef<string[]>([]);
   const reviewed = useRef(new Set<string>());
+  // When each case drilled in this sitting is due next, as written after its attempt.
+  const rescheduled = useRef(new Map<string, number>());
   // Review worked through all it held and nothing new came due.
   const [done, setDone] = useState(false);
   const [started, setStarted] = useState(false);
@@ -996,8 +1134,15 @@ function Practice({
         if (queue.current.length === 0) {
           // Drawn again: what came due since (a miss comes back within minutes), and
           // what this sitting has not shown yet; a slow case shown once waits for tomorrow.
+          // The last attempt's new schedule first: a quick Space after the stop must not
+          // find the case due as it was before it.
+          await writes.current;
           const dueNow = new Set(
-            current.filter((r) => r.dueAt <= now).map((r) => r.caseId),
+            current
+              .filter(
+                (r) => (rescheduled.current.get(r.caseId) ?? r.dueAt) <= now,
+              )
+              .map((r) => r.caseId),
           );
           queue.current = todayQueue().order.filter(
             (id) => dueNow.has(id) || !reviewed.current.has(id),
@@ -1046,10 +1191,11 @@ function Practice({
         setShown(null);
         return;
       }
-      const auf = random4();
-      // A last-layer case comes up with any side in front; an F2L case is the front
-      // right slot's, so its colours stay.
-      const colour = isF2l(set) ? 0 : random4();
+      // A last-slot case's pair stands where its insert wants it: no U turn before.
+      const auf = isLastSlot(set) && byPicture ? 0 : random4();
+      // A last-layer case comes up with any side in front; an F2L or last-slot case is
+      // its slot's, so its colours stay.
+      const colour = isF2l(set) || isLastSlot(set) ? 0 : random4();
       if (byPicture) {
         setShown({ caseId: id, auf, colour, scramble: null });
         moveDrill(showCase(true, split));
@@ -1093,7 +1239,7 @@ function Practice({
             ? ("f2l" as const)
             : (set as Exclude<SetId, `f2l${string}` | `two-${string}`>),
         caseIds: [other ? `f2l-${id.slice(-4)}` : id],
-      };
+      } as const;
       const result = await client.current.requestTraining({ request }, ask);
       if (!result || ask !== sequence.current) return;
       setShown({
@@ -1185,6 +1331,7 @@ function Practice({
         if (row) {
           const scheduled = await review(row.card, grade, at);
           await store.putCase({ setId: set, caseId: row.caseId, ...scheduled });
+          rescheduled.current.set(row.caseId, scheduled.dueAt);
         }
         const saved = { attempt, before, card: row?.card ?? null };
         setSaved(saved);
@@ -1220,6 +1367,7 @@ function Practice({
           caseId: done.attempt.caseId,
           ...scheduled,
         });
+        rescheduled.current.set(done.attempt.caseId, scheduled.dueAt);
       }
       onSaved(await store.cases(set), await store.attempts(set));
       return done;
@@ -1381,7 +1529,7 @@ function Practice({
           <div data-part="train-picture">
             <Picture
               set={set}
-              stickers={recolour(pictureOf(c, shown.auf), shown.colour)}
+              stickers={recolour(stickersOf(set, c, shown.auf), shown.colour)}
               arrows={drill.phase === "stopped"}
             />
           </div>
@@ -1413,7 +1561,7 @@ function Practice({
         {/* Heard once the clock stops: the case and the time, not the running figures. */}
         <p data-part="train-said" aria-live="polite">
           {drill.phase === "stopped" && result && c
-            ? `${c.label}, ${format(result.execMs)}`
+            ? `${labels.get(c.id) ?? c.label}, ${format(result.execMs)}`
             : ""}
         </p>
         {drill.phase === "stopped" && result && c ? (
@@ -1431,7 +1579,7 @@ function Practice({
               )}
             </p>
             <p data-part="train-answer">
-              <span data-part="train-label">{c.label}</span>
+              <span data-part="train-label">{labels.get(c.id) ?? c.label}</span>
               {c.algs[0] && <Alg moves={myAlg(c, choices, set).moves} />}
             </p>
             <p data-part="train-after">
@@ -1478,7 +1626,8 @@ function Practice({
         )}
         {drill.phase !== "stopped" && (
           <p data-part="train-show" data-no-drill>
-            {poolChoice}
+            {/* Mine and All differ only while some cases, not all, are the person's. */}
+            {rows.length > 0 && rows.length < cases.length && poolChoice}
             <span data-part="train-view">
               <button
                 type="button"
@@ -1514,4 +1663,17 @@ function Practice({
       </div>
     </section>
   );
+}
+
+/** The cross colours from the person's own: it, its opposite, then the other two pairs. */
+function crossOrder(own: CrossColour): CrossColour[] {
+  const face = faceOfCrossColour(own);
+  const opposite = crossColourOfFace(
+    ({ U: "D", D: "U", F: "B", B: "F", R: "L", L: "R" } as const)[face],
+  );
+  return [
+    own,
+    opposite,
+    ...CROSS_COLOURS.filter((colour) => colour !== own && colour !== opposite),
+  ];
 }

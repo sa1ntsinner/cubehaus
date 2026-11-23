@@ -1,4 +1,5 @@
 import {
+  type CrossColour,
   type EventId,
   eventInfo,
   formatSolve,
@@ -26,6 +27,13 @@ import type { Settings } from "../settings";
 import { type Text, text } from "../text";
 import { DEFAULT_SIZES, type ViewSizes } from "../view-size";
 import { formatFileResult, spokenResult } from "./file-result";
+
+/** Each colour's shortest cross after a scramble, and the colour the solve was built on. */
+export type CrossLine = {
+  lengths: readonly { colour: CrossColour; length: number }[];
+  own: CrossColour | null;
+  shortest: number;
+};
 
 export function Timer({
   scramble,
@@ -56,6 +64,7 @@ export function Timer({
   repeat,
   onRepeat,
   sizes = DEFAULT_SIZES,
+  crossLine = null,
 }: {
   scramble: string | null;
   event: EventId;
@@ -98,6 +107,11 @@ export function Timer({
     | undefined;
   /** A past solve on show can be timed again (its `Again`). */
   onRepeat?: (() => void) | undefined;
+  /**
+   * The shortest cross of each colour in play on the solve on show, its own colour named;
+   * "pending" holds the line's place while the worker counts.
+   */
+  crossLine?: CrossLine | "pending" | null;
   /** Each part's size in percent: `data-size` on the scramble, picture and time. */
   sizes?: ViewSizes;
 }) {
@@ -308,6 +322,7 @@ export function Timer({
           onCommentDone={onCommentDone}
           repeat={repeat}
           onRepeat={onRepeat}
+          crossLine={crossLine}
         />
       )}
       <p data-part="time-status" role="status">
@@ -368,7 +383,9 @@ function TimeUnder({
   onCommentDone,
   repeat,
   onRepeat,
+  crossLine,
 }: {
+  crossLine: CrossLine | "pending" | null;
   solve: Solve;
   precision: Settings["precision"];
   no: number | undefined;
@@ -390,7 +407,8 @@ function TimeUnder({
     no === undefined &&
     !repeat &&
     !commenting &&
-    solve.comment === null
+    solve.comment === null &&
+    !crossLine
   )
     return null;
   return (
@@ -400,6 +418,28 @@ function TimeUnder({
           {note.text}
         </p>
       )}
+      {crossLine &&
+        (crossLine === "pending" ? (
+          <p data-part="time-cross" data-pending="" aria-hidden="true">
+            {"\u00a0"}
+          </p>
+        ) : (
+          <p data-part="time-cross">
+            <span data-part="cross-label">{words.cross.line}</span>{" "}
+            {crossLine.lengths.map(({ colour, length }, index) => (
+              <Fragment key={colour}>
+                {index > 0 && " · "}
+                <span
+                  data-colour={colour}
+                  data-own={colour === crossLine.own || undefined}
+                  data-shortest={length === crossLine.shortest ? "" : undefined}
+                >
+                  {words.cross.name[colour]} {length}
+                </span>
+              </Fragment>
+            ))}
+          </p>
+        ))}
       {repeat ? (
         <Attempts repeat={repeat} precision={precision} words={words} />
       ) : (

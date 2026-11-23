@@ -301,3 +301,23 @@ export function solveCross(scramble: string, face: Face): CrossResult {
   }
   return { moves, length: moves.length };
 }
+
+/**
+ * The shortest cross on each face asked for (a face is its colour's name in the
+ * scramble's orientation: U white), or null when the scramble has a turn other than the
+ * 18 outer face turns. Every face reads the same table, turned to that face (`frame`), so
+ * each colour's length is the white solver's on the cube turned whole.
+ */
+export function crossLengths(
+  scramble: string,
+  faces: readonly Face[],
+): Partial<Record<Face, number>> | null {
+  try {
+    return Object.fromEntries(
+      faces.map((face) => [face, crossDistance(crossStateOf(scramble, face))]),
+    );
+  } catch (error) {
+    if (error instanceof RangeError) return null;
+    throw error;
+  }
+}

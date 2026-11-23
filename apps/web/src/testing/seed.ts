@@ -44,6 +44,7 @@ export interface Seed {
 
 const stoppedTimes: Partial<Record<string, number>> = {
   stopped: 11_284,
+  "cross-line": 11_284,
   "stopped-plus2": 11_284,
   "stopped-dnf": 11_284,
   record: 8_284,
@@ -77,11 +78,33 @@ const rowCounts: Partial<Record<string, number>> = {
   switch: 12,
   "switch-archive": 12,
   "switch-trash": 12,
+  "switch-few": 12,
+  "switch-many": 12,
+  "switch-folder": 12,
+  "switch-new": 12,
+  "switch-menu": 12,
+  "switch-rename": 12,
   "sizes-large": 12,
   "sizes-small": 12,
   "theme-custom": 12,
   "theme-image": 12,
+  "cross-mark": 60,
+  "cross-line": 60,
+  "settings-cross": 60,
+  "drill-cross": 60,
 };
+
+/**
+ * Colour neutrality's shots: solves in blocks of 12 on white, then yellow, white, … with
+ * yellow slower, so the assignment has a history and Progress a gap to show.
+ */
+const crossStates = new Set([
+  "cross-mark",
+  "cross-line",
+  "settings-cross",
+  "drill-cross",
+  "progress-cross",
+]);
 
 // The switch shows a practice of several puzzles, each session with its last result.
 const switchSessions: readonly {
@@ -146,6 +169,7 @@ function timerFor(state: string): Pick<Seed, "phase" | "timer"> {
         },
       };
     case "running":
+    case "cross-line":
     case "stopped":
     case "stopped-plus2":
     case "stopped-dnf":
@@ -177,6 +201,18 @@ function timerFor(state: string): Pick<Seed, "phase" | "timer"> {
         timer: { steps, elapsedMs },
       };
     }
+    case "drill-choice":
+    case "drill-choice-result":
+      return {
+        phase: "inspecting",
+        timer: {
+          steps: [
+            { type: "press", at: -4_010 },
+            { type: "release", at: -4_000 },
+          ],
+          elapsedMs: 4_000,
+        },
+      };
     default:
       return { phase: "idle" };
   }
@@ -239,16 +275,24 @@ export function parseSeed(search: string): Seed | undefined {
           ? "off"
           : "official",
       entry: state === "entry" || state === "entry-error" ? "typing" : "timer",
-      training:
-        state === "drill-line"
-          ? { request: { kind: "easy-xcross", face: "U", length: 3 } }
-          : state === "drills" ||
-              state === "drill-none" ||
-              state === "drills-white"
-            ? { request: { kind: "pll", caseIds: [] } }
-            : state === "drills-oll"
-              ? { request: { kind: "oll", caseIds: [] } }
-              : { request: null },
+      cross: crossStates.has(state) ? "assigned" : "any",
+      crossColours:
+        state === "settings-cross" || state.startsWith("drill-choice")
+          ? ["white", "yellow", "green", "blue"]
+          : null,
+      training: state.startsWith("drill-choice")
+        ? { request: null, choice: true }
+        : state === "drill-cross"
+          ? { request: { kind: "easy-cross", face: "U", length: 4 } }
+          : state === "drill-line"
+            ? { request: { kind: "easy-xcross", face: "U", length: 3 } }
+            : state === "drills" ||
+                state === "drill-none" ||
+                state === "drills-white"
+              ? { request: { kind: "pll", caseIds: [] } }
+              : state === "drills-oll"
+                ? { request: { kind: "oll", caseIds: [] } }
+                : { request: null },
     },
     ...timer,
   };
@@ -403,6 +447,12 @@ export function seededSolves(seed: Seed, sessionId: string): Solve[] {
     const manualPlus2 =
       history && (index === 10 || index === 30 || browsed) ? 1 : 0;
     let timeMs = 12_000 + (random % 8_000);
+    const crossColour = crossStates.has(state)
+      ? Math.floor(index / 12) % 2
+        ? ("yellow" as const)
+        : ("white" as const)
+      : undefined;
+    if (crossColour === "yellow") timeMs = Math.round(timeMs * 1.3);
     if (state === "long") timeMs = 3_723_000;
     else if (state === "mbld") timeMs = 1_470_000;
     else if (newest && finalTime !== undefined) timeMs = finalTime;
@@ -424,8 +474,63 @@ export function seededSolves(seed: Seed, sessionId: string): Solve[] {
       comment: browsed ? "Lost the last pair, found it again" : null,
       input: "keyboard",
       ...(event === "333mbf" ? { cubesSolved: 3, cubesAttempted: 3 } : {}),
+      ...(crossColour ? { crossColour } : {}),
     };
   });
+}
+
+/**
+ * Twenty blocks of 12 on white and yellow in turn, then a mix: white about 12.4, yellow
+ * from 40 % slower closing to about 12 %; green and blue joined later, still far behind.
+ */
+function colourHistory(sessionId: string): Solve[] {
+  let random = 0x1c0105;
+  const next = () => {
+    random = (Math.imul(random, 1664525) + 1013904223) >>> 0;
+    return random / 2 ** 32;
+  };
+  const solves: Solve[] = [];
+  const first = Date.UTC(2026, 9, 1, 17);
+  const total = 360;
+  for (let index = 0; index < total; index++) {
+    const colour =
+      index < 240
+        ? Math.floor(index / 12) % 2
+          ? "yellow"
+          : "white"
+        : index < 312
+          ? ((["white", "yellow", "green", "blue"] as const)[
+              Math.floor(next() * 4)
+            ] ?? "white")
+          : index % 2
+            ? "green"
+            : "blue";
+    const gap =
+      colour === "yellow"
+        ? 0.4 - 0.28 * (index / total)
+        : colour === "green"
+          ? 0.3
+          : colour === "blue"
+            ? 0.36
+            : 0;
+    const base = 12_400 * (1 + gap);
+    solves.push({
+      id: `eyes-colour-${String(index).padStart(4, "0")}`,
+      sessionId,
+      event: "333",
+      timeMs: Math.round(base + (next() - 0.5) * 2_400),
+      plus2: index % 41 === 17 ? 1 : 0,
+      dnf: index % 53 === 29,
+      inspectionMs: null,
+      scramble: sample333,
+      startedAt:
+        first + Math.floor(index / 12) * 86_400_000 + (index % 12) * 150_000,
+      comment: null,
+      input: "keyboard",
+      crossColour: colour,
+    });
+  }
+  return solves;
 }
 
 type ProgressHistory = keyof typeof progressHistories;
@@ -507,6 +612,8 @@ export async function openSeed(seed: Seed): Promise<DbState> {
   for (const solve of seededSolves(seed, session.id))
     await store.solves.add(solve);
   if (seed.state.startsWith("train")) await seedTrainer(store);
+  if (seed.state === "train-f2l-cross")
+    await store.settings.set("trainer.f2lCross", "green");
   if (seed.state === "repeat" || seed.state === "repeat-long") {
     // Three more attempts on the fourth newest solve's scramble, one of them the best; a
     // long practice of one scramble has twelve.
@@ -538,6 +645,9 @@ export async function openSeed(seed: Seed): Promise<DbState> {
         repeatOf: "eyes-solve-56",
       });
   }
+  if (seed.state === "progress-cross")
+    for (const solve of colourHistory(session.id))
+      await store.solves.add(solve);
   const history = progressHistories[seed.state as ProgressHistory];
   if (history) {
     for (const solve of historySolves(history, session.id))
@@ -586,7 +696,43 @@ export async function openSeed(seed: Seed): Promise<DbState> {
   }
   if (seed.state.startsWith("switch")) {
     const made: string[] = [];
-    for (const [index, item] of switchSessions.entries()) {
+    // Few: the usual practice of two or three puzzles. Many: a long-kept history.
+    const extra: (typeof switchSessions)[number][] =
+      seed.state === "switch-many"
+        ? (
+            [
+              "222",
+              "444",
+              "555",
+              "666",
+              "777",
+              "333bf",
+              "333fm",
+              "333oh",
+              "clock",
+              "minx",
+              "pyram",
+              "skewb",
+              "sq1",
+              "444bf",
+              "555bf",
+              "333mbf",
+              "fto",
+            ] as const
+          ).flatMap((event, index) => [
+            {
+              name: `Practice ${index + 1}`,
+              event,
+              timeMs: 10_000 + index * 997,
+            },
+            { name: `Comp ${index + 1}`, event, timeMs: 12_000 + index * 991 },
+          ])
+        : [];
+    const list: readonly (typeof switchSessions)[number][] =
+      seed.state === "switch-few"
+        ? switchSessions.slice(0, 2)
+        : [...switchSessions, ...extra];
+    for (const [index, item] of list.entries()) {
       const other = await store.sessions.create({
         event: item.event,
         name: item.name,
@@ -609,7 +755,8 @@ export async function openSeed(seed: Seed): Promise<DbState> {
     }
     // One folder, open: the side events together.
     const [, oh, , blind] = made;
-    if (oh && blind) await store.folders.create("Side events", [oh, blind]);
+    if (oh && blind && seed.state !== "switch-few")
+      await store.folders.create("Side events", [oh, blind]);
     // Put away: two old sessions in the archive, one in the trash with its solves, and a
     // solve deleted on its own.
     for (const [name, event] of [
@@ -728,8 +875,16 @@ async function seedTrainer(store: Store): Promise<void> {
       await store.trainer.putCase({ setId, caseId, card, dueAt: now });
     }
   }
-  // Two cases of each 2×2 set, so its drill has cases of its own.
-  for (const setId of ["two-oll", "two-pbl", "two-cll"] as const)
+  // Two cases of each 2×2 set and each last-slot set, so its drill has cases of its own.
+  for (const setId of [
+    "two-oll",
+    "two-pbl",
+    "two-cll",
+    "two-adj",
+    "two-diag",
+    "ls-right",
+    "ls-front",
+  ] as const)
     for (const c of trainerSet(setId).slice(0, 2)) {
       const { card } = await newCard(c.id, now);
       await store.trainer.putCase({ setId, caseId: c.id, card, dueAt: now });

@@ -20,6 +20,12 @@ import {
 } from "./f2l";
 import { classifyLL, memberOf } from "./last-layer-cases";
 import {
+  LAST_SLOT_KEYS,
+  type LastSlotSet,
+  lastSlotDrawn,
+  lastSlotOf,
+} from "./last-slot";
+import {
   type CubeLayout,
   type Fixed,
   homes,
@@ -43,6 +49,15 @@ export type TrainingBase =
 export type TrainingLL = {
   kind: "oll" | "pll" | "coll" | "ll" | "f2l";
   caseIds: readonly string[];
+};
+/**
+ * Last-slot cases (last-slot.ts) by ID (`ls-right-1011`); without IDs, any of the 26.
+ * Kept apart from TrainingBase and TrainingLL: it is drilled in the trainer, not the
+ * timer's drills.
+ */
+export type TrainingLastSlot = {
+  kind: LastSlotSet;
+  caseIds?: readonly string[];
 };
 export type TrainingResult = { scramble: string; caseId: string };
 
@@ -156,12 +171,14 @@ const SLOT_EDGE = 8;
 const SLOT_CORNER = 4;
 
 export async function generateTraining(
-  request: TrainingBase | TrainingLL,
+  request: TrainingBase | TrainingLL | TrainingLastSlot,
   rng: () => number,
   signal?: AbortSignal,
 ): Promise<TrainingResult> {
-  if ("caseIds" in request) {
-    if (request.caseIds.length === 0)
+  if ("caseIds" in request && request.caseIds) {
+    // A last-slot drill with no case chosen takes any of them.
+    const any = request.kind === "ls-right" || request.kind === "ls-front";
+    if (request.caseIds.length === 0 && !any)
       throw new RangeError("Choose at least one case");
     for (const id of request.caseIds)
       if (!id.startsWith(`${request.kind}-`))
@@ -176,7 +193,7 @@ export async function generateTraining(
 }
 
 async function attemptOnce(
-  request: TrainingBase | TrainingLL,
+  request: TrainingBase | TrainingLL | TrainingLastSlot,
   rng: () => number,
 ): Promise<TrainingResult | null> {
   if ("caseIds" in request && request.kind === "f2l") {
@@ -209,6 +226,29 @@ async function attemptOnce(
     return f2lReady(reached) && f2lKey(f2lOf(reached)) === key
       ? { scramble, caseId: id }
       : null;
+  }
+  if (request.kind === "ls-right" || request.kind === "ls-front") {
+    // The case's pair where its insert wants it, the last layer's pieces anywhere with
+    // their twists, the top turned at random; read back after the scramble.
+    const set = request.kind;
+    const ids =
+      request.caseIds && request.caseIds.length > 0
+        ? request.caseIds
+        : LAST_SLOT_KEYS.map((k) => `${set}-${k}`);
+    const id = ids[Math.floor(rng() * ids.length)] as string;
+    const key = id.slice(set.length + 1);
+    const kpuzzle = await kpuzzle333();
+    const data = lastSlotDrawn(kpuzzle, set, key, rng)
+      .patternData as unknown as {
+      CORNERS: CubeLayout["corners"];
+      EDGES: CubeLayout["edges"];
+    };
+    const scramble = await scrambleFor({
+      corners: data.CORNERS,
+      edges: data.EDGES,
+    });
+    const reached = kpuzzle.defaultPattern().applyAlg(scramble);
+    return lastSlotOf(set, reached) === key ? { scramble, caseId: id } : null;
   }
   if ("caseIds" in request) {
     // The case first, then a member of it with random U turns before and after.

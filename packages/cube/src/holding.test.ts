@@ -4,6 +4,7 @@ import {
   frontsFor,
   HOLDINGS,
   holdingFaces,
+  holdingWithBottom,
   isHolding,
   renameTurns,
 } from "./holding";
@@ -59,5 +60,23 @@ describe("how the cube is held", () => {
       "L D L' D2 F' U Rw",
     );
     expect(renameTurns("R U R'", holdingFaces("UF"))).toBe("R U R'");
+  });
+});
+
+describe("holdingWithBottom", () => {
+  it("turns the cube whole so the colour is at the bottom, keeping the front where it can", () => {
+    for (const holding of HOLDINGS)
+      for (const face of ["U", "D", "F", "B", "R", "L"] as const) {
+        const turned = holdingWithBottom(holding, face);
+        expect(isHolding(turned)).toBe(true);
+        const faces = holdingFaces(turned);
+        expect(faces.D).toBe(face);
+        const front = holdingFaces(holding).F;
+        if (front !== face && front !== faces.U) expect(faces.F).toBe(front);
+      }
+    // Yellow on top, green in front; a yellow cross is white on top, green still in front.
+    expect(holdingWithBottom("DF", "D")).toBe("UF");
+    // A green cross: blue on top; green cannot stay in front, the old top (yellow) is.
+    expect(holdingWithBottom("DF", "F")).toBe("BD");
   });
 });

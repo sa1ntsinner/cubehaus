@@ -59,10 +59,14 @@ export function createDbServices(db: Db) {
   /** Another timer's file, with what it could not hold counted rather than listed. */
   async function exportFile(
     format: "cstimer" | "csv",
+    sessionId?: string,
   ): Promise<ExportFileResult> {
     const backup = await snapshot(db);
+    const options = sessionId === undefined ? {} : { sessionId };
     const { text, issues } =
-      format === "csv" ? encodeCsv(backup) : encodeCsTimer(backup);
+      format === "csv"
+        ? encodeCsv(backup, options)
+        : encodeCsTimer(backup, options);
     return {
       text,
       solves: new Set(issues.map(({ id }) => id)).size,

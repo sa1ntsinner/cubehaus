@@ -39,7 +39,10 @@ type WritableDb = {
   previewImport?: (file: ImportInput) => Promise<ImportPreviewResult>;
   importFile?: (file: ImportInput) => Promise<ImportFileResult>;
   exportBackup?: () => Promise<string>;
-  exportFile?: (format: "cstimer" | "csv") => Promise<ExportFileResult>;
+  exportFile?: (
+    format: "cstimer" | "csv",
+    sessionId?: string,
+  ) => Promise<ExportFileResult>;
   restoreBackup?: (file: File) => Promise<RestoreFileResult>;
   progress?: ProgressReader;
   /** Desktop: how the webview's earlier history went into the file on this start. */

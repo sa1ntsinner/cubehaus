@@ -174,3 +174,76 @@ test("onTimeout runs before the next generate call", async () => {
     vi.useRealTimers();
   }
 });
+
+test("F2: nothing is made ahead while the page is hidden; asking still makes one", async () => {
+  const generate = fake();
+  let visible = false;
+  const source = createScrambleSource(generate, { active: () => visible });
+  source.prefetch("444");
+  expect(generate).not.toHaveBeenCalled();
+  // A scramble asked for is made, but none is put by for later.
+  await expect(source.next("444")).resolves.toBe("444#1");
+  expect(generate.mock.calls).toEqual([["444"]]);
+  // Shown again: the queue fills to its depth.
+  visible = true;
+  source.prefetch("444");
+  expect(generate.mock.calls).toEqual([["444"], ["444"], ["444"]]);
+  await expect(source.next("444")).resolves.toBe("444#2");
+});
+
+test("F2: a scramble made ahead is the next one handed out, in order", async () => {
+  const generate = fake();
+  const source = createScrambleSource(generate);
+  source.prefetch("sq1");
+  await Promise.resolve();
+  await expect(source.next("sq1")).resolves.toBe("sq1#1");
+  await expect(source.next("sq1")).resolves.toBe("sq1#2");
+  await expect(source.next("sq1")).resolves.toBe("sq1#3");
+});
+
+test("F2: keys other than an event (Multi-Blind with its cube count) keep their own queues", async () => {
+  const made: string[] = [];
+  const source = createScrambleSource(
+    async (key: string) => {
+      made.push(key);
+      return `${key}#${made.filter((k) => k === key).length}`;
+    },
+    { depth: () => 1 },
+  );
+  await expect(source.next("333mbf:5")).resolves.toBe("333mbf:5#1");
+  await expect(source.next("333mbf:8")).resolves.toBe("333mbf:8#1");
+  await expect(source.next("333mbf:5")).resolves.toBe("333mbf:5#2");
+  expect(made).toEqual([
+    "333mbf:5",
+    "333mbf:5",
+    "333mbf:8",
+    "333mbf:8",
+    "333mbf:5",
+  ]);
+});
+
+test("F2: the scrambles made ahead and not yet handed out can be read, to keep for later", async () => {
+  let release: (value: string) => void = () => {};
+  let calls = 0;
+  const source = createScrambleSource<string>(
+    (key) => {
+      calls++;
+      return calls === 3
+        ? new Promise<string>((resolve) => {
+            release = resolve;
+          })
+        : Promise.resolve(`${key}#${calls}`);
+    },
+    { depth: () => 2 },
+  );
+  expect(source.ahead()).toEqual({});
+  source.prefetch("444");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(source.ahead()).toEqual({ "444": ["444#1", "444#2"] });
+  // Handed out, a scramble is no longer kept; one still being made is not listed yet.
+  await expect(source.next("444")).resolves.toBe("444#1");
+  expect(source.ahead()).toEqual({ "444": ["444#2"] });
+  release("444#3");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(source.ahead()).toEqual({ "444": ["444#2", "444#3"] });
+});

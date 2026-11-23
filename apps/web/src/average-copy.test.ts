@@ -5,6 +5,7 @@ import { expect, test, vi } from "vitest";
 import {
   copyStatWindow,
   describeStatWindow,
+  formatSolveLine,
   formatStatWindow,
 } from "./average-copy";
 
@@ -77,4 +78,25 @@ test("copy ao5 copies exactly the shown five attempts in order", async () => {
   } finally {
     await db.close();
   }
+});
+
+test("one solve copies as its result and scramble, as a line of the average's copy", () => {
+  const solve = (over: Partial<Solve>): Solve => ({
+    id: "1",
+    sessionId: "s",
+    event: "333",
+    timeMs: 11283,
+    plus2: 0,
+    dnf: false,
+    scramble: "R U R' F2",
+    startedAt: 0,
+    inspectionMs: null,
+    comment: null,
+    input: "keyboard",
+    ...over,
+  });
+  expect(formatSolveLine(solve({}))).toBe("11.28  R U R' F2");
+  expect(formatSolveLine(solve({ plus2: 1 }))).toBe("13.28+  R U R' F2");
+  expect(formatSolveLine(solve({ dnf: true }))).toBe("DNF (11.28)  R U R' F2");
+  expect(formatSolveLine(solve({}), 3)).toBe("11.283  R U R' F2");
 });

@@ -1,13 +1,21 @@
 import {
+  type CrossColour,
   type EventId,
   eventInfo,
+  faceOfCrossColour,
   hasTimePenalty,
   type Solve,
 } from "@cubehaus/core";
-import { createScrambleSource } from "@cubehaus/scramble";
+import { createScrambleSource, defaultDepth } from "@cubehaus/scramble";
 import { cubingGenerate } from "@cubehaus/scramble/cubing";
-import { parseStat, type StatId } from "@cubehaus/stats";
 import {
+  assignColour,
+  type ColourEntry,
+  parseStat,
+  type StatId,
+} from "@cubehaus/stats";
+import {
+  Fragment,
   lazy,
   Suspense,
   startTransition,
@@ -19,7 +27,9 @@ import {
   useState,
 } from "react";
 import { type AppState, type AppView, createAppState } from "./app-state";
+import { formatSolveLine } from "./average-copy";
 import { backupFileName, download } from "./backup-file";
+import { createCrossAssigner, crossHistory } from "./cross-assign";
 import { backupDue } from "./db/native";
 import { openDatabase } from "./db/open";
 import { createPendingJournal, memoryStorage } from "./db/pending";
@@ -30,6 +40,14 @@ import { Help } from "./keys/Help";
 import { actionKey, keysFor, resolveBindings } from "./keys/keymap";
 import { isMacPlatform, keyLabel } from "./keys/label";
 import { Palette } from "./keys/Palette";
+import {
+  aheadKey,
+  keepAhead,
+  readAheadKey,
+  takeKept,
+  warmEvents,
+} from "./scramble/ahead";
+import { type CrossLengths, createCrossClient } from "./scramble/cross-client";
 import { createScrambleHistory } from "./scramble/history";
 import { reducedMotion, type ZoomState } from "./scramble/PictureZoom";
 import { pictureSupport } from "./scramble/picture";
@@ -37,20 +55,23 @@ import {
   createTrainingClient,
   drillName,
   heldScramble,
+  isChoosing,
   type TrainingProfile,
   trainingReady,
   type WorkerLike,
 } from "./scramble/training-client";
 import { AverageDetail } from "./screens/AverageDetail";
 import { Entry } from "./screens/Entry";
+import { SessionGrid } from "./screens/SessionGrid";
 import { SessionSwitch } from "./screens/SessionSwitch";
 import { Sessions } from "./screens/Sessions";
 import { SolveList } from "./screens/SolveList";
-import { Timer } from "./screens/Timer";
+import { type CrossLine, Timer } from "./screens/Timer";
 import { listed } from "./session-order";
 import { selectedSlots } from "./session-stats";
+import { coloursInPlay } from "./settings";
 import type { LoadedSeed } from "./testing/load";
-import { textFor } from "./text";
+import { type Text, textFor } from "./text";
 import {
   readCustomMirror,
   readThemeMirror,
@@ -275,6 +296,22 @@ export function App({
 let returnTo = false;
 
 /** Which screen a route shows. */
+/** Local storage, or a stand-in that keeps nothing where the page may not use it. */
+function safeStorage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
+  try {
+    return window.localStorage;
+  } catch {
+    return { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  }
+}
+
+/** Test builds only: every scramble asked of the source, by key, for the specs to count. */
+function countScramble(key: string) {
+  const host = window as unknown as { cubehausScrambles?: string[] };
+  host.cubehausScrambles ??= [];
+  host.cubehausScrambles.push(key);
+}
+
 function screenOf(route: string) {
   if (route === "#/train" || route.startsWith("#/train/")) return "train";
   if (route === "#/settings/data") return "#/settings";
@@ -340,11 +377,43 @@ function TimerPage({
       ? new URLSearchParams(location.search).get("test-scramble")
       : null,
   );
-  const [source] = useState(() =>
-    createScrambleSource((event) =>
-      fixed && event === "333" ? Promise.resolve(fixed) : cubingGenerate(event),
-    ),
-  );
+  // Every scramble the timer shows comes from here, made ahead per puzzle (and per
+  // Multi-Blind count), and none ahead while the page is hidden.
+  const [source] = useState(() => {
+    // Made ahead by the page before this one and never shown: used first, once each.
+    const kept = takeKept(safeStorage());
+    return createScrambleSource<string>(
+      (key) => {
+        const { event, cubes } = readAheadKey(key);
+        if (import.meta.env.VITE_TEST_HOOKS === "1") countScramble(key);
+        if (fixed && event === "333") return Promise.resolve(fixed);
+        const before = kept.next(key);
+        if (before !== null) return Promise.resolve(before);
+        return cubes === null
+          ? cubingGenerate(event)
+          : cubingGenerate(event, { cubes });
+      },
+      {
+        depth: (key) => defaultDepth(readAheadKey(key).event),
+        active: () => document.visibilityState === "visible",
+      },
+    );
+  });
+  // Leaving the page (or hiding it, which may be the last thing it hears), the scrambles
+  // made ahead are kept for the next one.
+  useEffect(() => {
+    const keep = () => {
+      if (document.visibilityState === "hidden")
+        keepAhead(safeStorage(), source.ahead());
+    };
+    const leave = () => keepAhead(safeStorage(), source.ahead());
+    document.addEventListener("visibilitychange", keep);
+    window.addEventListener("pagehide", leave);
+    return () => {
+      document.removeEventListener("visibilitychange", keep);
+      window.removeEventListener("pagehide", leave);
+    };
+  }, [source]);
   const [prepared, setPrepared] = useState<{
     event: EventId;
     group: string;
@@ -362,12 +431,41 @@ function TimerPage({
     ),
   );
   useEffect(() => () => trainer.close(), [trainer]);
+  const [crossClient] = useState(() =>
+    createCrossClient(
+      () =>
+        new Worker(new URL("./scramble/cross-worker.ts", import.meta.url), {
+          type: "module",
+        }) as unknown as WorkerLike,
+    ),
+  );
+  useEffect(() => () => crossClient.close(), [crossClient]);
   const trainerSequence = useRef(0);
   // A drill is a 3×3 session's choice; every other puzzle keeps official scrambles.
   const profile: TrainingProfile =
     event === "333" ? view.settings.training : { request: null };
   const drill = profile.request;
   const drillBlocked = !trainingReady(profile);
+  // Colour neutrality (3×3, Settings › Cross colour): the colour each scramble's cross is
+  // built on, from the colours in play; a cross drill is made for that colour.
+  // Choosing the cross: official scrambles, inspection, a colour key; nothing is stored.
+  const choosing = event === "333" && isChoosing(profile);
+  const crossAssigned =
+    event === "333" && view.settings.cross === "assigned" && !choosing;
+  const inPlay = useMemo(
+    () =>
+      coloursInPlay({
+        holding: view.settings.holding,
+        crossColours: view.settings.crossColours,
+      }),
+    [view.settings.holding, view.settings.crossColours],
+  );
+  const [assigner] = useState(createCrossAssigner);
+  const crossNow = useRef<{
+    on: boolean;
+    colours: readonly CrossColour[];
+    history: readonly ColourEntry<CrossColour>[];
+  }>({ on: false, colours: [], history: [] });
   const group = isMulti ? `${sessionId}:${cubes}` : "";
   // The drill is part of the key: each keeps its own scrambles, and one asked for under
   // another drill never shows under this one.
@@ -389,21 +487,38 @@ function TimerPage({
         string,
       ];
       if (drill) {
-        if (fixed) return fixed;
-        const request = JSON.parse(drill) as TrainingProfile["request"];
+        let request = JSON.parse(drill) as TrainingProfile["request"];
+        // A cross drill under an assigned colour is made for the colour the rule picks.
+        const cross = crossNow.current;
+        const colour =
+          cross.on && request && "face" in request
+            ? assignColour({
+                colours: cross.colours,
+                history: cross.history,
+                seed: crypto.getRandomValues(new Uint32Array(1))[0] as number,
+              }).colour
+            : null;
+        if (fixed) {
+          if (colour) assigner.keep(fixed, colour);
+          return fixed;
+        }
+        if (colour && request && "face" in request)
+          request = { ...request, face: faceOfCrossColour(colour) };
         // Superseded by a newer request: asked again while this drill is still on screen.
         while (currentKey.current === key) {
           const made = await trainer.requestTraining(
             { request } as TrainingProfile,
             ++trainerSequence.current,
           );
-          if (made) return heldScramble(request, made.scramble, holding);
+          if (made) {
+            const value = heldScramble(request, made.scramble, holding);
+            if (colour) assigner.keep(value, colour);
+            return value;
+          }
         }
         throw new Error("The drill changed");
       }
-      return cubes === null || cubes === 2
-        ? source.next(event)
-        : cubingGenerate(event, { cubes });
+      return source.next(aheadKey(event, cubes));
     }),
   );
   const request = useRef(0);
@@ -464,6 +579,18 @@ function TimerPage({
   ]);
 
   const [recent, setRecent] = useState<Solve | null>(null);
+  // Read by the drill maker and by save, which run outside this render.
+  crossNow.current = {
+    on: crossAssigned,
+    colours: inPlay,
+    history: crossAssigned
+      ? crossHistory(
+          view.rows.map((row) => row.solve),
+          recent,
+          sessionId,
+        )
+      : [],
+  };
   // The scramble timed again (R), read when a solve lands, not when the timer started.
   const repeatRoot = useRef<Solve | null>(null);
   repeatRoot.current = view.repeat?.root ?? null;
@@ -471,12 +598,24 @@ function TimerPage({
     (timed: Solve) => {
       const root = repeatRoot.current;
       // An attempt on the repeated scramble is saved as its repeat; the scramble stays.
-      const solve =
+      const again =
         root &&
         timed.repeatOf === undefined &&
         timed.scramble === root.scramble &&
-        timed.sessionId === root.sessionId
-          ? { ...timed, repeatOf: root.id }
+        timed.sessionId === root.sessionId;
+      const cross = crossNow.current;
+      // The colour the mark showed for this scramble goes with the solve.
+      const solve: Solve = again
+        ? { ...timed, repeatOf: root.id }
+        : cross.on && timed.event === "333"
+          ? {
+              ...timed,
+              crossColour: assigner.colourFor(
+                timed.scramble,
+                cross.colours,
+                cross.history,
+              ),
+            }
           : timed;
       if (solve.event === "333mbf") setTimedMulti(null);
       setRecent(solve);
@@ -487,8 +626,47 @@ function TimerPage({
       if (event === solve.event && (!entry || sessionId === solve.sessionId))
         nextScramble();
     },
-    [app, entry, event, nextScramble, sessionId],
+    [app, assigner, entry, event, nextScramble, sessionId],
   );
+
+  // Back on screen, the queue made ahead fills again (nothing is made while hidden).
+  // Once the scramble on show has come and the page is idle, the first scramble of
+  // every other puzzle in use is made too, so opening its session finds it ready.
+  const shownKey = drill ? null : aheadKey(event, isMulti ? cubes : null);
+  const firstShown = prepared?.value != null;
+  const warm = warmEvents(view.sessions, event).join(" ");
+  useEffect(() => {
+    const visible = () => document.visibilityState === "visible";
+    let idle: number | undefined;
+    const warmUp = () => {
+      if (!visible() || !firstShown || idle !== undefined) return;
+      const run = () => {
+        if (!visible()) {
+          idle = undefined;
+          return;
+        }
+        for (const other of warm.split(" ").filter(Boolean))
+          source.prefetch(other);
+      };
+      idle =
+        typeof requestIdleCallback === "function"
+          ? requestIdleCallback(run, { timeout: 2000 })
+          : window.setTimeout(run, 500);
+    };
+    const shown = () => {
+      if (!visible()) return;
+      if (shownKey !== null) source.prefetch(shownKey);
+      warmUp();
+    };
+    warmUp();
+    document.addEventListener("visibilitychange", shown);
+    return () => {
+      document.removeEventListener("visibilitychange", shown);
+      if (idle === undefined) return;
+      if (typeof cancelIdleCallback === "function") cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
+  }, [source, shownKey, firstShown, warm]);
 
   const currentScramble =
     prepared?.event === event && prepared.group === group
@@ -497,12 +675,34 @@ function TimerPage({
   // A drill with no case picked has no scramble, so the timer cannot start.
   const scramble = drillBlocked ? null : (currentScramble?.value ?? null);
   const pending = drillBlocked ? false : (currentScramble?.pending ?? true);
+  // The colour of the cross on the scramble on screen; a scramble timed again keeps its own.
+  const crossColour: CrossColour | null = !crossAssigned
+    ? null
+    : view.repeat
+      ? (view.repeat.root.crossColour ?? null)
+      : scramble === null
+        ? null
+        : assigner.colourFor(scramble, inPlay, crossNow.current.history);
   const measuredMs =
     timedMulti?.sessionId === sessionId && timedMulti?.scramble === scramble
       ? timedMulti?.timeMs
       : undefined;
+  const quietCancel = useRef(false);
+  // The choosing drill always inspects: the choice is made in inspection.
+  const timerSettings = useMemo(
+    () =>
+      choosing
+        ? { ...view.settings, inspection: "official" as const }
+        : view.settings,
+    [choosing, view.settings],
+  );
   const onTimedSolve = useCallback(
     (solve: Solve) => {
+      // A solve timed while choosing is not kept: the drill is the choice alone.
+      if (choosing) {
+        if (solve.scramble === scramble) nextScramble();
+        return;
+      }
       if (solve.event === "333mbf") {
         if (solve.sessionId === sessionId && solve.scramble === scramble)
           setTimedMulti(solve);
@@ -510,7 +710,7 @@ function TimerPage({
         save(solve);
       }
     },
-    [save, scramble, sessionId],
+    [choosing, nextScramble, save, scramble, sessionId],
   );
   const timerEnabled =
     !drillBlocked &&
@@ -637,12 +837,17 @@ function TimerPage({
     scramble: view.repeat?.root.scramble ?? scramble,
     onSolve: onTimedSolve,
     onEffect: (effect) => {
+      // A colour picked in the choosing drill ends inspection; that says nothing.
+      if (effect.type === "inspectionCancelled" && quietCancel.current) {
+        quietCancel.current = false;
+        return;
+      }
       if (effect.type === "tooShort") setNotice(words.tooShort);
       else if (effect.type === "inspectionCancelled")
         setNotice(words.inspectionCancelled);
     },
     session,
-    settings: view.settings,
+    settings: timerSettings,
     keymap: view.keymap,
     enabled: timerEnabled,
     modal: modal !== null || zoom !== null || statPicker,
@@ -653,6 +858,57 @@ function TimerPage({
     state.inspectionStartedAt !== null &&
     state.phase !== "running" &&
     state.phase !== "stopped";
+  // Choosing the cross: in inspection the colour's key (or its word) is the answer; the
+  // shortest cross of every colour in play then says how near the pick came.
+  const [choice, setChoice] = useState<{
+    scramble: string;
+    pick: CrossColour;
+    lengths: CrossLengths | null;
+  } | null>(null);
+  const pickColour = (colour: CrossColour) => {
+    if (!choosing || !inspecting || scramble === null) return;
+    if (!inPlay.includes(colour)) return;
+    const target = scramble;
+    quietCancel.current = true;
+    cancel();
+    setChoice({ scramble: target, pick: colour, lengths: null });
+    void crossClient
+      .lengths(target, inPlay)
+      .then((lengths) =>
+        setChoice((current) =>
+          current?.scramble === target ? { ...current, lengths } : current,
+        ),
+      );
+    nextScramble();
+  };
+  const pickRef = useRef(pickColour);
+  pickRef.current = pickColour;
+  useEffect(() => {
+    if (!choosing || !inspecting) return;
+    const keys: Record<string, CrossColour> = {
+      KeyW: "white",
+      KeyY: "yellow",
+      KeyG: "green",
+      KeyB: "blue",
+      KeyR: "red",
+      KeyO: "orange",
+    };
+    const press = (event: KeyboardEvent) => {
+      const colour = keys[event.code];
+      if (!colour || event.metaKey || event.ctrlKey || event.altKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!event.repeat) pickRef.current(colour);
+    };
+    window.addEventListener("keydown", press, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", press, { capture: true });
+  }, [choosing, inspecting]);
+  // The lengths are counted while the scramble waits, so the answer is there at the pick.
+  useEffect(() => {
+    if (choosing && scramble !== null)
+      void crossClient.lengths(scramble, inPlay);
+  }, [choosing, scramble, inPlay, crossClient]);
   // A press that starts a solve brings back the newest: the live scramble is the one timed.
   // With inspection on, that is already the press its release will start inspection with.
   const settledPhase =
@@ -803,6 +1059,55 @@ function TimerPage({
   // R: the attempt on show takes the edits, and the timer its root's scramble.
   const repeat = view.repeat;
   const target = repeat?.shown ?? shownSolve ?? newestSolve;
+  // After a solve, each colour in play's shortest cross on its scramble: always with an
+  // assigned colour, else while X has asked for it. Counted in a worker, so the result
+  // never waits for it.
+  const [crossAsked, setCrossAsked] = useState(false);
+  const lineSolve =
+    event === "333" && (crossAssigned || crossAsked) ? target : undefined;
+  const lineColours = useMemo(
+    () =>
+      lineSolve?.crossColour && !inPlay.includes(lineSolve.crossColour)
+        ? [...inPlay, lineSolve.crossColour]
+        : inPlay,
+    [inPlay, lineSolve?.crossColour],
+  );
+  const [crossLengths, setCrossLengths] = useState<{
+    key: string;
+    lengths: CrossLengths | null;
+  }>();
+  const lineKey = lineSolve
+    ? `${lineColours.join(",")}\n${lineSolve.scramble}`
+    : null;
+  useEffect(() => {
+    if (!lineSolve || lineKey === null) return;
+    let stale = false;
+    void crossClient
+      .lengths(lineSolve.scramble, lineColours)
+      .then((lengths) => {
+        if (!stale) setCrossLengths({ key: lineKey, lengths });
+      });
+    return () => {
+      stale = true;
+    };
+  }, [crossClient, lineSolve, lineKey, lineColours]);
+  const crossLine: CrossLine | "pending" | null = !lineSolve
+    ? null
+    : crossLengths?.key !== lineKey
+      ? "pending"
+      : crossLengths.lengths
+        ? (() => {
+            const lengths = lineColours.flatMap((colour) => {
+              const length = crossLengths.lengths?.[colour];
+              return length === undefined ? [] : [{ colour, length }];
+            });
+            return {
+              lengths,
+              own: lineSolve.crossColour ?? null,
+              shortest: Math.min(...lengths.map(({ length }) => length)),
+            };
+          })()
+        : null;
   const openAverage = (
     name: StatId,
     best: boolean,
@@ -858,7 +1163,7 @@ function TimerPage({
     void Promise.race([
       trainer.requestSolution(
         target,
-        drill.face,
+        crossColour ? faceOfCrossColour(crossColour) : drill.face,
         solveKind,
         ++trainerSequence.current,
       ),
@@ -1080,6 +1385,21 @@ function TimerPage({
         setNotice(words.scrambleCopyFailed);
       }
     },
+    // The solve on show (else the newest) as one line: its result, then its scramble.
+    "solve.copy": async () => {
+      if (!target) {
+        unavailable(words.noSolve);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(
+          formatSolveLine(target, view.settings.precision),
+        );
+        setNotice(words.solveCopied);
+      } catch {
+        setNotice(words.solveCopyFailed);
+      }
+    },
     "average.inspect": () => {
       const stats = view.shown?.stats ?? view.stats;
       const name = selectedSlots(
@@ -1097,6 +1417,11 @@ function TimerPage({
       if (editable && session && event === "333") openDialog("drills");
     },
     "drill.solution": toggleSolution,
+    "cross.lengths": () => {
+      if (event !== "333") return;
+      if (crossAssigned) unavailable(words.cross.alwaysShown);
+      else setCrossAsked((asked) => !asked);
+    },
     "settings.open": () => {
       location.hash = "#/settings";
     },
@@ -1387,6 +1712,7 @@ function TimerPage({
         }}
         feedback={feedback}
         sizes={view.settings.sizes}
+        crossLine={crossLine}
       />
       {view.settings.startMode === "two-hand" &&
         timerEnabled &&
@@ -1403,69 +1729,122 @@ function TimerPage({
             </kbd>
           </p>
         )}
-      {drill && event === "333" && !inspecting && (
-        <p data-part="drill" data-no-timer>
-          <span>
-            {words.drill.line}: {drillName(profile, words)}
-          </span>{" "}
-          <button
-            type="button"
-            data-action="drill-change"
-            disabled={!editable || timerActive}
-            onClick={(input) => openDialog("drills", input.currentTarget)}
-          >
-            {words.drill.change}
-          </button>
-          {solveKind &&
-            scramble !== null &&
-            shownScramble === scramble &&
-            settledPhase && (
-              <>
-                {" "}
+      {(((drill || choosing) && !inspecting) ||
+        (choosing && inspecting) ||
+        crossColour) && (
+        // The drill line, and the colour of the cross on the scramble on screen: one
+        // quiet mark that stays through inspection, when the drill's words have gone.
+        // Choosing the cross, inspection puts the colours to pick from in their place.
+        <p
+          data-part={drill || choosing ? "drill" : "cross"}
+          data-no-timer
+          data-inspecting={inspecting || undefined}
+        >
+          {crossColour && (
+            <span data-part="cross-mark" data-colour={crossColour}>
+              <span
+                data-part="cross-swatch"
+                data-face={faceOfCrossColour(crossColour)}
+                aria-hidden="true"
+              />
+              {words.cross.mark(words.cross.name[crossColour])}
+            </span>
+          )}
+          {choosing && inspecting && (
+            <span data-part="cross-choice">
+              {inPlay.map((colour) => (
                 <button
+                  key={colour}
                   type="button"
-                  data-action="drill-solution"
-                  aria-expanded={solutionFor !== null}
-                  onClick={toggleSolution}
+                  data-action="cross-pick"
+                  data-colour={colour}
+                  onClick={() => pickColour(colour)}
                 >
-                  {solutionFor ? words.drill.hide : words.drill.solution}
+                  <span
+                    data-part="cross-swatch"
+                    data-face={faceOfCrossColour(colour)}
+                    aria-hidden="true"
+                  />
+                  {words.cross.name[colour]}
+                  <kbd data-input="keys">{PICK_KEYS[colour]}</kbd>
                 </button>
-                {solutionFor && (
-                  <output
-                    data-part="drill-solution"
-                    data-state={solutionFor.state}
-                  >
-                    {solutionFor.state === "searching"
-                      ? words.drill.searching
-                      : solutionFor.state === "none"
-                        ? words.drill.notFound
-                        : solutionFor.state === "failed"
-                          ? words.drill.failed
-                          : solutionFor.moves?.length
-                            ? `${solutionFor.moves.join(" ")} (${solutionFor.moves.length})`
-                            : words.drill.solved}
-                    {solutionFor.state === "found" && solutionFor.pair && (
-                      <>
-                        {" · "}
-                        {words.drill.slotOf(slotName(solutionFor.pair))}
-                      </>
+              ))}
+            </span>
+          )}
+          {(drill || choosing) && !inspecting && (
+            <>
+              <span>
+                {words.drill.line}:{" "}
+                {drillName(profile, words, crossColour !== null)}
+              </span>{" "}
+              <button
+                type="button"
+                data-action="drill-change"
+                disabled={!editable || timerActive}
+                onClick={(input) => openDialog("drills", input.currentTarget)}
+              >
+                {words.drill.change}
+              </button>
+              {choosing && choice?.lengths && (
+                <ChoiceResult
+                  lengths={choice.lengths}
+                  pick={choice.pick}
+                  colours={inPlay}
+                  words={words}
+                />
+              )}
+              {solveKind &&
+                scramble !== null &&
+                shownScramble === scramble &&
+                settledPhase && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      data-action="drill-solution"
+                      aria-expanded={solutionFor !== null}
+                      onClick={toggleSolution}
+                    >
+                      {solutionFor ? words.drill.hide : words.drill.solution}
+                    </button>
+                    {solutionFor && (
+                      <output
+                        data-part="drill-solution"
+                        data-state={solutionFor.state}
+                      >
+                        {solutionFor.state === "searching"
+                          ? words.drill.searching
+                          : solutionFor.state === "none"
+                            ? words.drill.notFound
+                            : solutionFor.state === "failed"
+                              ? words.drill.failed
+                              : solutionFor.moves?.length
+                                ? `${solutionFor.moves.join(" ")} (${solutionFor.moves.length})`
+                                : words.drill.solved}
+                        {solutionFor.state === "found" && solutionFor.pair && (
+                          <>
+                            {" · "}
+                            {words.drill.slotOf(slotName(solutionFor.pair))}
+                          </>
+                        )}
+                        {solutionFor.state === "failed" && (
+                          <>
+                            {" "}
+                            <button
+                              type="button"
+                              data-action="drill-retry"
+                              onClick={findSolution}
+                            >
+                              {words.drill.retry}
+                            </button>
+                          </>
+                        )}
+                      </output>
                     )}
-                    {solutionFor.state === "failed" && (
-                      <>
-                        {" "}
-                        <button
-                          type="button"
-                          data-action="drill-retry"
-                          onClick={findSolution}
-                        >
-                          {words.drill.retry}
-                        </button>
-                      </>
-                    )}
-                  </output>
+                  </>
                 )}
-              </>
-            )}
+            </>
+          )}
         </p>
       )}
       {modal === "palette" && (
@@ -1484,30 +1863,12 @@ function TimerPage({
           onClose={closeDialog}
         />
       )}
-      {modal === "switch" && (
-        <SessionSwitch
+      {modal === "switch" && !moveOpen && (
+        <SessionGrid
           app={app}
           view={view}
           words={words}
           renameCurrent={renameOnOpen}
-          {...(moveOpen
-            ? {
-                moving: {
-                  count: Math.max(1, view.selected.size),
-                  event,
-                  onPick: (to: string | { name: string }) =>
-                    void app.moveSolves(to).then((result) => {
-                      if ("to" in result) {
-                        if (result.moved > 0)
-                          setNotice(
-                            words.movedTo(result.moved, result.to.name),
-                          );
-                      } else if (result.error !== "nothing")
-                        setNotice(words.notMoved[result.error]);
-                    }),
-                },
-              }
-            : {})}
           startIn={
             seed?.state === "switch-archive"
               ? "archive"
@@ -1515,6 +1876,30 @@ function TimerPage({
                 ? "trash"
                 : "list"
           }
+          onClose={(picked) => {
+            // A session picked: the keyboard is on the timer, so Space times at once.
+            if (picked) dialogOpener.current = null;
+            closeDialog();
+          }}
+        />
+      )}
+      {modal === "switch" && moveOpen && (
+        <SessionSwitch
+          app={app}
+          view={view}
+          words={words}
+          moving={{
+            count: Math.max(1, view.selected.size),
+            event,
+            onPick: (to: string | { name: string }) =>
+              void app.moveSolves(to).then((result) => {
+                if ("to" in result) {
+                  if (result.moved > 0)
+                    setNotice(words.movedTo(result.moved, result.to.name));
+                } else if (result.error !== "nothing")
+                  setNotice(words.notMoved[result.error]);
+              }),
+          }}
           onClose={closeDialog}
         />
       )}
@@ -1535,6 +1920,7 @@ function TimerPage({
             profile={profile}
             words={words}
             holding={view.settings.holding}
+            colourAssigned={view.settings.cross === "assigned"}
             onChange={(next) =>
               void app.setSetting("training", next, session.id)
             }
@@ -1742,5 +2128,54 @@ function TimerPage({
         </nav>
       </footer>
     </main>
+  );
+}
+
+/** Choosing the cross: the key of each colour, by its English name's first letter. */
+const PICK_KEYS: Record<CrossColour, string> = {
+  white: "W",
+  yellow: "Y",
+  green: "G",
+  blue: "B",
+  red: "R",
+  orange: "O",
+};
+
+/**
+ * After a pick: every colour in play with its shortest cross, the pick in `ink`, the
+ * shortest in `pb`, then how many turns the pick's cross is longer than the shortest.
+ */
+function ChoiceResult({
+  lengths,
+  pick,
+  colours,
+  words,
+}: {
+  lengths: CrossLengths;
+  pick: CrossColour;
+  colours: readonly CrossColour[];
+  words: Text;
+}) {
+  const known = colours.filter((colour) => lengths[colour] !== undefined);
+  const shortest = Math.min(...known.map((colour) => lengths[colour] ?? 99));
+  const over = (lengths[pick] ?? shortest) - shortest;
+  return (
+    <output data-part="choice-result" data-near={over <= 1 || undefined}>
+      {known.map((colour, index) => (
+        <Fragment key={colour}>
+          {index > 0 && " · "}
+          <span
+            data-colour={colour}
+            data-picked={colour === pick || undefined}
+            data-shortest={lengths[colour] === shortest || undefined}
+          >
+            {words.cross.name[colour]} {lengths[colour]}
+          </span>
+        </Fragment>
+      ))}{" "}
+      <span data-part="choice-over" title={words.cross.overTip(over)}>
+        +{over}
+      </span>
+    </output>
   );
 }

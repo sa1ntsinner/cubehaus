@@ -34,7 +34,10 @@ async function solveId(row: Locator) {
 async function ready(page: Page, event: string) {
   await expect(sessionButton(page)).toBeEnabled();
   await expect(part(page, "scramble")).toHaveAttribute("data-event", event);
-  await expect(part(page, "scramble")).toHaveAttribute("data-ready", "true");
+  // A 4×4's first scramble in a page may build its search first.
+  await expect(part(page, "scramble")).toHaveAttribute("data-ready", "true", {
+    timeout: 30_000,
+  });
   // These specs time solves with exact timestamps, without inspection.
   await inspectionOff(page);
 }
@@ -66,27 +69,28 @@ async function solve(page: Page, attempt: number, ms: number) {
   );
 }
 
-test("first run names the session 3×3 and lists official event names", async ({
+test("the switch shows sessions as tiles; + opens a picker of puzzles and names the new tile in place", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(sessionButton(page)).toHaveText("3×3");
   await openSwitch(page);
-  const list = part(page, "switch-list");
-  const current = list.locator("> li[data-current]");
+  const grid = part(page, "switch-grid");
+  const current = grid.locator('li[data-tile="session"][data-current]');
   await expect(current).toHaveCount(1);
   await expect(current.locator('[data-part="switch-label"]')).toHaveText("3×3");
-  // Every other event is a row under its official name, in WCA order.
-  const events = list.locator('> li[data-row="event"]');
-  await expect(events).toHaveCount(17);
+  // No catalogue of puzzles under the sessions: one + tile makes a new one.
+  await expect(grid.locator('li[data-tile="event"]')).toHaveCount(0);
+  await grid.locator('li[data-tile="add"] [data-action="switch-pick"]').click();
+  await expect(part(page, "switch")).toHaveAttribute("data-view", "new");
+  const events = grid.locator('li[data-tile="event"]');
+  await expect(events).toHaveCount(18);
   await expect(events.first().locator('[data-part="switch-label"]')).toHaveText(
-    "2x2x2 Cube",
+    "3×3",
   );
-  const event = (id: string) => events.and(page.locator(`[data-id="${id}"]`));
-  await expect(event("fto").locator('[data-part="switch-label"]')).toHaveText(
-    "Face Turning Octahedron",
-  );
-  // FTO is official from 2 January 2027 (draft 12f), Clock until WC2027; the notes go then.
+  const event = (id: string) =>
+    events.and(page.locator(`[data-event="${id}"]`));
+  // FTO is official from 2 January 2027 (draft 12f), Clock until WC2027: said only here.
   const fto = event("fto").locator('[data-part="switch-note"]');
   if (Date.now() < Date.UTC(2027, 0, 2))
     await expect(fto).toHaveText("official from 2 January 2027");
@@ -95,8 +99,26 @@ test("first run names the session 3×3 and lists official event names", async ({
   if (Date.now() < Date.UTC(2027, 6, 19))
     await expect(clock).toHaveText("official until 18 July 2027");
   else await expect(clock).toHaveCount(0);
-  await page.keyboard.press("Escape");
+
+  // A pick: back to the sessions, the new tile last with its name ready to type over;
+  // the open session stays open.
+  await event("222").locator('[data-action="switch-pick"]').click();
+  await expect(part(page, "switch")).not.toHaveAttribute("data-view");
+  const field = part(page, "switch-rename");
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue("2×2");
+  await field.fill("  Two   by two ");
+  await field.press("Enter");
+  await expect(switchRow(page, "Two by two")).toHaveAttribute("data-selected");
+  await expect(sessionButton(page)).toHaveText("3×3");
+  // Enter opens the selected tile.
+  await expect(
+    switchRow(page, "Two by two").locator('[data-action="switch-pick"]'),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(part(page, "switch")).toHaveCount(0);
+  await expect(sessionButton(page)).toHaveText("Two by two");
+  await expect(sessionButton(page)).toHaveAttribute("data-event", "222");
 });
 
 test("sessions keep their event and solves across reload", async ({ page }) => {
@@ -149,7 +171,7 @@ test("sessions keep their event and solves across reload", async ({ page }) => {
   );
 });
 
-test("S and Enter go back and forth, aliases open events once, Tab picks a new session's event", async ({
+test("S and Enter go back and forth, typing finds, aliases open events once, Tab picks a new session's event", async ({
   page,
 }) => {
   await page.goto("/");
@@ -158,11 +180,16 @@ test("S and Enter go back and forth, aliases open events once, Tab picks a new s
   const query = part(page, "switch-query");
   const timerPage = page.locator("main");
 
-  // A name nothing matches: Create in the open session's event; Tab steps to the next.
+  // No find line until something is typed; then a name nothing matches offers Create in
+  // the open session's event, and Tab steps to the next.
   await page.keyboard.press("KeyS");
+  await expect(sheet).toBeVisible();
+  await expect(query).toHaveCount(0);
+  await page.keyboard.type("Fri");
   await expect(query).toBeFocused();
+  await expect(query).toHaveValue("Fri");
   await query.fill("Friday");
-  const create = part(page, "switch-list").locator('> li[data-row="create"]');
+  const create = part(page, "switch-grid").locator('li[data-tile="create"]');
   await expect(create).toHaveAttribute("data-event", "333");
   await expect(create).toHaveAttribute("data-selected");
   await page.keyboard.press("Tab");
@@ -175,7 +202,7 @@ test("S and Enter go back and forth, aliases open events once, Tab picks a new s
   await expect(sessionButton(page)).toHaveText("Friday");
   await expect(sessionButton(page)).toHaveAttribute("data-event", "222");
 
-  // With no query Enter takes the session open before this one.
+  // With nothing typed Enter takes the session open before this one.
   await page.keyboard.press("KeyS");
   await page.keyboard.press("Enter");
   await expect(sessionButton(page)).toHaveText("3×3");
@@ -187,16 +214,27 @@ test("S and Enter go back and forth, aliases open events once, Tab picks a new s
   // same session, never a copy.
   for (let time = 0; time < 2; time++) {
     await page.keyboard.press("KeyS");
-    await query.fill("oh");
+    await page.keyboard.type("oh");
+    await expect(query).toHaveValue("oh");
     await page.keyboard.press("Enter");
     await expect(sessionButton(page)).toHaveText("OH");
     await expect(sessionButton(page)).toHaveAttribute("data-event", "333oh");
   }
   await page.keyboard.press("KeyS");
+  await page.keyboard.type("s");
   await query.fill("скьюб");
   await page.keyboard.press("Enter");
   await expect(sessionButton(page)).toHaveAttribute("data-event", "skewb");
   expect(await sessionNames(page)).toEqual(["3×3", "Friday", "OH", "Skewb"]);
+
+  // Esc empties the find line before it closes anything.
+  await page.keyboard.press("KeyS");
+  await page.keyboard.type("x");
+  await page.keyboard.press("Escape");
+  await expect(query).toHaveCount(0);
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
 
   // F2 renames the open session in place; Esc leaves the name as it was.
   await page.keyboard.press("F2");
@@ -229,25 +267,27 @@ test("S and Enter go back and forth, aliases open events once, Tab picks a new s
   await expect(sessionButton(page)).toHaveText("Skewb practice");
 });
 
-test("holding Space in the switch types a space and starts no solve", async ({
+test("holding Space in the switch types a space or opens the tile, and starts no solve", async ({
   page,
 }) => {
   await page.goto("/");
   await ready(page, "333");
   await page.keyboard.press("KeyS");
+  await page.keyboard.type("a");
   const query = part(page, "switch-query");
   await expect(query).toBeFocused();
   await page.keyboard.down("Space");
   await page.waitForTimeout(800);
   await page.keyboard.up("Space");
-  await expect(query).toHaveValue(" ");
+  await expect(query).toHaveValue("a ");
   await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
-  // Focus on a row's button: Space is that button's, not the timer's.
-  await page
-    .locator(
-      '[data-part="switch-list"] > li[data-current] [data-action="switch-pick"]',
-    )
-    .focus();
+  // Focus on a tile: Space is that button's, not the timer's.
+  await page.keyboard.press("Escape");
+  await expect(
+    part(page, "switch-grid").locator(
+      'li[data-current] [data-action="switch-pick"]',
+    ),
+  ).toBeFocused();
   await page.keyboard.down("Space");
   await page.waitForTimeout(800);
   await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
@@ -275,50 +315,134 @@ test("an event's inspection choice follows its sessions and stays when switching
   await expect(main).not.toHaveAttribute("data-inspection", "off");
 });
 
-/** The switch's folder and session rows as shown: `▾ name` or `▸ name`, `  name` inside. */
+/**
+ * The switch's tiles as shown, in order: a folder as `▸ name` (closed) or `▾ name` (open)
+ * with its own tiles after it as `  name`.
+ */
 async function layoutRows(page: Page) {
-  return part(page, "switch-list")
-    .locator('> li:is([data-row="folder"], [data-row="session"])')
-    .evaluateAll((items) =>
-      items.map((item) => {
-        const label =
-          item.querySelector('[data-part="switch-label"]')?.textContent ?? "";
-        if (item.getAttribute("data-row") === "folder")
-          return `${item.getAttribute("data-collapsed") === "true" ? "▸" : "▾"} ${label}`;
-        return item.getAttribute("data-depth") === "1" ? `  ${label}` : label;
-      }),
-    );
+  return part(page, "switch-grid").evaluate((grid) => {
+    const name = (li: Element) =>
+      li.querySelector('[data-part="switch-label"]')?.textContent ?? "";
+    const out: string[] = [];
+    const band = [
+      ...grid.querySelectorAll(
+        '[data-part="switch-band"] li[data-tile="session"]',
+      ),
+    ].map((li) => `  ${name(li)}`);
+    for (const li of grid.querySelectorAll(":scope > li[data-tile]")) {
+      const kind = li.getAttribute("data-tile");
+      if (kind === "folder") {
+        const open = li.hasAttribute("data-open");
+        out.push(`${open ? "▾" : "▸"} ${name(li)}`);
+        if (open) out.push(...band);
+      } else if (kind === "session") out.push(name(li));
+    }
+    return out;
+  });
 }
 
-const switchRowNamed = (page: Page, name: string) =>
-  part(page, "switch-list")
-    .locator("> li")
+const tileNamed = (page: Page, name: string) =>
+  part(page, "switch-grid")
+    .locator("li[data-tile]")
     .filter({
-      has: page.locator('[data-part="switch-label"]', {
-        hasText: new RegExp(`^${name}$`),
-      }),
+      has: page.locator(
+        ':scope > [data-action="switch-pick"] [data-part="switch-label"]',
+        {
+          hasText: new RegExp(`^${name}$`),
+        },
+      ),
     });
 
-test("a drag groups two sessions, keys move and close rows, undo puts them back, and reload keeps it", async ({
+/** Tiles still gliding from the last change are where they are seen, not yet home. */
+async function settle(page: Page) {
+  await page.evaluate(() =>
+    Promise.all(
+      document.getAnimations().map((a) => a.finished.catch(() => {})),
+    ),
+  );
+}
+
+/** A mouse drag from the middle of one tile's picture to a point, in small steps. */
+async function drag(
+  page: Page,
+  name: string,
+  to: (box: { x: number; y: number; width: number; height: number }) => {
+    x: number;
+    y: number;
+  },
+  target: string,
+  options: { release?: boolean } = {},
+) {
+  // Tiles still gliding from the last change are where they are seen, not yet home.
+  await page.evaluate(() =>
+    Promise.all(
+      document.getAnimations().map((a) => a.finished.catch(() => {})),
+    ),
+  );
+  const from = await tileNamed(page, name)
+    .locator('[data-part="tile-picture"]')
+    .boundingBox();
+  const over = await tileNamed(page, target).boundingBox();
+  if (!from || !over) throw new Error("No tiles");
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  const point = to(over);
+  await page.mouse.move(point.x, point.y, { steps: 10 });
+  if (options.release !== false) await page.mouse.up();
+}
+const middle = (box: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}) => ({
+  x: box.x + box.width / 2,
+  y: box.y + box.height * 0.3,
+});
+const rightEdge = (box: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}) => ({
+  x: box.x + box.width - 4,
+  y: box.y + box.height * 0.85,
+});
+const leftEdge = (box: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}) => ({
+  x: box.x + 4,
+  y: box.y + box.height * 0.85,
+});
+
+test("a mouse drag moves a tile, onto another makes a folder that opens in place, out of it ungroups; undo and reload", async ({
   page,
 }) => {
   await page.goto("/");
   await ready(page, "333");
   await createSession(page, "B", "222");
   await createSession(page, "C", "444");
+  await createSession(page, "D", "555");
   await openSwitch(page);
-  await expect.poll(() => layoutRows(page)).toEqual(["3×3", "B", "C"]);
+  await expect.poll(() => layoutRows(page)).toEqual(["3×3", "B", "C", "D"]);
 
-  // The mouse drags 3×3 onto the middle of B: a folder of the two, its name ready.
-  const pick = (name: string) =>
-    switchRowNamed(page, name).locator('[data-action="switch-pick"]');
-  const from = await pick("3×3").boundingBox();
-  const to = await pick("B").boundingBox();
-  if (!from || !to) throw new Error("No rows");
-  await page.mouse.move(from.x + 60, from.y + from.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(to.x + 60, to.y + to.height / 2, { steps: 8 });
-  await expect(switchRowNamed(page, "B")).toHaveAttribute("data-drop", "on");
+  // 3×3 past C's right side: the tiles make room, and it lands after C.
+  await drag(page, "3×3", rightEdge, "C", { release: false });
+  await expect(part(page, "switch")).toHaveAttribute("data-dragging");
+  await expect(part(page, "switch-drop-trash")).toBeVisible();
+  await expect.poll(() => layoutRows(page)).toEqual(["B", "C", "3×3", "D"]);
+  await page.mouse.up();
+  await expect(part(page, "switch")).not.toHaveAttribute("data-dragging");
+  await expect(part(page, "switch-drop-trash")).toHaveCount(0);
+  await expect(part(page, "switch-undo")).toContainText("Order changed.");
+  await expect.poll(() => layoutRows(page)).toEqual(["B", "C", "3×3", "D"]);
+
+  // 3×3 onto B's picture: a folder of the two where B stood, open, its name ready.
+  await drag(page, "3×3", middle, "B", { release: false });
+  await expect(tileNamed(page, "B")).toHaveAttribute("data-drop", "on");
   await page.mouse.up();
   const field = part(page, "switch-rename");
   await expect(field).toBeFocused();
@@ -327,75 +451,62 @@ test("a drag groups two sessions, keys move and close rows, undo puts them back,
   await field.press("Enter");
   await expect
     .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  B", "  3×3", "C"]);
-  await expect(part(page, "switch-query")).toBeFocused();
+    .toEqual(["▾ Cubes", "  B", "  3×3", "C", "D"]);
+  // The folder's tile shows its pictures; a click closes and opens it.
+  await expect(
+    tileNamed(page, "Cubes").locator('[data-part="glyph-folder"] svg'),
+  ).toHaveCount(2);
+  await tileNamed(page, "Cubes").locator('[data-action="switch-pick"]').click();
+  await expect.poll(() => layoutRows(page)).toEqual(["▸ Cubes", "C", "D"]);
+  await tileNamed(page, "Cubes").locator('[data-action="switch-pick"]').click();
 
-  // Keys: C up into the open folder, then back out; Mod+Z undoes the last move.
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await expect(switchRowNamed(page, "C")).toHaveAttribute("data-selected");
-  await page.keyboard.press("Alt+ArrowUp");
+  // D dropped onto the folder joins it, last.
+  await drag(page, "D", middle, "Cubes");
   await expect
     .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  B", "  3×3", "  C"]);
-  await page.keyboard.press("Alt+ArrowDown");
+    .toEqual(["▾ Cubes", "  B", "  3×3", "  D", "C"]);
+
+  // B dragged out of the folder, before C: it leaves; then 3×3 too, and the folder, left
+  // with D alone, lets it go where the folder stood.
+  await drag(page, "B", leftEdge, "C");
   await expect
     .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  B", "  3×3", "C"]);
-  await expect(part(page, "switch-undo")).toBeVisible();
+    .toEqual(["▾ Cubes", "  3×3", "  D", "B", "C"]);
+  await drag(page, "3×3", rightEdge, "C");
+  await expect.poll(() => layoutRows(page)).toEqual(["D", "B", "C", "3×3"]);
+
+  // Undo puts the folder back whole.
   await page.keyboard.press("ControlOrMeta+z");
   await expect
     .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  B", "  3×3", "  C"]);
-  await page.keyboard.press("ControlOrMeta+z");
-  await expect
-    .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  B", "  3×3", "C"]);
-
-  // Left closes the folder from its row, Right opens it; closed is stored.
-  await page.keyboard.press("ArrowUp");
-  await page.keyboard.press("ArrowUp");
-  await page.keyboard.press("ArrowUp");
-  await expect(switchRowNamed(page, "Cubes")).toHaveAttribute("data-selected");
-  await page.keyboard.press("ArrowLeft");
-  await expect.poll(() => layoutRows(page)).toEqual(["▸ Cubes", "C"]);
+    .toEqual(["▾ Cubes", "  3×3", "  D", "B", "C"]);
 
   // A drag that Esc cancels changes nothing and starts no solve.
-  const c = await pick("C").boundingBox();
-  const cubes = await pick("Cubes").boundingBox();
-  if (!c || !cubes) throw new Error("No rows");
-  await page.mouse.move(c.x + 60, c.y + c.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(cubes.x + 60, cubes.y + 4, { steps: 6 });
-  await expect(switchRowNamed(page, "Cubes")).toHaveAttribute(
-    "data-drop",
-    "before",
-  );
+  await drag(page, "C", leftEdge, "B", { release: false });
   await page.keyboard.press("Escape");
   await page.mouse.up();
   await expect(part(page, "switch")).toBeVisible();
-  await expect.poll(() => layoutRows(page)).toEqual(["▸ Cubes", "C"]);
+  await expect
+    .poll(() => layoutRows(page))
+    .toEqual(["▾ Cubes", "  3×3", "  D", "B", "C"]);
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
   await expect(part(page, "switch")).toHaveCount(0);
   await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
 
-  // [ ] walk the list as shown, folders opened.
+  // [ ] walk the order as stored, folders opened; it survives a reload.
   await page.reload();
-  await ready(page, "444");
-  await expect(sessionButton(page)).toHaveText("C");
+  await ready(page, "555");
+  await expect(sessionButton(page)).toHaveText("D");
   await page.keyboard.press("BracketLeft");
   await expect(sessionButton(page)).toHaveText("3×3");
-  await page.keyboard.press("BracketLeft");
-  await expect(sessionButton(page)).toHaveText("B");
-  // The open session's closed folder shows open, and the order survived.
   await openSwitch(page);
   await expect
     .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  B", "  3×3", "C"]);
+    .toEqual(["▾ Cubes", "  3×3", "  D", "B", "C"]);
 });
 
-test("Mod+Backspace archives a session out of the list; search, the archive and the menu bring it back", async ({
+test("keys alone: arrows walk the grid, Alt moves a tile, Move to… groups, Backspace deletes with undo", async ({
   page,
 }) => {
   await page.goto("/");
@@ -403,31 +514,101 @@ test("Mod+Backspace archives a session out of the list; search, the archive and 
   await createSession(page, "B", "222");
   await createSession(page, "C", "444");
   await openSwitch(page);
-  // The highlight starts on the session open before: B.
-  await expect(switchRowNamed(page, "B")).toHaveAttribute("data-selected");
+  const focused = (name: string) =>
+    expect(
+      tileNamed(page, name).locator('[data-action="switch-pick"]'),
+    ).toBeFocused();
+  // The keys start on the session open before: B.
+  await focused("B");
+  await page.keyboard.press("ArrowRight");
+  await focused("C");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await focused("3×3");
+
+  // Alt+→ moves 3×3 one place on, keeping the keys on it.
+  await page.keyboard.press("Alt+ArrowRight");
+  await expect.poll(() => layoutRows(page)).toEqual(["B", "3×3", "C"]);
+  await focused("3×3");
+  await page.keyboard.press("Alt+ArrowLeft");
+  await expect.poll(() => layoutRows(page)).toEqual(["3×3", "B", "C"]);
+
+  // The menu key: Move to… › New folder, then C joins it by the same way.
+  await page.keyboard.press("Shift+F10");
+  await expect(action(page, "switch-rename")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(action(page, "switch-move")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(action(page, "switch-group")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(part(page, "switch-rename")).toHaveValue("Folder");
+  await part(page, "switch-rename").fill("Mine");
+  await part(page, "switch-rename").press("Enter");
+  await expect
+    .poll(() => layoutRows(page))
+    .toEqual(["▾ Mine", "  3×3", "B", "C"]);
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await focused("C");
+  await page.keyboard.press("Shift+F10");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await page
+    .locator('[data-part="switch-menu"] [data-action="switch-join"]')
+    .press("Enter");
+  await expect
+    .poll(() => layoutRows(page))
+    .toEqual(["▾ Mine", "  3×3", "  C", "B"]);
+
+  // Backspace puts the selected session in the trash; the undo line brings it back.
+  await focused("C");
+  await page.keyboard.press("Backspace");
+  await expect(part(page, "switch-undo")).toContainText(
+    "In the trash for 30 days.",
+  );
+  await expect.poll(() => layoutRows(page)).toEqual(["3×3", "B"]);
+  await action(page, "switch-undo").click();
+  await expect
+    .poll(() => layoutRows(page))
+    .toEqual(["▾ Mine", "  3×3", "  C", "B"]);
+  // The trash word at the foot shows only while the trash holds something.
+  await expect(
+    page.locator('[data-action="switch-view"][data-id="trash"]'),
+  ).toHaveCount(0);
+});
+
+test("Mod+Backspace archives a session out of the grid; search, the archive and the menu bring it back", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await ready(page, "333");
+  await createSession(page, "B", "222");
+  await createSession(page, "C", "444");
+  await openSwitch(page);
+  // The keys start on the session open before: B.
+  await expect(tileNamed(page, "B")).toHaveAttribute("data-selected");
   await page.keyboard.press("ControlOrMeta+Backspace");
   await expect(part(page, "switch-undo")).toContainText("Archived.");
   await expect.poll(() => layoutRows(page)).toEqual(["3×3", "C"]);
-  const archive = part(page, "switch-list").locator(
-    '> li[data-row="view"][data-id="archive"]',
+  const archive = page.locator(
+    '[data-action="switch-view"][data-id="archive"]',
   );
-  await expect(archive.locator('[data-part="switch-count"]')).toHaveText("1");
+  await expect(archive).toBeVisible();
   await page.keyboard.press("ControlOrMeta+z");
   await expect.poll(() => layoutRows(page)).toEqual(["3×3", "B", "C"]);
   await expect(archive).toHaveCount(0);
 
-  // The menu archives too; the archive lists it, Esc comes back.
-  const b = switchRowNamed(page, "B");
-  await b.hover();
-  await b.locator('[data-action="switch-more"]').click();
-  await b.locator('[data-action="switch-archive"]').click();
+  // The menu (a right click) archives too; the archive shows it, Esc comes back.
+  await tileNamed(page, "B")
+    .locator('[data-action="switch-pick"]')
+    .click({ button: "right" });
+  await tileNamed(page, "B").locator('[data-action="switch-archive"]').click();
   await expect.poll(() => layoutRows(page)).toEqual(["3×3", "C"]);
-  await archive.locator('[data-action="switch-pick"]').click();
+  await archive.click();
   await expect(part(page, "switch")).toHaveAttribute("data-view", "archive");
   await expect.poll(() => layoutRows(page)).toEqual(["B"]);
   await page.keyboard.press("Escape");
   await expect(part(page, "switch")).not.toHaveAttribute("data-view");
-  await expect(part(page, "switch-query")).toBeFocused();
 
   // [ and ] go past it.
   await page.keyboard.press("Escape");
@@ -437,23 +618,26 @@ test("Mod+Backspace archives a session out of the list; search, the archive and 
   await page.keyboard.press("BracketRight");
   await expect(sessionButton(page)).toHaveText("C");
 
-  // Search finds it, marked, and opens it; open, it shows in the list where it stands.
+  // Search finds it, marked, and opens it; open, it shows in the grid where it stands.
   await openSwitch(page);
-  await part(page, "switch-query").fill("B");
-  await expect(switchRowNamed(page, "B")).toHaveAttribute("data-archived");
+  await page.keyboard.type("B");
+  await expect(tileNamed(page, "B")).toHaveAttribute("data-archived");
   await expect(
-    switchRowNamed(page, "B").locator('[data-part="switch-note"]'),
+    tileNamed(page, "B").locator('[data-part="switch-note"]'),
   ).toHaveText("archived");
   await page.keyboard.press("Enter");
   await expect(sessionButton(page)).toHaveText("B");
   await openSwitch(page);
   await expect.poll(() => layoutRows(page)).toEqual(["3×3", "B", "C"]);
-  await expect(switchRowNamed(page, "B")).toHaveAttribute("data-archived");
-  const open = switchRowNamed(page, "B");
-  await open.locator('[data-action="switch-more"]').click();
-  await open.locator('[data-action="switch-unarchive"]').click();
+  await expect(tileNamed(page, "B")).toHaveAttribute("data-archived");
+  await tileNamed(page, "B")
+    .locator('[data-action="switch-pick"]')
+    .click({ button: "right" });
+  await tileNamed(page, "B")
+    .locator('[data-action="switch-unarchive"]')
+    .click();
   await expect(part(page, "switch-undo")).toContainText("Back in the list.");
-  await expect(switchRowNamed(page, "B")).not.toHaveAttribute("data-archived");
+  await expect(tileNamed(page, "B")).not.toHaveAttribute("data-archived");
   await page.keyboard.press("Escape");
 
   // It holds after a reload.
@@ -504,9 +688,8 @@ test("the trash keeps a session and a solve 30 days by the clock, then lets them
   await page.keyboard.press("Backspace");
   await expect(rows(page)).toHaveCount(1);
   await openSwitch(page);
-  const b = switchRowNamed(page, "B");
-  await b.hover();
-  await b.locator('[data-action="switch-more"]').click();
+  const b = tileNamed(page, "B");
+  await b.locator('[data-action="switch-pick"]').click({ button: "right" });
   await b.locator('[data-action="switch-delete"]').click();
   await expect(part(page, "switch-undo")).toContainText(
     "In the trash for 30 days.",
@@ -517,16 +700,12 @@ test("the trash keeps a session and a solve 30 days by the clock, then lets them
   // After a reload the trash holds both, each with its time left.
   await page.reload();
   await ready(page, "333");
-  const trashRows = part(page, "switch-list").locator(
-    '> li[data-row="trashed"]',
+  const trashRows = part(page, "switch-grid").locator(
+    'li[data-tile="trashed"]',
   );
   const openTrash = async () => {
     await openSwitch(page);
-    await part(page, "switch-list")
-      .locator(
-        '> li[data-row="view"][data-id="trash"] [data-action="switch-pick"]',
-      )
-      .click();
+    await page.locator('[data-action="switch-view"][data-id="trash"]').click();
     await expect(part(page, "switch")).toHaveAttribute("data-view", "trash");
   };
   await openTrash();
@@ -543,7 +722,10 @@ test("the trash keeps a session and a solve 30 days by the clock, then lets them
   await expect(trashRows.filter({ hasText: "B" })).toContainText(
     "3 hours left",
   );
-  await trashRows.filter({ hasText: "3×3" }).locator("button").click();
+  await trashRows
+    .filter({ hasText: "3×3" })
+    .locator('[data-action="switch-pick"]')
+    .click();
   await expect(trashRows).toHaveCount(1);
   await expect(part(page, "switch-undo")).toContainText("Restored:");
   await page.keyboard.press("Escape");
@@ -561,9 +743,7 @@ test("the trash keeps a session and a solve 30 days by the clock, then lets them
   await page.reload();
   await ready(page, "333");
   await openSwitch(page);
-  await expect(
-    part(page, "switch-list").locator('> li[data-row="view"]'),
-  ).toHaveCount(0);
+  await expect(page.locator('[data-action="switch-view"]')).toHaveCount(0);
   await expect.poll(() => layoutRows(page)).toEqual(["3×3"]);
   await page.keyboard.press("Escape");
   await expect(rows(page)).toHaveCount(2);
@@ -656,7 +836,12 @@ test("M moves the solve on show to another session of its puzzle; undo and a rep
   await expect(rows(page).and(page.locator("[data-selected]"))).toHaveCount(2);
   await moveButton(page).click();
   await expect(query).toHaveAttribute("placeholder", "Move 2 solves to…");
-  await switchRow(page, "B").locator('[data-action="switch-pick"]').click();
+  // Where solves go is a plain list of the puzzle's other sessions.
+  await part(page, "switch-list")
+    .locator("> li")
+    .filter({ hasText: /^B/ })
+    .locator('[data-action="switch-pick"]')
+    .click();
   await expect(part(page, "notice")).toHaveText("2 solves moved to B");
   await expect(rows(page)).toHaveCount(1);
   await page.keyboard.press("ControlOrMeta+KeyZ");
@@ -686,14 +871,14 @@ test("M moves the solve on show to another session of its puzzle; undo and a rep
   );
 });
 
-test.describe("moving rows on a touch screen", () => {
+test.describe("tiles on a touch screen", () => {
   test.use({
     hasTouch: true,
     isMobile: true,
     viewport: { width: 390, height: 844 },
   });
 
-  test("a long press lifts a row to drag, or opens its menu; a sideways swipe renames", async ({
+  test("a long press lifts a tile to drag, or opens its menu; the trash takes a dropped tile", async ({
     page,
   }) => {
     await page.goto("/");
@@ -702,14 +887,14 @@ test.describe("moving rows on a touch screen", () => {
     await createSession(page, "C", "444");
     await openSwitch(page);
     const pick = (name: string) =>
-      switchRowNamed(page, name).locator('[data-action="switch-pick"]');
+      tileNamed(page, name).locator('[data-action="switch-pick"]');
     const touch = async (
       name: string,
       steps: { x: number; y: number; wait?: number }[],
     ) => {
       const box = await pick(name).boundingBox();
-      if (!box) throw new Error(`No row ${name}`);
-      const start = { x: box.x + 60, y: box.y + box.height / 2 };
+      if (!box) throw new Error(`No tile ${name}`);
+      const start = { x: box.x + box.width / 2, y: box.y + 30 };
       await pick(name).evaluate(
         async (element, { start, steps }) => {
           const send = (type: string, x: number, y: number) =>
@@ -739,57 +924,47 @@ test.describe("moving rows on a touch screen", () => {
       );
     };
 
-    // Hold 3×3, then drag it below C's middle: it goes last.
+    // Hold 3×3, then drag it past C's right side: it goes last.
     const c = await pick("C").boundingBox();
-    if (!c) throw new Error("No row C");
     const from = await pick("3×3").boundingBox();
-    if (!from) throw new Error("No row 3×3");
+    if (!c || !from) throw new Error("No tiles");
     await touch("3×3", [
-      { x: from.x + 60, y: from.y + from.height / 2 + 1, wait: 600 },
-      { x: c.x + 60, y: c.y + c.height / 2 },
-      { x: c.x + 60, y: c.y + c.height - 3 },
+      { x: from.x + from.width / 2, y: from.y + 31, wait: 600 },
+      { x: c.x + c.width / 2, y: c.y + c.height - 6 },
+      { x: c.x + c.width - 3, y: c.y + c.height - 6 },
     ]);
     await expect.poll(() => layoutRows(page)).toEqual(["B", "C", "3×3"]);
     await expect(part(page, "switch-undo")).toBeVisible();
 
-    // A hold without a drag opens the row's menu.
+    // A quick move is a scroll, not a drag: nothing moves.
+    await settle(page);
     const b = await pick("B").boundingBox();
-    if (!b) throw new Error("No row B");
-    await touch("B", [{ x: b.x + 60, y: b.y + b.height / 2, wait: 600 }]);
-    await expect(switchRowNamed(page, "B")).toHaveAttribute("data-menu");
-    await expect(page.locator('[data-action="switch-group"]')).toBeVisible();
-    // New folder from the menu, its name ready to type.
-    await page.locator('[data-action="switch-group"]').tap();
-    await expect(part(page, "switch-rename")).toHaveValue("Folder");
-    await part(page, "switch-rename").fill("Small");
-    await part(page, "switch-rename").press("Enter");
-    await expect
-      .poll(() => layoutRows(page))
-      .toEqual(["▾ Small", "  B", "C", "3×3"]);
+    if (!b) throw new Error("No tile B");
+    await touch("B", [{ x: b.x + b.width / 2 + 40, y: b.y + 30 }]);
+    await expect.poll(() => layoutRows(page)).toEqual(["B", "C", "3×3"]);
 
-    // A sideways swipe on C renames it in place.
+    // A hold without a drag opens the tile's menu; Rename names it in place.
+    await touch("B", [{ x: b.x + b.width / 2, y: b.y + 30, wait: 600 }]);
+    await expect(tileNamed(page, "B")).toHaveAttribute("data-menu");
+    await page.locator('[data-action="switch-rename"]').tap();
+    await expect(part(page, "switch-rename")).toHaveValue("B");
+    await part(page, "switch-rename").fill("Two");
+    await part(page, "switch-rename").press("Enter");
+    await expect.poll(() => layoutRows(page)).toEqual(["Two", "C", "3×3"]);
+
+    // Lifted, the trash shows at the foot; C dropped there goes, with an undo.
+    await settle(page);
     const cNow = await pick("C").boundingBox();
-    if (!cNow) throw new Error("No row C");
+    if (!cNow) throw new Error("No tile C");
     await touch("C", [
-      { x: cNow.x + 100, y: cNow.y + cNow.height / 2 },
-      { x: cNow.x + 160, y: cNow.y + cNow.height / 2 },
+      { x: cNow.x + cNow.width / 2, y: cNow.y + 31, wait: 600 },
+      { x: 195, y: 700 },
+      { x: 195, y: 820 },
     ]);
-    await expect(part(page, "switch-rename")).toHaveValue("C");
-    await part(page, "switch-rename").fill("Four");
-    await part(page, "switch-rename").press("Enter");
-    await expect
-      .poll(() => layoutRows(page))
-      .toEqual(["▾ Small", "  B", "Four", "3×3"]);
-
-    // A swipe to the left archives: B goes, and its folder with it.
-    const bNow = await pick("B").boundingBox();
-    if (!bNow) throw new Error("No row B");
-    await touch("B", [
-      { x: bNow.x + 20, y: bNow.y + bNow.height / 2 },
-      { x: bNow.x - 40, y: bNow.y + bNow.height / 2 },
-    ]);
-    await expect(part(page, "switch-undo")).toContainText("Archived.");
-    await expect.poll(() => layoutRows(page)).toEqual(["Four", "3×3"]);
+    await expect(part(page, "switch-undo")).toContainText(
+      "In the trash for 30 days.",
+    );
+    await expect.poll(() => layoutRows(page)).toEqual(["Two", "3×3"]);
     await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
   });
 });
@@ -809,13 +984,22 @@ for (const viewport of [
       await sessionButton(page).tap();
       const sheet = part(page, "switch");
       await expect(sheet).toBeVisible();
-      await expect(part(page, "switch-query")).not.toBeFocused();
-      const two = part(page, "switch-list").locator(
-        '> li[data-row="event"][data-id="222"]',
-      );
+      await expect(part(page, "switch-query")).toHaveCount(0);
+      // + and the picker make a 2×2 session; a tap on its tile opens it.
+      await part(page, "switch-grid")
+        .locator('li[data-tile="add"] [data-action="switch-pick"]')
+        .tap();
+      await part(page, "switch-grid")
+        .locator(
+          'li[data-tile="event"][data-event="222"] [data-action="switch-pick"]',
+        )
+        .tap();
+      await part(page, "switch-rename").press("Enter");
+      const two = tileNamed(page, "2×2").locator('[data-action="switch-pick"]');
       const box = await two.boundingBox();
       expect(box?.height).toBeGreaterThanOrEqual(44);
-      await two.locator('[data-action="switch-pick"]').tap();
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+      await two.tap();
       await expect(sheet).toHaveCount(0);
       await expect(sessionButton(page)).toHaveText("2×2");
 
@@ -961,56 +1145,58 @@ test("sessions picked with Shift merge into another of their puzzle by keyboard;
   await expect(rows(page)).toHaveCount(1);
 
   await openSwitch(page);
-  const query = part(page, "switch-query");
-  await expect(query).toBeFocused();
   const picked = page.locator(
-    '[data-part="switch-list"] > li[data-picked] [data-part="switch-label"]',
+    '[data-part="switch-grid"] li[data-picked] [data-part="switch-label"]',
   );
-  // To the top, one down to B, then Shift+↓ picks B and C.
-  for (let step = 0; step < 6; step++) await page.keyboard.press("ArrowUp");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("Shift+ArrowDown");
+  // The keys start on Two (open before 3×3); back to B, then Shift+→ picks B and C.
+  await expect(tileNamed(page, "Two")).toHaveAttribute("data-selected");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Shift+ArrowRight");
   await expect(picked).toHaveText(["B", "C"]);
   await expect(part(page, "switch-picked")).toContainText("Merge 2 into…");
+  await expect(part(page, "switch-picked")).toContainText("Delete 2");
 
   // With Two picked too the merge is refused and the pick stays. Two's own menu offers
   // no Merge: there is no other 2×2 session.
-  await page.keyboard.press("Shift+ArrowDown");
+  await page.keyboard.press("Shift+ArrowRight");
   await expect(picked).toHaveText(["B", "C", "Two"]);
   await page.keyboard.press("Shift+F10");
   await expect(action(page, "switch-rename")).toBeFocused();
   await expect(action(page, "switch-merge")).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await expect(query).toBeFocused();
+  await expect(
+    tileNamed(page, "Two").locator('[data-action="switch-pick"]'),
+  ).toBeFocused();
   await action(page, "switch-merge-picked").click();
   await expect(part(page, "switch-undo")).toHaveText(
     "Only sessions of one puzzle merge.",
   );
   await expect(picked).toHaveText(["B", "C", "Two"]);
 
-  // Back to B and C; the menu from the keyboard, → to Merge, Enter.
-  await query.focus();
-  await page.keyboard.press("Shift+ArrowUp");
+  // Back to B and C; the menu from the keyboard, down to Merge, Enter.
+  await tileNamed(page, "Two").locator('[data-action="switch-pick"]').focus();
+  await page.keyboard.press("Shift+ArrowLeft");
   await expect(picked).toHaveText(["B", "C"]);
   await page.keyboard.press("Shift+F10");
   await expect(action(page, "switch-rename")).toBeFocused();
-  for (let step = 0; step < 3; step++) await page.keyboard.press("ArrowRight");
+  for (let step = 0; step < 2; step++) await page.keyboard.press("ArrowDown");
   await expect(action(page, "switch-merge")).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(query).toBeFocused();
-  await expect(query).toHaveAttribute("placeholder", "Merge 2 sessions into…");
+  await expect(part(page, "switch")).toHaveAttribute("data-view", "merge");
+  await expect(part(page, "switch-find")).toHaveText(/Merge 2 sessions into…/);
   // Only the other 3×3 session takes them.
   await expect(
-    part(page, "switch-list").locator("> li [data-part='switch-label']"),
+    part(page, "switch-grid").locator("li [data-part='switch-label']"),
   ).toHaveText(["3×3"]);
   await page.keyboard.press("Enter");
   await expect(part(page, "switch-undo")).toContainText("Merged into “3×3”.");
   await expect(switchRow(page, "B")).toHaveCount(0);
   await expect(switchRow(page, "C")).toHaveCount(0);
   await expect(picked).toHaveCount(0);
-  // Nothing was deleted: the trash has no row to show.
+  // Nothing was deleted: the trash has no word at the foot.
   await expect(
-    page.locator('[data-part="switch-list"] > li[data-row="view"]'),
+    page.locator('[data-action="switch-view"][data-id="trash"]'),
   ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(part(page, "switch")).toHaveCount(0);

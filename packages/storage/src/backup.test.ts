@@ -52,6 +52,7 @@ const solveRow = (id: string, over: Record<string, SqlValue> = {}) => ({
   updated_at: 5000,
   deleted_at: null,
   import_extra: null,
+  cross_colour: null,
   ...over,
 });
 
@@ -369,7 +370,12 @@ test("a backup from schema 5 restores, and a repeat of a dangling solve is refus
     ...current,
     schema: 5,
     tables: Object.fromEntries(
-      backupTables(5).map(([name]) => [name, current.tables[name] ?? []]),
+      backupTables(5).map(([name, { columns }]) => [
+        name,
+        (current.tables[name] ?? []).map((row) =>
+          Object.fromEntries(columns.map((column) => [column, row[column]])),
+        ),
+      ]),
     ),
   };
   expect(v5.tables.solve_repeat).toBeUndefined();
@@ -440,5 +446,66 @@ test("a backup from schema 7 restores its trainer attempts as not split", async 
   ).toEqual([
     { id: "a", split: 0 },
     { id: "b", split: 1 },
+  ]);
+});
+
+test("the cross colour goes round a backup; a schema 8 backup restores it unknown", async () => {
+  const source = await fresh();
+  await source.batch([
+    insert("session", {
+      id: "s1",
+      name: "3×3",
+      event: "333",
+      order_key: "a",
+      folder_id: null,
+      archived: 0,
+      created_at: 1,
+      updated_at: 1,
+      deleted_at: null,
+    }),
+    insert("solve", solveRow("a", { cross_colour: "yellow" })),
+    insert("solve", solveRow("b", { started_at: 6000 })),
+  ]);
+  const current = await snapshot(source);
+  expect(current.tables.solve?.map((r) => r.cross_colour)).toEqual([
+    "yellow",
+    null,
+  ]);
+  const roundTrip = await fresh();
+  await restore(roundTrip, JSON.parse(JSON.stringify(current)));
+  expect(
+    await roundTrip.all("SELECT id, cross_colour FROM solve ORDER BY id"),
+  ).toEqual([
+    { id: "a", cross_colour: "yellow" },
+    { id: "b", cross_colour: null },
+  ]);
+  const v8 = {
+    ...current,
+    schema: 8,
+    tables: Object.fromEntries(
+      backupTables(8).map(([name, { columns }]) => [
+        name,
+        (current.tables[name] ?? []).map((row) =>
+          Object.fromEntries(columns.map((column) => [column, row[column]])),
+        ),
+      ]),
+    ),
+  };
+  expect(v8.tables.solve?.[0]).not.toHaveProperty("cross_colour");
+  const old = await fresh();
+  await restore(old, v8);
+  expect(
+    await old.all("SELECT id, cross_colour FROM solve ORDER BY id"),
+  ).toEqual([
+    { id: "a", cross_colour: null },
+    { id: "b", cross_colour: null },
+  ]);
+  // A colour that is not one of the six is refused, and nothing is written.
+  const bad = structuredClone(current);
+  (bad.tables.solve?.[0] as Record<string, SqlValue>).cross_colour = "purple";
+  const target = await fresh();
+  await expect(restore(target, bad)).rejects.toThrow();
+  expect(await target.all("SELECT count(*) AS n FROM solve")).toEqual([
+    { n: 0 },
   ]);
 });

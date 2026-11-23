@@ -11,7 +11,8 @@
     "./last-layer": "./src/last-layer-cases.ts",
     "./last-layer-state": "./src/last-layer.ts",
     "./f2l": "./src/f2l.ts",
-    "./f2l-state": "./src/f2l-state.ts"
+    "./f2l-state": "./src/f2l-state.ts",
+    "./last-slot": "./src/last-slot.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.browser.json"

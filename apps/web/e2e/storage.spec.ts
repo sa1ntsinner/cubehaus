@@ -6,9 +6,12 @@ import { keyboardSolve, sessionButton } from "./helpers";
 const dbState = (page: Page) => page.locator('[data-part="db-state"]');
 const solves = (page: Page) =>
   page.locator('[data-part="solves"] [data-solve-id]');
+// After a reload WebKit opens the origin's file system again behind the old page's lock;
+// on a busy machine that alone has taken over 5 s. The line goes once the database is
+// open, which is what these specs wait for.
 async function expectPersistent(page: Page) {
-  await expect(sessionButton(page)).toBeEnabled();
-  await expect(dbState(page)).toHaveCount(0);
+  await expect(sessionButton(page)).toBeEnabled({ timeout: 15_000 });
+  await expect(dbState(page)).toHaveCount(0, { timeout: 15_000 });
 }
 async function reloadWithoutHooks(page: Page) {
   await page.evaluate(() => history.replaceState(null, "", "/"));

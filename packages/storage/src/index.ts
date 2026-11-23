@@ -20,6 +20,7 @@ export {
 } from "./import-batch";
 export { migrate, NewerSchemaError, SCHEMA_VERSION } from "./migrations";
 export {
+  type ColourSeries,
   createStore,
   type ImportedSolve,
   type Layout,

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   changeSetting,
+  coloursInPlay,
   DEFAULT_SETTINGS,
   defaultSettings,
   isTrainingProfile,
@@ -27,7 +28,8 @@ describe("settings", () => {
       language: "en",
       theme: "system",
       inspection: "official",
-      calls: "tick",
+      // Inspection calls are off until chosen (owner, 2026-11-23).
+      calls: "off",
       startMode: "space",
       holdMs: 300,
       precision: 2,
@@ -48,7 +50,60 @@ describe("settings", () => {
       },
       holding: "DF",
       awake: true,
+      cross: "any",
+      crossColours: null,
     });
+  });
+
+  test("the cross colour is the session's: any by default, assigned from the colours in play", async () => {
+    const store = memoryStore();
+    await changeSetting(store, "cross", "assigned", "s1", "333");
+    await changeSetting(
+      store,
+      "crossColours",
+      ["yellow", "white"],
+      "s1",
+      "333",
+    );
+    const s1 = await loadSettings(store, "s1", "en", "333");
+    expect(s1.cross).toBe("assigned");
+    expect(s1.crossColours).toEqual(["yellow", "white"]);
+    // Another session of the puzzle starts as the last one was set.
+    expect((await loadSettings(store, "s2", "en", "333")).cross).toBe(
+      "assigned",
+    );
+    for (const bad of [[], ["white", "white"], ["purple"], "white", [1]])
+      await expect(
+        changeSetting(store, "crossColours", bad as never, "s1"),
+      ).rejects.toThrow();
+    expect(
+      parseStoredSettings('{"cross":"sometimes","crossColours":["pink"]}'),
+    ).toEqual({});
+  });
+
+  test("the colours in play follow the colours held until chosen: the bottom one and its opposite", () => {
+    // Yellow on top: the cross is white, then yellow.
+    expect(coloursInPlay({ holding: "DF", crossColours: null })).toEqual([
+      "white",
+      "yellow",
+    ]);
+    // White on top: yellow first.
+    expect(coloursInPlay({ holding: "UF", crossColours: null })).toEqual([
+      "yellow",
+      "white",
+    ]);
+    // Green on top, red in front: blue first.
+    expect(coloursInPlay({ holding: "FR", crossColours: null })).toEqual([
+      "blue",
+      "green",
+    ]);
+    // Chosen colours keep their order, the main one first when it is among them.
+    expect(
+      coloursInPlay({
+        holding: "DF",
+        crossColours: ["green", "white", "yellow"],
+      }),
+    ).toEqual(["white", "green", "yellow"]);
   });
 
   test("the colours held on top and in front are kept only as a valid pair", async () => {
@@ -77,6 +132,16 @@ describe("settings", () => {
     expect(isTrainingProfile({ request: { kind: "oll", caseIds: [] } })).toBe(
       true,
     );
+  });
+
+  test("choosing the cross is a drill on official scrambles, kept as such", async () => {
+    const store = memoryStore();
+    const choosing = { request: null, choice: true } as const;
+    expect(isTrainingProfile(choosing)).toBe(true);
+    expect(isTrainingProfile({ request: null, choice: false })).toBe(false);
+    expect(isTrainingProfile({ request: null, choice: "yes" })).toBe(false);
+    await changeSetting(store, "training", choosing, "s1");
+    expect((await loadSettings(store, "s1")).training).toEqual(choosing);
   });
 
   test("layout and quiet record cue persist for the device", async () => {
@@ -184,7 +249,7 @@ describe("settings", () => {
     );
     store.values.set("settings.global", "garbage");
     expect(await loadSettings(store, "s1", "en")).toMatchObject({
-      calls: "tick",
+      calls: "off",
       inspection: "off",
     });
   });

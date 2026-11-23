@@ -212,6 +212,10 @@ for (const [event, partName, count] of [
   test(`${event} draws ${count} stickers or dials`, async ({ page }) => {
     await page.goto(`/?state=event-${event}`);
     await expect(page.locator(scramble)).toHaveAttribute("data-event", event);
+    // The puzzle's first scramble in a page builds its search first (Square-1 most).
+    await expect(page.locator(scramble)).toHaveAttribute("data-ready", "true", {
+      timeout: 30_000,
+    });
     const svg = page.locator(picture).locator(drawing);
     await expect(svg).toBeVisible();
     await expect(svg.locator(partName)).toHaveCount(count);

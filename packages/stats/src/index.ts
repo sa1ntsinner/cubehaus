@@ -7,6 +7,17 @@ export {
   trimCount,
 } from "./average";
 export {
+  ASSIGN,
+  assignColour,
+  type ColourEntry,
+  type ColourStanding,
+  colourAverage,
+  colourGaps,
+  colourSummary,
+  gapTrend,
+  seedOf,
+} from "./colours";
+export {
   type Forecast,
   type ForecastDay,
   type ForecastReason,

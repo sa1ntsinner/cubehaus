@@ -1,10 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { cubeState } from "@cubehaus/cube";
 import { describe, expect, it } from "vitest";
+import { TWO_ADJ } from "./data/two-adj";
 import { TWO_CLL } from "./data/two-cll";
+import { TWO_DIAG } from "./data/two-diag";
 import { TWO_OLL } from "./data/two-oll";
 import { TWO_PBL } from "./data/two-pbl";
-import { applyTwo, SOLVED, sameTwo } from "./two";
+import { pictureOf } from "./index";
+import { applyTwo, SOLVED, sameTwo, twoStickers } from "./two";
 import { buildTwo, goalOf, renderTwo } from "./two-build";
 import {
   classesOf,
@@ -18,7 +21,13 @@ import { twoNoteRaw } from "./two-notes";
 import { distances } from "./two-search";
 
 const dataFile = (set: TwoSet) => new URL(`./data/${set}.ts`, import.meta.url);
-const SHIPPED = { "two-oll": TWO_OLL, "two-pbl": TWO_PBL, "two-cll": TWO_CLL };
+const SHIPPED = {
+  "two-oll": TWO_OLL,
+  "two-pbl": TWO_PBL,
+  "two-cll": TWO_CLL,
+  "two-adj": TWO_ADJ,
+  "two-diag": TWO_DIAG,
+};
 const U = ["", "U", "U2", "U'"];
 
 describe("2×2 sets from our own search", () => {
@@ -27,6 +36,8 @@ describe("2×2 sets from our own search", () => {
     ["two-oll", 7],
     ["two-pbl", 5],
     ["two-cll", 42],
+    ["two-adj", 43],
+    ["two-diag", 43],
   ] as const)
     it(`${set}: ${count} cases, every algorithm solves its case and every scramble leads to it`, () => {
       const built = buildTwo(set, { goal: distances(goalOf(set)), exact });
@@ -36,7 +47,9 @@ describe("2×2 sets from our own search", () => {
       const shipped = SHIPPED[set];
       expect(shipped).toHaveLength(count);
       // Each case is a class of the model: the class of the state its picture shows.
-      const classes = classesOf(set).slice(1);
+      const classes = classesOf(set).filter(
+        (c) => !c.includes(seenKey(set, SOLVED)),
+      );
       const classOf = (s: ReturnType<typeof stateFromKey>) =>
         classes.findIndex((c) => c.includes(seenKey(set, s)));
       expect(
@@ -56,6 +69,12 @@ describe("2×2 sets from our own search", () => {
           const after = applyTwo(shown, `${U[alg.auf]} ${alg.moves}`.trim());
           expect(reached(after), `${c.label}: ${alg.moves}`).toBe(true);
         }
+        // The picture: the top's four and the side rows; with both layers' sides where
+        // the bottom matters (PBL, the bottom swaps), so its bars show.
+        const both =
+          set === "two-pbl" || set === "two-adj" || set === "two-diag";
+        expect(pictureOf(c)).toBe(twoStickers(shown, both));
+        expect(pictureOf(c)).toHaveLength(both ? 20 : 12);
         // Every drill scramble leads, from a solved cube, to a state of this case.
         expect(c.scrambles).toHaveLength(8);
         for (const scramble of c.scrambles) {
@@ -66,31 +85,41 @@ describe("2×2 sets from our own search", () => {
           );
           // And on our own sticker model, the case's algorithm solves it, with the turns
           // of the top (and for PBL the bottom) a solver makes before and after.
+          // A bottom to swap: the cube held turned about the vertical before, the
+          // bottom turned after.
           const D = ["", "D", "D2", "D'"];
+          const swap = set === "two-adj" || set === "two-diag";
           const lows = set === "two-pbl" ? [0, 1, 2, 3] : [0];
+          const holds = swap ? ["", "y", "y2", "y'"] : [""];
+          const afters = swap ? D : [""];
           const ok = c.algs.some((alg) =>
-            [0, 1, 2, 3].some((k) =>
-              lows.some((m) =>
-                [0, 1, 2, 3].some((j) => {
-                  const faces = cubeState(
-                    2,
-                    `${scramble} ${U[k]} ${D[m]} ${alg.moves} ${U[j]}`,
-                  );
-                  const one = (face: string) =>
-                    new Set(faces[face as keyof typeof faces]).size === 1;
-                  return set === "two-oll"
-                    ? one("U") && one("D")
-                    : "UDFRBL".split("").every(one);
-                }),
+            holds.some((hold) =>
+              [0, 1, 2, 3].some((k) =>
+                lows.some((m) =>
+                  [0, 1, 2, 3].some((j) =>
+                    afters.some((after) => {
+                      const faces = cubeState(
+                        2,
+                        `${scramble} ${hold} ${U[k]} ${D[m]} ${alg.moves} ${U[j]} ${after}`,
+                      );
+                      const one = (face: string) =>
+                        new Set(faces[face as keyof typeof faces]).size === 1;
+                      return set === "two-oll"
+                        ? one("U") && one("D")
+                        : "UDFRBL".split("").every(one);
+                    }),
+                  ),
+                ),
               ),
             ),
           );
           expect(ok, `${c.label}: ${scramble}`).toBe(true);
         }
-        // A note, where there is one, is what the picture shows.
-        if (c.recognise) expect(c.recognise).toEqual(twoNoteRaw(set, shown));
+        // The note is what the picture shows (CLL's and the swaps': two-notes.test.ts).
+        if (set === "two-oll" || set === "two-pbl")
+          expect(c.recognise).toEqual(twoNoteRaw(set, shown));
       }
-      if (set !== "two-cll")
+      if (set !== "two-adj" && set !== "two-diag")
         expect(shipped.every((c) => c.recognise !== null)).toBe(true);
     }, 300_000);
 });

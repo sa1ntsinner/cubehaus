@@ -25,7 +25,10 @@ export type DbClient = Db & {
   previewImport(file: ImportInput): Promise<ImportPreviewResult>;
   importFile(file: ImportInput): Promise<ImportFileResult>;
   exportBackup(): Promise<string>;
-  exportFile(format: "cstimer" | "csv"): Promise<ExportFileResult>;
+  exportFile(
+    format: "cstimer" | "csv",
+    sessionId?: string,
+  ): Promise<ExportFileResult>;
   restoreBackup(file: File): Promise<RestoreFileResult>;
   progress: ProgressReader;
   dispose(): void;
@@ -79,7 +82,11 @@ export function createDbClient(
     previewImport: (file) => request("previewImport", [file]),
     importFile: (file) => request("importFile", [file]),
     exportBackup: () => request("exportBackup", []),
-    exportFile: (format) => request("exportFile", [format]),
+    exportFile: (format, sessionId) =>
+      request(
+        "exportFile",
+        sessionId === undefined ? [format] : [format, sessionId],
+      ),
     restoreBackup: (file) => request("restoreBackup", [file]),
     progress: {
       counts: (revision) => request("progress.counts", [revision]),

@@ -1,0 +1,567 @@
+/*
+ * The session switch as a grid of tiles (DESIGN.md section 10, the grid). Each tile is the
+ * puzzle's own picture with the session's name under it: no box, no figure, no button at
+ * rest. A tile under the pointer or the keys sits on the `line` fill; the open session's
+ * name is `ink` 600, the others `dim`. Sheet, way back, find line, undo line and menus
+ * keep the switch's own rules (switch.css); this file adds the grid.
+ */
+
+/* Desktop: icons the size a file manager gives them, five a row in a 720 px column; the
+   pictures large enough that 3×3, 4×4 and 5×5 read apart at a glance. */
+dialog[data-part="switch"][data-layout="grid"] {
+  --tile: 136px;
+  --glyph: 88px;
+  --column: 720px;
+  --close-left: max(var(--s5), calc(50% - var(--column) / 2));
+  --tile-ground: var(--ground);
+  font-size: 15px;
+}
+dialog[data-part="switch"][data-layout="grid"]
+  > :not([data-action="dialog-close"]) {
+  width: min(var(--column), 100%);
+}
+/* A large screen: larger still, so the grid does not sit small in a wide empty field. */
+@media (min-width: 1800px) and (min-height: 1100px) {
+  dialog[data-part="switch"][data-layout="grid"] {
+    --tile: 164px;
+    --glyph: 108px;
+    --column: 860px;
+    font-size: 17px;
+  }
+}
+/* Vertically, a short grid stands a little above the middle of a tall window rather than
+   under its top edge; the room above gives way first when the grid grows. */
+@media (min-width: 700px) {
+  dialog[data-part="switch"][data-layout="grid"]::before {
+    content: "";
+    flex: 0 1 14vh;
+    min-height: 0;
+  }
+}
+
+[data-part="switch-grid"],
+[data-part="switch-band-tiles"] {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
+  gap: var(--s1) 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-part="switch-grid"] {
+  margin-top: var(--s2);
+}
+
+/* ---- a tile ---- */
+[data-part="switch-grid"] li[data-tile],
+[data-part="switch-grid"] li[data-renaming] {
+  position: relative;
+  min-width: 0;
+}
+[data-layout="grid"] [data-action="switch-pick"] {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-height: 100%;
+  padding: var(--s3) 2px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--tile-ground);
+  color: var(--dim);
+  font: inherit;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 100ms var(--ease);
+}
+[data-layout="grid"] [data-action="switch-pick"]:focus-visible {
+  outline: 2px solid var(--double);
+  outline-offset: -2px;
+}
+@media (hover: hover) {
+  [data-layout="grid"] [data-action="switch-pick"]:hover {
+    --tile-ground: var(--line);
+  }
+}
+[data-layout="grid"] [data-action="switch-pick"]:focus-visible,
+[data-layout="grid"]
+  li:is([data-menu], [data-open])
+  > [data-action="switch-pick"] {
+  --tile-ground: var(--line);
+}
+[data-layout="grid"] li[data-picked] > [data-action="switch-pick"] {
+  --tile-ground: var(--sel);
+}
+[data-layout="grid"] [data-action="switch-pick"]:active:not(:disabled) {
+  scale: 0.96;
+}
+
+[data-part="tile-picture"] {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--glyph);
+  height: var(--glyph);
+  isolation: isolate;
+  transition: scale 140ms var(--ease);
+}
+[data-part="tile-picture"] > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+[data-layout="grid"] [data-part="switch-label"] {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+[data-layout="grid"] li[data-current] [data-part="switch-label"] {
+  font-weight: 600;
+  color: var(--ink);
+}
+/* The open session's name is its field: under the pointer it takes the text cursor and
+   the hairline the session name has on the status line. */
+@media (hover: hover) {
+  dialog[data-layout="grid"]:not([data-view], [data-searching], [data-dragging])
+    li[data-tile="session"][data-current]
+    [data-part="switch-label"]:hover {
+    cursor: text;
+    text-decoration: underline 1px var(--gutter);
+    text-underline-offset: 3px;
+  }
+}
+[data-layout="grid"] :is([data-part="switch-note"], [data-part="switch-left"]) {
+  flex: none;
+  max-width: 100%;
+  padding: 0;
+  margin-inline: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+  margin-top: calc(-1 * var(--s1));
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--gutter);
+}
+
+/* ---- the puzzle pictures: the scramble picture's core and colours ---- */
+[data-glyph="core"] {
+  fill: var(--pz-body);
+}
+/* The colours are the held ones (PuzzleGlyph): a face letter names the colour drawn. */
+[data-glyph="U"] {
+  --sticker: var(--pz-U);
+}
+[data-glyph="F"] {
+  --sticker: var(--pz-F);
+}
+[data-glyph="R"] {
+  --sticker: var(--pz-R);
+}
+[data-glyph="B"] {
+  --sticker: var(--pz-B);
+}
+[data-glyph="L"] {
+  --sticker: var(--pz-L);
+}
+[data-glyph="D"] {
+  --sticker: var(--pz-D);
+}
+[data-glyph="purple"] {
+  --sticker: var(--pz-purple);
+}
+[data-glyph="grey"] {
+  --sticker: var(--pz-grey);
+}
+[data-glyph]:not([data-glyph="core"]) {
+  fill: var(--sticker);
+}
+/* A cube's sides take a little less light than its top, so the corner reads as a body. */
+[data-glyph][data-shade="1"] {
+  fill: color-mix(in srgb, var(--sticker) 93%, #000);
+}
+[data-glyph][data-shade="2"] {
+  fill: color-mix(in srgb, var(--sticker) 86%, #000);
+}
+[data-part="glyph-mark"] {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 600;
+  fill: var(--ink);
+  stroke: var(--tile-ground);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+
+/* A folder: its first four pictures, two by two, on a square of its own. */
+[data-part="glyph-folder"] {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  gap: 2%;
+  width: 100%;
+  height: 100%;
+  padding: 8%;
+  border-radius: 22%;
+  background: var(--line);
+}
+[data-layout="grid"] li:is([data-open], [data-menu]) [data-part="glyph-folder"],
+[data-layout="grid"]
+  [data-action="switch-pick"]:is(:focus-visible)
+  [data-part="glyph-folder"] {
+  background: var(--ground);
+}
+@media (hover: hover) {
+  [data-layout="grid"]
+    [data-action="switch-pick"]:hover
+    [data-part="glyph-folder"] {
+    background: var(--ground);
+  }
+}
+/* One or two sessions: their pictures stand across the middle, not along the top edge. */
+[data-part="glyph-folder"]:not(:has(> :nth-child(3))) {
+  grid-auto-rows: auto;
+  align-content: center;
+}
+[data-part="glyph-folder"] > svg {
+  width: 100%;
+  height: 100%;
+}
+[data-part="glyph-folder"]:not(:has(> :nth-child(3))) > svg {
+  height: auto;
+  aspect-ratio: 1;
+}
+
+/* New session: the `+` in the picture's place. */
+[data-part="tile-plus"] {
+  font-family: var(--font-mono);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--gutter);
+}
+@media (hover: hover) {
+  [data-action="switch-pick"]:hover [data-part="tile-plus"] {
+    color: var(--ink);
+  }
+}
+[data-layout="grid"] li[data-tile="create"] [data-action="switch-event"] {
+  position: absolute;
+  inset: auto 0 calc(-1 * var(--s1));
+  height: auto;
+  margin: 0 auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--gutter);
+}
+
+/* ---- naming in place ---- */
+[data-layout="grid"] li[data-renaming] {
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s1);
+}
+[data-layout="grid"] li[data-renaming] [data-part="switch-rename"] {
+  box-sizing: border-box;
+  width: calc(100% + 2 * var(--s1));
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  margin: 0 calc(-1 * var(--s1));
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--dim);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  caret-color: var(--prime);
+  outline: none;
+}
+
+/* ---- a tile's menu: a few words under it, on the ground, edged by a hairline ---- */
+[data-layout="grid"] [data-part="switch-menu"] {
+  position: absolute;
+  top: calc(100% - var(--s2));
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  min-width: 168px;
+  padding: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ground);
+  translate: calc(-50% + var(--shift, 0px)) var(--lift, 0px);
+  animation: sheet-in 110ms var(--ease);
+}
+[data-layout="grid"] [data-part="switch-menu"][data-above] {
+  top: auto;
+  bottom: calc(100% - var(--s2));
+}
+[data-layout="grid"] [data-part="switch-menu"] > button {
+  min-height: 36px;
+  padding: 0 var(--s3);
+  border-radius: 6px;
+  font-size: 15px;
+  color: var(--dim);
+  justify-content: flex-start;
+  text-align: start;
+  white-space: nowrap;
+}
+[data-layout="grid"]
+  [data-part="switch-menu"]
+  > button:is(:hover, :focus-visible) {
+  background: var(--line);
+  color: var(--ink);
+  outline: none;
+}
+[data-layout="grid"] [data-part="switch-menu"] > [data-action="switch-delete"] {
+  color: var(--error);
+}
+
+/* ---- an open folder: its tiles in rows of their own under the folder's row ---- */
+[data-part="switch-band"] {
+  grid-column: 1 / -1;
+  margin-block: var(--s1);
+  padding-block: var(--s2) var(--s1);
+  border-block: 1px solid var(--line);
+  animation: band-in 180ms var(--ease);
+}
+@keyframes band-in {
+  from {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+  }
+}
+[data-action="switch-folder-name"] {
+  min-height: 32px;
+  padding: 0 var(--s3);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dim);
+  cursor: text;
+}
+[data-action="switch-folder-name"]:hover {
+  color: var(--ink);
+}
+
+/* ---- the words at the foot: Find (touch), Archive, Trash ---- */
+/* The row keeps its height when empty: the grid does not move when `Trash` first appears,
+   and on a phone the trash band that comes with a drag never covers the last row. */
+[data-part="switch-places"] {
+  display: flex;
+  justify-content: center;
+  gap: var(--s5);
+  min-height: 44px;
+  margin-top: var(--s5);
+}
+[data-part="switch-places"] > button {
+  min-height: 44px;
+  padding: 0 var(--s2);
+  font-size: 15px;
+  color: var(--gutter);
+}
+[data-part="switch-places"][data-hidden] {
+  visibility: hidden;
+}
+[data-part="switch-places"] > button:hover {
+  color: var(--ink);
+}
+@media (hover: hover) {
+  [data-action="switch-find"] {
+    display: none;
+  }
+}
+
+/* ---- dragging: the tile hangs from the pointer, its place stays open ---- */
+dialog[data-layout="grid"][data-dragging] {
+  cursor: grabbing;
+  user-select: none;
+}
+dialog[data-layout="grid"][data-dragging] [data-action="switch-pick"] {
+  --tile-ground: var(--ground);
+  cursor: grabbing;
+}
+[data-layout="grid"] li[data-lifted] > [data-action="switch-pick"] {
+  opacity: 0;
+}
+/* Held over another session's picture: a folder's square forms behind it, so the first drag
+   shows what a drop there makes; the held tile draws in a little, about to go in. */
+[data-layout="grid"] li[data-drop="on"] [data-part="tile-picture"] {
+  scale: 1.1;
+}
+[data-layout="grid"] [data-part="tile-picture"]::before {
+  content: "";
+  position: absolute;
+  inset: -14%;
+  z-index: -1;
+  border-radius: 22%;
+  background: var(--line);
+  opacity: 0;
+  scale: 0.8;
+  transition:
+    opacity 140ms var(--ease),
+    scale 140ms var(--ease);
+}
+[data-layout="grid"]
+  li[data-drop="on"]
+  [data-part="tile-picture"]:not(:has([data-part="glyph-folder"]))::before {
+  opacity: 1;
+  scale: 1;
+}
+[data-layout="grid"] li[data-drop="on"] [data-part="glyph-folder"] {
+  background: color-mix(in srgb, var(--ink) 14%, var(--ground));
+}
+[data-part="switch-ghost"] > [data-part="tile-picture"] {
+  transition: scale 140ms var(--ease);
+}
+dialog[data-onto] [data-part="switch-ghost"] > [data-part="tile-picture"] {
+  scale: 0.82;
+}
+/* The sheet gives its children the column's width and centres them; the hanging tile is
+   a tile wide, from the pointer, and the trash a band across the whole foot. */
+dialog[data-part="switch"][data-layout="grid"] > [data-part="switch-ghost"] {
+  width: var(--tile);
+  margin: 0;
+}
+dialog[data-part="switch"][data-layout="grid"]
+  > [data-part="switch-drop-trash"] {
+  width: auto;
+  margin: 0;
+}
+[data-part="switch-ghost"] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  box-sizing: border-box;
+  width: var(--tile);
+  padding: var(--s3) var(--s1);
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  pointer-events: none;
+  scale: 1.06;
+  animation: ghost-lift 120ms var(--ease);
+}
+@keyframes ghost-lift {
+  from {
+    scale: 1;
+  }
+}
+[data-part="switch-ghost"] [data-part="switch-label"] {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* While a session is dragged: the trash, a band across the foot, the only place it shows. */
+[data-part="switch-drop-trash"] {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: auto;
+  height: calc(64px + env(safe-area-inset-bottom));
+  margin: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid var(--line);
+  background: var(--ground);
+  font-size: 15px;
+  color: var(--dim);
+  animation: sheet-in 110ms var(--ease);
+  transition:
+    color 100ms var(--ease),
+    background-color 100ms var(--ease);
+}
+[data-part="switch-drop-trash"][data-over] {
+  background: color-mix(in srgb, var(--error) 14%, var(--ground));
+  color: var(--error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-part="switch-band"],
+  [data-part="switch-ghost"],
+  [data-part="switch-drop-trash"],
+  [data-layout="grid"] [data-part="switch-menu"] {
+    animation: none;
+  }
+  [data-part="tile-picture"],
+  [data-part="tile-picture"]::before,
+  [data-layout="grid"] [data-action="switch-pick"] {
+    transition: none;
+  }
+}
+
+/* A phone: four tiles a row (three at 320 px), the grid under the thumb. */
+@media (max-width: 699px) {
+  [data-layout="grid"]
+    :is([data-part="switch-note"], [data-part="switch-left"]) {
+    font-size: 13px;
+  }
+  dialog[data-part="switch"][data-layout="grid"] {
+    --tile: 84px;
+    --glyph: 56px;
+    font-size: 15px;
+    padding-top: calc(var(--s4) + 44px + var(--s2) + env(safe-area-inset-top));
+  }
+  dialog[data-layout="grid"]:not([data-searching]):not([data-view])
+    > [data-part="switch-grid"] {
+    margin-top: auto;
+  }
+  [data-layout="grid"] [data-part="switch-menu"] > button {
+    min-height: 44px;
+  }
+}
+
+/* The list's lead mark has no place on a tile: the name says which one is open. */
+dialog[data-layout="grid"] li > [data-action="switch-pick"]::before {
+  content: none;
+}
+/* In a folder's small pictures the event's letters would be too small to read. */
+[data-part="glyph-folder"] [data-part="glyph-mark"] {
+  display: none;
+}
+
+/* On the `line` fill the notes step up to `dim`: `gutter` there falls under 4.5:1. */
+[data-layout="grid"]
+  li:is([data-menu], [data-open])
+  :is([data-part="switch-note"], [data-part="switch-left"]),
+[data-layout="grid"]
+  [data-action="switch-pick"]:focus-visible
+  :is([data-part="switch-note"], [data-part="switch-left"]) {
+  color: var(--dim);
+}
+@media (hover: hover) {
+  [data-layout="grid"]
+    [data-action="switch-pick"]:hover
+    :is([data-part="switch-note"], [data-part="switch-left"]) {
+    color: var(--dim);
+  }
+}

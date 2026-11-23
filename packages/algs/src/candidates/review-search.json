@@ -1,0 +1,1643 @@
+{
+  "pll": {
+    "pll-01230312": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "L2 B2 L' F' L B2 L' F L'",
+      "friendly": [],
+      "nodes": 1387,
+      "ms": 66
+    },
+    "pll-01230231": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "L F' L B2 L' F L B2 L2",
+      "friendly": [],
+      "nodes": 1071,
+      "ms": 0
+    },
+    "pll-01231032": {
+      "main": 18,
+      "optimum": 14,
+      "atLeast": 14,
+      "optimal": "R B' R' D' F D2 R D' B D R' D2 F' D",
+      "friendly": [
+        "F2 U' F2 U2 R2 U R2 U F2 R2 U2 R2 U F2",
+        "F2 U' R2 U2 R2 F2 U' R2 U' R2 U2 F2 U F2",
+        "R2 U F2 U2 F2 R2 U F2 U F2 U2 R2 U' R2",
+        "R2 U R2 U2 F2 U' F2 U' R2 F2 U2 F2 U' R2",
+        "F2 U F2 U2 L2 U' L2 U' F2 L2 U2 L2 U' F2",
+        "F2 U L2 U2 L2 F2 U L2 U L2 U2 F2 U' F2",
+        "L2 U' F2 U2 F2 L2 U' F2 U' F2 U2 L2 U L2",
+        "L2 U' L2 U2 F2 U F2 U L2 F2 U2 F2 U L2",
+        "R2 D' F2 U2 R2 U R2 U F2 R2 U2 R2 D R2",
+        "R2 D' R2 U2 R2 F2 U' R2 U' R2 U2 F2 D R2"
+      ],
+      "nodes": 476856910,
+      "ms": 39671
+    },
+    "pll-03210213": {
+      "main": 14,
+      "optimum": 13,
+      "atLeast": 13,
+      "optimal": "R B' L U2 R' F L2 R' D2 L2 F' L' R",
+      "friendly": [],
+      "nodes": 34774034,
+      "ms": 2791
+    },
+    "pll-01321302": {
+      "main": 12,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R D L' D2 R D' L' F2 D' L2 D' R2",
+      "friendly": [],
+      "nodes": 2461696,
+      "ms": 191
+    },
+    "pll-01322031": {
+      "main": 12,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R' U L' U2 R U' L B F U2 B' F'",
+      "friendly": [],
+      "nodes": 2767898,
+      "ms": 231
+    },
+    "pll-01323201": {
+      "main": 12,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R2 D' F U' F U F' D R2 B U' B'",
+      "friendly": [],
+      "nodes": 2782553,
+      "ms": 221
+    },
+    "pll-01322310": {
+      "main": 12,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "F U' B U2 F' U B' L' R' U2 L R",
+      "friendly": [],
+      "nodes": 3156956,
+      "ms": 233
+    },
+    "pll-01232301": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R2 B2 F2 L2 D R2 B2 F2 L2",
+      "friendly": [],
+      "nodes": 7574733,
+      "ms": 504
+    },
+    "pll-01320213": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R2 F2 U' F2 U F2 D' F2 D R2",
+      "friendly": [],
+      "nodes": 8262,
+      "ms": 1
+    },
+    "pll-01320132": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F U' R B U B' R2 F R F2",
+      "friendly": [],
+      "nodes": 15015,
+      "ms": 2
+    },
+    "pll-03210321": {
+      "main": 14,
+      "optimum": 13,
+      "atLeast": 13,
+      "optimal": "R U' R2 B2 D' L F2 L' D B2 R2 U R'",
+      "friendly": [],
+      "nodes": 10373284,
+      "ms": 899
+    },
+    "pll-03212103": {
+      "main": 14,
+      "optimum": 13,
+      "atLeast": 13,
+      "optimal": "R U' R2 F2 U' R F2 R' U F2 R2 U R'",
+      "friendly": [],
+      "nodes": 10365943,
+      "ms": 905
+    },
+    "pll-01321023": {
+      "main": 15,
+      "optimum": 13,
+      "atLeast": 13,
+      "optimal": "R U' B L' B' R' B L B' U' R U2 R'",
+      "friendly": [
+        "R U' R F2 U R U R U' R' U' F2 R2",
+        "R2 F2 U R U R' U' R' U' F2 R' U R'",
+        "F U2 F' U2 F R' F' U' F U F R F2",
+        "F2 R' F' U' F' U F R F' U2 F U2 F'",
+        "L U2 L' R U R' F' L U2 L2 U' L F",
+        "F U' F L2 U F U F U' F' U' L2 F2",
+        "F2 L2 U F U F' U' F' U' L2 F' U F'",
+        "L U2 L' U2 L F' L' U' L U L F L2",
+        "L2 F' L' U' L' U L F L' U2 L U2 L'",
+        "F' L' U L2 U2 L' F R U' L R' U2 L'"
+      ],
+      "nodes": 62292097,
+      "ms": 5002
+    },
+    "pll-01323120": {
+      "main": 13,
+      "optimum": 13,
+      "atLeast": 13,
+      "optimal": "R U R' U2 L' B2 R' D' R' D R2 B2 L",
+      "friendly": [],
+      "nodes": 27523879,
+      "ms": 2184
+    },
+    "pll-03210132": {
+      "main": 14,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "L2 U L2 D' B2 R2 U' R2 D B2",
+      "friendly": [
+        "D R2 D' F2 U F2 R2 U R2 U' R2",
+        "D' R2 U R2 U' R2 F2 U' F2 D R2",
+        "R2 D' F2 U F2 R2 U R2 U' R2 D",
+        "R2 U R2 U' R2 F2 U' F2 D R2 D'",
+        "D F2 U' F2 U F2 R2 U R2 D' F2",
+        "D' F2 D R2 U' R2 F2 U' F2 U F2",
+        "F2 D R2 U' R2 F2 D' L2 U L2",
+        "F2 D R2 U' R2 F2 U' F2 U F2 D'",
+        "F2 D' L2 U L2 F2 D R2 U' R2",
+        "F2 U' F2 U F2 R2 U R2 D' F2 D"
+      ],
+      "nodes": 412935,
+      "ms": 31
+    },
+    "pll-01323012": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R2 U' B' F R2 B F' U' R2",
+      "friendly": [
+        "F2 U' L R' F2 L' R U' F2"
+      ],
+      "nodes": 1041921,
+      "ms": 62
+    },
+    "pll-01321230": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F2 U L R' F2 L' R U F2",
+      "friendly": [
+        "F2 U L R' F2 L' R U F2"
+      ],
+      "nodes": 1069649,
+      "ms": 71
+    },
+    "pll-01320321": {
+      "main": 14,
+      "optimum": 14,
+      "atLeast": 14,
+      "optimal": "R U B2 F' L' B2 L F U2 L U R' U L'",
+      "friendly": [],
+      "nodes": 134170156,
+      "ms": 11189
+    },
+    "pll-01322103": {
+      "main": 13,
+      "optimum": 13,
+      "atLeast": 13,
+      "optimal": "R2 U' R2 U' R2 U F U F' R2 F U' F'",
+      "friendly": [],
+      "nodes": 10383310,
+      "ms": 848
+    },
+    "pll-03211230": {
+      "main": 14,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R2 U R2 U' R2 F2 R2 U' F2 U R2 F2",
+      "friendly": [
+        "F2 R2 U' F2 U R2 F2 R2 U R2 U' R2",
+        "R2 U R2 U' R2 F2 R2 U' F2 U R2 F2",
+        "F2 U' F2 U F2 R2 F2 U R2 U' F2 R2",
+        "R2 F2 U R2 U' F2 R2 F2 U' F2 U F2",
+        "F2 L2 U F2 U' L2 F2 L2 U' L2 U L2",
+        "F2 U F2 U' F2 L2 F2 U' L2 U F2 L2",
+        "L2 F2 U' L2 U F2 L2 F2 U F2 U' F2",
+        "L2 U' L2 U L2 F2 L2 U F2 U' L2 F2",
+        "D2 L' R F D2 U2 F' D2 U2 F L R'",
+        "D2 L' R F' D2 U2 F D2 U2 F' L R'"
+      ],
+      "nodes": 350557228,
+      "ms": 25220
+    }
+  },
+  "oll": {
+    "oll-11111212": {
+      "main": 11,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U B' R B R2 U' R' F R F'",
+      "friendly": [],
+      "nodes": 1389497,
+      "ms": 126
+    },
+    "oll-11111122": {
+      "main": 11,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U B2 F' L' B' L F U' B' R'",
+      "friendly": [],
+      "nodes": 312666,
+      "ms": 38
+    },
+    "oll-11110222": {
+      "main": 11,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R B2 R2 U2 R B R' U2 R2 B2 R'",
+      "friendly": [],
+      "nodes": 1268601,
+      "ms": 109
+    },
+    "oll-11110111": {
+      "main": 12,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "F' L2 F2 U2 F' L' F U2 F2 L2 F",
+      "friendly": [],
+      "nodes": 1914633,
+      "ms": 165
+    },
+    "oll-00110222": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "L' B2 R B R' B L",
+      "friendly": [],
+      "nodes": 235,
+      "ms": 0
+    },
+    "oll-00110111": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "B L2 F' L' F L' B'",
+      "friendly": [],
+      "nodes": 389,
+      "ms": 0
+    },
+    "oll-00112022": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R B L' B L B2 R'",
+      "friendly": [],
+      "nodes": 163,
+      "ms": 0
+    },
+    "oll-00111110": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "F' L' B L' B' L2 F",
+      "friendly": [],
+      "nodes": 254,
+      "ms": 1
+    },
+    "oll-00111101": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F' L' U B' U' B U' L U F",
+      "friendly": [],
+      "nodes": 373756,
+      "ms": 29
+    },
+    "oll-00112202": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R B U' L U L' U B' U' R'",
+      "friendly": [],
+      "nodes": 293092,
+      "ms": 22
+    },
+    "oll-00112220": {
+      "main": 12,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R B U B' U R' F2 L F L' F",
+      "friendly": [],
+      "nodes": 2897434,
+      "ms": 237
+    },
+    "oll-00111011": {
+      "main": 12,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U2 R' U' F' L' B' U' B L F",
+      "friendly": [],
+      "nodes": 2781400,
+      "ms": 238
+    },
+    "oll-01010222": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R U B U2 B' U R' F' U F",
+      "friendly": [],
+      "nodes": 164424,
+      "ms": 11
+    },
+    "oll-01011011": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R' U' F' U2 F U F' U' F R",
+      "friendly": [],
+      "nodes": 187345,
+      "ms": 12
+    },
+    "oll-01012022": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F' L' B' F U' B U F' L F",
+      "friendly": [],
+      "nodes": 240354,
+      "ms": 15
+    },
+    "oll-01010111": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "L' B' L F L' U' B U L F'",
+      "friendly": [],
+      "nodes": 349233,
+      "ms": 24
+    },
+    "oll-11110102": {
+      "main": 12,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U B L' U' B U L U' B2 R'",
+      "friendly": [],
+      "nodes": 1726422,
+      "ms": 125
+    },
+    "oll-11110012": {
+      "main": 13,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U2 R' F' L' U2 L F R U2 R'",
+      "friendly": [
+        "L F R U2 R' U2 R U2 R' F' L'",
+        "R U2 R' F' L' U2 L F R U2 R'",
+        "L' U2 L F R U2 R' F' L' U2 L",
+        "R' F' L' U2 L U2 L' U2 L F R",
+        "F R U R' U F' U2 F' L F L'",
+        "F' L' U' L U' F U2 F R' F' R"
+      ],
+      "nodes": 3641136,
+      "ms": 329
+    },
+    "oll-11110021": {
+      "main": 13,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "F R2 U B' U' R' U B R' U' F'",
+      "friendly": [
+        "R' U2 F R U R' U' F2 U2 F R",
+        "F U2 R' F' U' F U R2 U2 R' F'",
+        "F' U2 L F U F' U' L2 U2 L F",
+        "L U2 F' L' U' L U F2 U2 F' L'",
+        "L F2 U R' U' F' U R F' U' L'",
+        "R' F2 U' L U F U' L' F U R"
+      ],
+      "nodes": 4106105,
+      "ms": 366
+    },
+    "oll-11110000": {
+      "main": 13,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R B U B' R' B F2 D' L' D B' F2",
+      "friendly": [],
+      "nodes": 59858877,
+      "ms": 5160
+    },
+    "oll-00001212": {
+      "main": 11,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U R' U R U L' U R' U' L",
+      "friendly": [],
+      "nodes": 8596126,
+      "ms": 650
+    },
+    "oll-00001122": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F U2 F2 U' F2 U' F2 U2 F",
+      "friendly": [],
+      "nodes": 563,
+      "ms": 0
+    },
+    "oll-00000012": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F2 R2 F L2 F' R2 F L2 F",
+      "friendly": [],
+      "nodes": 168180,
+      "ms": 12
+    },
+    "oll-00000021": {
+      "main": 8,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "F R F' L F R' F' L'",
+      "friendly": [],
+      "nodes": 8692,
+      "ms": 1
+    },
+    "oll-00000102": {
+      "main": 8,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "R' F' L' F R F' L F",
+      "friendly": [],
+      "nodes": 7288,
+      "ms": 0
+    },
+    "oll-00000111": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "F U2 F' U' F U' F'",
+      "friendly": [],
+      "nodes": 278,
+      "ms": 0
+    },
+    "oll-00000222": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R' U2 R U R' U R",
+      "friendly": [],
+      "nodes": 64,
+      "ms": 0
+    },
+    "oll-00110000": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R B' R B2 L' B L B2 R2",
+      "friendly": [
+        "R' F R' F2 L F' L' F2 R2",
+        "R2 F2 L F L' F2 R F' R",
+        "L F' L F2 R' F R F2 L2",
+        "L2 F2 R' F' R F2 L' F L'"
+      ],
+      "nodes": 1224110,
+      "ms": 108
+    },
+    "oll-00112100": {
+      "main": 13,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "L F' U' F2 U' F2 U2 F U' L'",
+      "friendly": [
+        "F R' U' R2 U' R2 U2 R U' F'",
+        "L F' U' F2 U' F2 U2 F U' L'",
+        "R' U' F' U2 F U F' U2 F U R",
+        "R' U2 R2 U R' U' R' U2 F R F'",
+        "F' U' L' U2 L U L' U2 L U F",
+        "R2 U' R F R' U R2 U' R' F' R",
+        "F' U2 F2 U F' U' F' U2 L F L'",
+        "L2 U' L F U' R U2 R' U' F' L",
+        "R' F R' F2 U F U F' U' F R2",
+        "R' F R F' R U2 R' U' F' U' F"
+      ],
+      "nodes": 4391976,
+      "ms": 368
+    },
+    "oll-00111002": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "B U L U' F L' B' L F' L'",
+      "friendly": [],
+      "nodes": 668989,
+      "ms": 58
+    },
+    "oll-00110210": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F' U' L U F U' F' L' F",
+      "friendly": [],
+      "nodes": 49950,
+      "ms": 4
+    },
+    "oll-00110021": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R U B' U' R' U R B R'",
+      "friendly": [],
+      "nodes": 40402,
+      "ms": 2
+    },
+    "oll-01010210": {
+      "main": 8,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "F U F' U' F' L F L'",
+      "friendly": [],
+      "nodes": 3178,
+      "ms": 0
+    },
+    "oll-01010021": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F' U' F U L F R' F' L' R",
+      "friendly": [],
+      "nodes": 325255,
+      "ms": 24
+    },
+    "oll-00110201": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R U2 R2 F R F' R U2 R'",
+      "friendly": [],
+      "nodes": 31659,
+      "ms": 2
+    },
+    "oll-00111020": {
+      "main": 12,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F' U2 F2 R2 B' R' B R2 F' R",
+      "friendly": [
+        "R U R2 F' U' F U R2 U2 R'",
+        "F U F2 L' U' L U F2 U2 F'",
+        "R' F' U' F2 U R U' R' F' R",
+        "F L' U2 R U2 R' U2 L U2 F'",
+        "F' L' U' L2 U F U' F' L' F",
+        "L U2 R F R' U2 R F' L' R'",
+        "F L' U2 L F2 R' F2 R U2 F'",
+        "F R' F2 R F2 L' U2 L U2 F'",
+        "R U2 R2 F2 L F' R F2 L' F",
+        "L' U2 L2 F2 R' F' R F2 L' F"
+      ],
+      "nodes": 933571,
+      "ms": 79
+    },
+    "oll-00110102": {
+      "main": 8,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "L' B L B' U' B' U B",
+      "friendly": [],
+      "nodes": 6076,
+      "ms": 1
+    },
+    "oll-00112010": {
+      "main": 12,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R U2 R2 F2 L F L' F2 R F'",
+      "friendly": [
+        "F' U' F2 R U R' U' F2 U2 F",
+        "L' U' L2 F U F' U' L2 U2 L",
+        "F R U R2 U' F' U F R F'",
+        "F' R U2 L' U2 L U2 R' U2 F",
+        "L F U F2 U' L' U L F L'",
+        "F' L F2 L' F2 R U2 R' U2 F",
+        "F' R U2 R' F2 L F2 L' U2 F",
+        "R' U2 L' F' L U2 L' F L R",
+        "R U2 R2 F2 L F L' F2 R F'",
+        "L' U2 L2 F2 R' F L' F2 R F'"
+      ],
+      "nodes": 845736,
+      "ms": 61
+    },
+    "oll-01010102": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F U' B' R' U' R U B F'",
+      "friendly": [],
+      "nodes": 26271,
+      "ms": 2
+    },
+    "oll-01011020": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F' U B L U L' U' B' F",
+      "friendly": [],
+      "nodes": 26209,
+      "ms": 2
+    },
+    "oll-00112001": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R' U' R B2 F' D L D' B2 F",
+      "friendly": [],
+      "nodes": 475918,
+      "ms": 28
+    },
+    "oll-00111200": {
+      "main": 13,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F U F' L2 R D' B' D L2 R'",
+      "friendly": [
+        "R' U R U2 R' U' F' U F U R",
+        "F' U F U2 F' U' L' U L U F",
+        "R' F2 R2 U' F U' F' U2 R2 F2 R",
+        "R' U' F2 D' F U F' D F2 R",
+        "F' U' L2 D' L U L' D L2 F",
+        "F' L2 F2 U' L U' L' U2 F2 L2 F",
+        "F U2 F' U' L D R' F' R D' L'",
+        "L R' F U L F L' F' U' L' R",
+        "L2 R' D F D' F' L' F L' R",
+        "L F R' D' L' F' L D F' L' R"
+      ],
+      "nodes": 4148697,
+      "ms": 367
+    },
+    "oll-00110120": {
+      "main": 6,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "L' U' B' U B L",
+      "friendly": [],
+      "nodes": 176,
+      "ms": 0
+    },
+    "oll-00110012": {
+      "main": 6,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "B U L U' L' B'",
+      "friendly": [],
+      "nodes": 116,
+      "ms": 0
+    },
+    "oll-01010120": {
+      "main": 6,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R' F' U' F U R",
+      "friendly": [],
+      "nodes": 74,
+      "ms": 0
+    },
+    "oll-01010012": {
+      "main": 8,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "L U L F' L' F U' L'",
+      "friendly": [],
+      "nodes": 4813,
+      "ms": 1
+    },
+    "oll-00112211": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "L' B' U' B U B' U' B U L",
+      "friendly": [],
+      "nodes": 65721,
+      "ms": 6
+    },
+    "oll-00111221": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "B L U L' U' L U L' U' B'",
+      "friendly": [],
+      "nodes": 82755,
+      "ms": 8
+    },
+    "oll-00111122": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "B R' U2 R U2 R B2 R' B",
+      "friendly": [],
+      "nodes": 1869,
+      "ms": 0
+    },
+    "oll-00112112": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "L' F U2 F' U2 F' L2 F L'",
+      "friendly": [],
+      "nodes": 2491,
+      "ms": 1
+    },
+    "oll-01011122": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R U B U' B' U B U' B' R'",
+      "friendly": [],
+      "nodes": 14346,
+      "ms": 1
+    },
+    "oll-01011221": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R U R' U R U' B U' B' R'",
+      "friendly": [],
+      "nodes": 18624,
+      "ms": 1
+    },
+    "oll-00111212": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F' L F L' U2 F2 R' F' R F'",
+      "friendly": [],
+      "nodes": 644040,
+      "ms": 61
+    },
+    "oll-00112121": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R B' R' B U2 R2 F R F' R",
+      "friendly": [],
+      "nodes": 536324,
+      "ms": 33
+    },
+    "oll-01011212": {
+      "main": 11,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U2 R2 U' R U' R' U2 F R F'",
+      "friendly": [],
+      "nodes": 1779700,
+      "ms": 147
+    },
+    "oll-01012121": {
+      "main": 14,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "F R B R' F2 R U B' U' R' F",
+      "friendly": [
+        "F R' F' R U2 F' U F U' R U2 R'",
+        "R' F R F' U2 R U' R' U F' U2 F",
+        "F' L F L' U2 F U' F' U L' U2 L",
+        "L F' L' F U2 L' U L U' F U2 F'",
+        "F R U R' U' R F' L F R' F' L'",
+        "R' F' L' F R2 F' U' L U F R'",
+        "L F R F' L2 F U R' U' F' L",
+        "L' U2 R U' L U R' F2 R' F' R F'",
+        "F' L' U' L U L' F R' F' L F R",
+        "R' F' R U' L' U L2 R' F' L' F2 R"
+      ],
+      "nodes": 26478965,
+      "ms": 2174
+    },
+    "oll-01010000": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R U R' B' F D R' D' B F'",
+      "friendly": [],
+      "nodes": 1392309,
+      "ms": 110
+    }
+  },
+  "coll": {
+    "coll-01231212": {
+      "main": 11,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U R' U R U' R' U R U2 R'",
+      "friendly": [],
+      "nodes": 6418439,
+      "ms": 463
+    },
+    "coll-01321212": {
+      "main": 13,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "L U L' U L U R' U L' U' R",
+      "friendly": [
+        "R U R' U R U L' U R' U' L",
+        "R' U' R U' R' U' L U' R U L'",
+        "L U L' U L U R' U L' U' R",
+        "L' U' L U' L' U' R U' L U R'"
+      ],
+      "nodes": 400122,
+      "ms": 33
+    },
+    "coll-01322121": {
+      "main": 12,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U R2 F2 D' L2 D' L2 D2 F2 R",
+      "friendly": [],
+      "nodes": 260194,
+      "ms": 20
+    },
+    "coll-03211212": {
+      "main": 14,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R2 F L2 F' R2 U2 R2 B D2 B' R2",
+      "friendly": [
+        "R' F2 R2 U2 R' F2 R U2 R2 F2 R",
+        "L' U2 L R U2 R' F2 R' F2 R2 U2 R'",
+        "R U2 R2 F2 R F2 L' U2 L R U2 R'",
+        "F R2 F2 U2 F R2 F' U2 F2 R2 F'",
+        "L F2 L2 U2 L F2 R U2 R2 F2 R",
+        "L R2 F2 R2 U2 R' U2 R' F2 R2 U2 L'",
+        "L U2 R2 F2 R U2 R U2 R2 F2 L' R2",
+        "R' F2 R2 U2 L' U2 L R2 F2 R2 U2 R'",
+        "R' F2 R2 U2 R' F2 L' U2 L2 F2 L'",
+        "L' U2 L R U2 R' F2 L F2 L2 U2 L"
+      ],
+      "nodes": 10853992,
+      "ms": 943
+    },
+    "coll-01231122": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F U2 F2 U' F2 U' F2 U2 F",
+      "friendly": [],
+      "nodes": 137,
+      "ms": 0
+    },
+    "coll-01321122": {
+      "main": 12,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R B2 L2 D L2 U L' D' L U' B2 R'",
+      "friendly": [],
+      "nodes": 972878,
+      "ms": 85
+    },
+    "coll-01321221": {
+      "main": 12,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "L F2 U' F2 U F2 U L' R U2 R'",
+      "friendly": [],
+      "nodes": 577345,
+      "ms": 47
+    },
+    "coll-01322112": {
+      "main": 13,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R U' L' U R' U L U L' U L",
+      "friendly": [
+        "L U' R' U L' U R U R' U R",
+        "L' U R U' L U' R' U' R U' R'",
+        "R U' L' U R' U L U L' U L",
+        "R' U L U' R U' L' U' L U' L'"
+      ],
+      "nodes": 252576,
+      "ms": 21
+    },
+    "coll-01322211": {
+      "main": 12,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R' F2 L2 D' L2 U' L D L' U F2 R",
+      "friendly": [],
+      "nodes": 1178258,
+      "ms": 111
+    },
+    "coll-03211122": {
+      "main": 13,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "F L' U' F2 L U' L' U F2 U L F'",
+      "friendly": [],
+      "nodes": 3632079,
+      "ms": 310
+    },
+    "coll-01230012": {
+      "main": 13,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R F' L2 B2 L' D L D' B2 L2 F R'",
+      "friendly": [],
+      "nodes": 2328957,
+      "ms": 222
+    },
+    "coll-01320012": {
+      "main": 14,
+      "optimum": 13,
+      "atLeast": 13,
+      "optimal": "R U R' B' R2 D R' U' R D' R2 U B",
+      "friendly": [],
+      "nodes": 37369707,
+      "ms": 3100
+    },
+    "coll-01320120": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R2 D' R U2 R' D R U2 R",
+      "friendly": [],
+      "nodes": 261,
+      "ms": 1
+    },
+    "coll-01321200": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F2 L2 F' R2 F L2 F' R2 F'",
+      "friendly": [
+        "F2 L2 F' R2 F L2 F' R2 F'",
+        "F2 R2 F L2 F' R2 F L2 F"
+      ],
+      "nodes": 2901,
+      "ms": 0
+    },
+    "coll-01322001": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R2 D R' U2 R D' R' U2 R'",
+      "friendly": [],
+      "nodes": 304,
+      "ms": 0
+    },
+    "coll-03210012": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F U2 F' R' U F U F' U' R",
+      "friendly": [],
+      "nodes": 887534,
+      "ms": 62
+    },
+    "coll-01230021": {
+      "main": 13,
+      "optimum": 12,
+      "atLeast": 12,
+      "optimal": "R B R' B2 L U2 L' U2 B R' U2 R",
+      "friendly": [],
+      "nodes": 2661103,
+      "ms": 220
+    },
+    "coll-01320021": {
+      "main": 11,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F U' F' U2 B F U' F' U B'",
+      "friendly": [],
+      "nodes": 37397,
+      "ms": 3
+    },
+    "coll-01320210": {
+      "main": 8,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "R' F' R B' R' F R B",
+      "friendly": [],
+      "nodes": 3868,
+      "ms": 0
+    },
+    "coll-01321002": {
+      "main": 9,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "R B R' F R B' R' F'",
+      "friendly": [],
+      "nodes": 5099,
+      "ms": 0
+    },
+    "coll-01322100": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "L F2 L B2 L' F2 L B2 L2",
+      "friendly": [
+        "F R2 F L2 F' R2 F L2 F2",
+        "F' L2 F' R2 F L2 F' R2 F2"
+      ],
+      "nodes": 4325,
+      "ms": 1
+    },
+    "coll-03210021": {
+      "main": 12,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "F U' F2 D' B L2 B' D F2 U F'",
+      "friendly": [],
+      "nodes": 259577,
+      "ms": 18
+    },
+    "coll-01230102": {
+      "main": 15,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R F' D2 F R' U2 R F' D2 F R'",
+      "friendly": [
+        "F' R D2 R' F U2 F' R D2 R' F",
+        "R F' D2 F R' U2 R F' D2 F R'",
+        "F L' D2 L F' U2 F L' D2 L F'",
+        "L' F D2 F' L U2 L' F D2 F' L"
+      ],
+      "nodes": 4569376,
+      "ms": 376
+    },
+    "coll-01320102": {
+      "main": 9,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "R' F' L' F R F' L F",
+      "friendly": [],
+      "nodes": 4847,
+      "ms": 0
+    },
+    "coll-01320201": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "F' U2 F' D' F U2 F' D F2",
+      "friendly": [
+        "R' U2 R' D' R U2 R' D R2",
+        "F' U2 F' D' F U2 F' D F2",
+        "L' U2 L' D' L U2 L' D L2",
+        "R' U2 R' D' L F2 L' D R2"
+      ],
+      "nodes": 1959,
+      "ms": 0
+    },
+    "coll-01321020": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "B U2 B D F' L2 F D' B2",
+      "friendly": [
+        "R U2 R D R' U2 R D' R2",
+        "F U2 F D F' U2 F D' F2",
+        "L U2 L D L' U2 L D' L2",
+        "L U2 L D R' F2 R D' L2"
+      ],
+      "nodes": 2366,
+      "ms": 0
+    },
+    "coll-01322010": {
+      "main": 8,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "R B L B' R' B L' B'",
+      "friendly": [],
+      "nodes": 4654,
+      "ms": 0
+    },
+    "coll-03210102": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R B2 L2 D L D' L B2 R'",
+      "friendly": [
+        "L F2 R' D R' D' R2 F2 L'",
+        "L F2 R2 D R D' R F2 L'",
+        "R' F2 L D' L D L2 F2 R",
+        "R' F2 L2 D' L' D L' F2 R"
+      ],
+      "nodes": 4856,
+      "ms": 1
+    },
+    "coll-01230222": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R' U2 R U R' U R",
+      "friendly": [],
+      "nodes": 64,
+      "ms": 0
+    },
+    "coll-01320222": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F' U2 F U L F' U F U' L'",
+      "friendly": [],
+      "nodes": 39275,
+      "ms": 3
+    },
+    "coll-01322022": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R' U' F U F' R U F U2 F'",
+      "friendly": [],
+      "nodes": 24773,
+      "ms": 1
+    },
+    "coll-01322202": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "B L' U2 L B' L' B U2 B' L",
+      "friendly": [],
+      "nodes": 27723,
+      "ms": 3
+    },
+    "coll-01322220": {
+      "main": 10,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R U' L' U R' U' L",
+      "friendly": [
+        "L U' R' U L' U' R",
+        "R U' L' U R' U' L"
+      ],
+      "nodes": 5551,
+      "ms": 0
+    },
+    "coll-03210222": {
+      "main": 13,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R2 U2 R' D' L F2 L' D R2 U' R",
+      "friendly": [
+        "R U R' U L' U R U' L U2 R'",
+        "R' U2 L U' R U L' U R' U R",
+        "L U L' U R' U L U' R U2 L'",
+        "L' U2 R U' L U R' U L' U L",
+        "R2 U2 R' D' L F2 L' D R2 U' R",
+        "L U' L2 D R' F2 R D' L' U2 L2"
+      ],
+      "nodes": 491980,
+      "ms": 35
+    },
+    "coll-01230111": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "F U2 F' U' F U' F'",
+      "friendly": [],
+      "nodes": 212,
+      "ms": 0
+    },
+    "coll-01320111": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "R U B' U' B R' U' B' U2 B",
+      "friendly": [],
+      "nodes": 20962,
+      "ms": 2
+    },
+    "coll-01321011": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "B U2 B' U2 F' U B U' B' F",
+      "friendly": [],
+      "nodes": 67281,
+      "ms": 4
+    },
+    "coll-01321101": {
+      "main": 10,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R' U L U' R U L'",
+      "friendly": [
+        "L' U R U' L U R'",
+        "R' U L U' R U L'"
+      ],
+      "nodes": 5549,
+      "ms": 1
+    },
+    "coll-01321110": {
+      "main": 10,
+      "optimum": 10,
+      "atLeast": 10,
+      "optimal": "F' L U2 L' F L F' U2 F L'",
+      "friendly": [],
+      "nodes": 20340,
+      "ms": 1
+    },
+    "coll-03210111": {
+      "main": 13,
+      "optimum": 11,
+      "atLeast": 11,
+      "optimal": "R' U R2 D' L F2 L' D R U2 R2",
+      "friendly": [
+        "R U2 L' U R' U' L U' R U' R'",
+        "R' U' R U' L U' R' U L' U2 R",
+        "L U2 R' U L' U' R U' L U' L'",
+        "L' U' L U' R U' L' U R' U2 L",
+        "R' U R2 D' L F2 L' D R U2 R2",
+        "L2 U2 L D R' F2 R D' L2 U L'"
+      ],
+      "nodes": 501260,
+      "ms": 35
+    }
+  },
+  "f2l": {
+    "f2l-0000": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R2 U2 R' U' R U' R2",
+      "friendly": [],
+      "nodes": 23296,
+      "ms": 6
+    },
+    "f2l-0001": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "F' U2 F U F' U' F",
+      "friendly": [],
+      "nodes": 6342,
+      "ms": 1
+    },
+    "f2l-0010": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R U2 R' U' R U R'",
+      "friendly": [],
+      "nodes": 4983,
+      "ms": 1
+    },
+    "f2l-0011": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R B U B2 R B R2",
+      "friendly": [],
+      "nodes": 20229,
+      "ms": 2
+    },
+    "f2l-0020": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R U B' R B R2",
+      "friendly": [],
+      "nodes": 1618,
+      "ms": 0
+    },
+    "f2l-0021": {
+      "main": 6,
+      "optimum": 5,
+      "atLeast": 5,
+      "optimal": "F' L' U2 L F",
+      "friendly": [],
+      "nodes": 122,
+      "ms": 0
+    },
+    "f2l-0030": {
+      "main": 7,
+      "optimum": 5,
+      "atLeast": 5,
+      "optimal": "R B U2 B' R'",
+      "friendly": [],
+      "nodes": 300,
+      "ms": 0
+    },
+    "f2l-0031": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "F' U2 F2 R' F' R",
+      "friendly": [],
+      "nodes": 3401,
+      "ms": 0
+    },
+    "f2l-0100": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R U' B U2 B' U2 R'",
+      "friendly": [],
+      "nodes": 13408,
+      "ms": 1
+    },
+    "f2l-0101": {
+      "main": 3,
+      "optimum": 3,
+      "atLeast": 3,
+      "optimal": "F' U2 F",
+      "friendly": [],
+      "nodes": 52,
+      "ms": 0
+    },
+    "f2l-0110": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R2 U R' U R U2 R2",
+      "friendly": [],
+      "nodes": 29730,
+      "ms": 2
+    },
+    "f2l-0111": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R U' R' U2 F' U' F",
+      "friendly": [],
+      "nodes": 19007,
+      "ms": 1
+    },
+    "f2l-0120": {
+      "main": 3,
+      "optimum": 3,
+      "atLeast": 3,
+      "optimal": "R U R'",
+      "friendly": [],
+      "nodes": 25,
+      "ms": 0
+    },
+    "f2l-0121": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R2 U2 F R2 F' U2 R2",
+      "friendly": [],
+      "nodes": 14325,
+      "ms": 1
+    },
+    "f2l-0130": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "F2 U' L' U L F2",
+      "friendly": [],
+      "nodes": 4848,
+      "ms": 0
+    },
+    "f2l-0131": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R2 B U B' U' R2",
+      "friendly": [],
+      "nodes": 3501,
+      "ms": 1
+    },
+    "f2l-0200": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R U2 B U B' U R'",
+      "friendly": [],
+      "nodes": 18715,
+      "ms": 1
+    },
+    "f2l-0201": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "F2 D' F U' F' D F2",
+      "friendly": [],
+      "nodes": 22547,
+      "ms": 1
+    },
+    "f2l-0210": {
+      "main": 3,
+      "optimum": 3,
+      "atLeast": 3,
+      "optimal": "R U' R'",
+      "friendly": [],
+      "nodes": 46,
+      "ms": 0
+    },
+    "f2l-0211": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "F U2 F2 U' F2 U' F'",
+      "friendly": [],
+      "nodes": 13364,
+      "ms": 1
+    },
+    "f2l-0220": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "F2 L' U' L U F2",
+      "friendly": [],
+      "nodes": 3702,
+      "ms": 0
+    },
+    "f2l-0221": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R2 U B U' B' R2",
+      "friendly": [],
+      "nodes": 3522,
+      "ms": 1
+    },
+    "f2l-0230": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R U B U2 B' U R'",
+      "friendly": [],
+      "nodes": 13717,
+      "ms": 0
+    },
+    "f2l-0231": {
+      "main": 3,
+      "optimum": 3,
+      "atLeast": 3,
+      "optimal": "F' U' F",
+      "friendly": [],
+      "nodes": 33,
+      "ms": 1
+    },
+    "f2l-0080": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R2 U R2 U R2 U2 R2",
+      "friendly": [],
+      "nodes": 17353,
+      "ms": 1
+    },
+    "f2l-0081": {
+      "main": 6,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R U' R' F' U2 F",
+      "friendly": [],
+      "nodes": 243,
+      "ms": 0
+    },
+    "f2l-0180": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R U2 B U2 B' R'",
+      "friendly": [],
+      "nodes": 19615,
+      "ms": 1
+    },
+    "f2l-0181": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "F' U' F U' R U R'",
+      "friendly": [],
+      "nodes": 6668,
+      "ms": 1
+    },
+    "f2l-0280": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R B U2 B' U2 R'",
+      "friendly": [],
+      "nodes": 28463,
+      "ms": 1
+    },
+    "f2l-0281": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R U R' U2 F' U2 F",
+      "friendly": [],
+      "nodes": 9601,
+      "ms": 1
+    },
+    "f2l-4000": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "F' U2 F U2 R U R'",
+      "friendly": [],
+      "nodes": 33464,
+      "ms": 2
+    },
+    "f2l-4001": {
+      "main": 7,
+      "optimum": 7,
+      "atLeast": 7,
+      "optimal": "R' U2 B' R B U2 R",
+      "friendly": [],
+      "nodes": 29432,
+      "ms": 2
+    },
+    "f2l-4100": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R B U2 B' U R'",
+      "friendly": [],
+      "nodes": 1288,
+      "ms": 0
+    },
+    "f2l-4101": {
+      "main": 6,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R' F R F2 U' F",
+      "friendly": [],
+      "nodes": 407,
+      "ms": 0
+    },
+    "f2l-4200": {
+      "main": 7,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R2 B' R' B U2 R'",
+      "friendly": [],
+      "nodes": 633,
+      "ms": 0
+    },
+    "f2l-4201": {
+      "main": 6,
+      "optimum": 6,
+      "atLeast": 6,
+      "optimal": "R U2 R' F' U2 F",
+      "friendly": [],
+      "nodes": 62,
+      "ms": 0
+    },
+    "f2l-4081": {
+      "main": 11,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R U' R U2 F R2 F' U2 R2",
+      "friendly": [
+        "R U' R U2 F R2 F' U2 R2",
+        "R2 U2 F R2 F' U2 R' U R'",
+        "F' U F' U2 R' F2 R U2 F2",
+        "F2 U2 R' F2 R U2 F U' F"
+      ],
+      "nodes": 555138,
+      "ms": 42
+    },
+    "f2l-4180": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R U2 R U2 F R F' U2 R2",
+      "friendly": [],
+      "nodes": 667469,
+      "ms": 44
+    },
+    "f2l-4181": {
+      "main": 10,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "R U2 B U B2 R B R2",
+      "friendly": [
+        "F2 L' U' L U F U' F",
+        "F' L' U2 L F R U R'",
+        "F2 L F L2 U L U2 F"
+      ],
+      "nodes": 51322,
+      "ms": 3
+    },
+    "f2l-4280": {
+      "main": 9,
+      "optimum": 9,
+      "atLeast": 9,
+      "optimal": "R U2 R U R' U R U2 R2",
+      "friendly": [],
+      "nodes": 667858,
+      "ms": 53
+    },
+    "f2l-4281": {
+      "main": 10,
+      "optimum": 8,
+      "atLeast": 8,
+      "optimal": "R U' R' F' L' U2 L F",
+      "friendly": [
+        "F' U F' U' L' U L F2",
+        "R U' R' F' L' U2 L F",
+        "F' U2 L' U' L2 F' L' F2"
+      ],
+      "nodes": 53884,
+      "ms": 2
+    }
+  }
+}

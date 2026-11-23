@@ -6,7 +6,7 @@ import {
   formatMultiValue,
   formatTime,
 } from "@cubehaus/core";
-import type { ProgressScope } from "@cubehaus/storage";
+import type { ColourSeries, ProgressScope } from "@cubehaus/storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppView } from "../app-state";
 import { localDayKey } from "../day";
@@ -23,6 +23,7 @@ import {
 } from "../progress-memory";
 import { createProgressReader, type ProgressModel } from "../progress-worker";
 import type { Text } from "../text";
+import { ProgressColours } from "./ProgressColours";
 import { ProgressDistribution } from "./ProgressDistribution";
 import { ProgressPractice } from "./ProgressPractice";
 import { ProgressTarget } from "./ProgressTarget";
@@ -218,6 +219,31 @@ export function Progress({
       window.removeEventListener("keydown", close);
     };
   }, [view.keymap]);
+
+  // 3×3 by cross colour: only the solves that were assigned one (none: nothing shown).
+  const store =
+    db?.kind === "memory" || db?.kind === "persistent" ? db.store : undefined;
+  const [colours, setColours] = useState<{
+    request: object;
+    series: ColourSeries;
+  }>();
+  useEffect(() => {
+    if (!store || !request.scope || request.scope.event !== "333") return;
+    let stale = false;
+    void store.solves.colourSeries(request.scope).then(
+      (series) => {
+        if (!stale) setColours({ request, series });
+      },
+      () => {},
+    );
+    return () => {
+      stale = true;
+    };
+  }, [store, request]);
+  const colourSeries =
+    colours?.request === request && colours.series.colours.length > 0
+      ? colours.series
+      : null;
 
   const result = loaded?.request === request ? loaded : undefined;
   const details = result?.model;
@@ -516,6 +542,9 @@ export function Progress({
                 </div>
               ))}
             </dl>
+          )}
+          {colourSeries && (
+            <ProgressColours series={colourSeries} words={text} />
           )}
           <ProgressPractice
             days={details.days}

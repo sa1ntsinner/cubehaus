@@ -1,3 +1,4 @@
+import type { CrossColour } from "./cross-colour";
 import type { EventId } from "./events";
 
 export type Penalty = "ok" | "plus2" | "dnf";
@@ -19,6 +20,8 @@ export interface Solve {
   solution?: string | null;
   cubesSolved?: number | null;
   cubesAttempted?: number | null;
+  /** 3×3: the colour the cross was built on, when the app assigned one (schema 9). */
+  crossColour?: CrossColour | null;
   /**
    * A further attempt on the scramble of an earlier solve: that solve's id. A repeat is
    * stored apart and never counts in the session's statistics.

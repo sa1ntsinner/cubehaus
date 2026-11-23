@@ -81,7 +81,7 @@ function flipIndex(s: Full): number {
   return index;
 }
 
-type Tables = {
+export type Tables = {
   moves: Full[];
   corner: Uint8Array;
   edge: Uint8Array;
@@ -312,6 +312,18 @@ export function searchLL(
   top: LastLayer,
   options: { maxDepth: number; extra: number; limit: number },
 ): string[] {
+  return searchFrom(t, startOf(top), options);
+}
+
+/**
+ * searchLL from any state R, U and F reach: the same goal and bounds. With `startU` an
+ * algorithm may begin with U (where the case is held fixed and no AUF comes before).
+ */
+export function searchFrom(
+  t: Tables,
+  start: Full,
+  options: { maxDepth: number; extra: number; limit: number; startU?: boolean },
+): string[] {
   const found: string[] = [];
   const path: number[] = [];
   const bound = (s: Full) =>
@@ -320,7 +332,6 @@ export function searchLL(
       t.edge[edgeIndex(s)] as number,
       t.flip[flipIndex(s)] as number,
     );
-  const start = startOf(top);
   let first = -1;
   const dfs = (s: Full, depth: number, lastFace: number): void => {
     if (found.length >= options.limit) return;
@@ -335,7 +346,7 @@ export function searchLL(
     for (let m = 0; m < MOVES.length; m++) {
       const face = Math.floor(m / 3);
       if (face === lastFace) continue;
-      if (path.length === 0 && face === 1) continue;
+      if (path.length === 0 && face === 1 && !options.startU) continue;
       path.push(m);
       dfs(apply(s, t.moves[m] as Full), depth - 1, face);
       path.pop();

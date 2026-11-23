@@ -144,7 +144,7 @@
 }
 
 /* ---- the drill line under the scramble: what is drilled, its change and its cross ---- */
-main > [data-part="drill"] {
+main > :is([data-part="drill"], [data-part="cross"]) {
   grid-column: 2;
   grid-row: 2;
   align-self: start;
@@ -182,23 +182,127 @@ main > [data-part="drill"] button:hover {
   color: var(--dim);
 }
 /* The free row above the time is at least as tall as the drill line and its answer, so
-   a short window pushes the time down rather than under them. */
-main[data-timer-surface]:has(> [data-part="drill"]),
-main:has(> [data-part="scramble"]):has(> [data-part="drill"]) {
-  grid-template-rows:
-    auto minmax(min-content, 1fr) auto auto auto minmax(0, 1fr)
-    auto;
+   a short window pushes the time down rather than under them. Its floor is the items'
+   minimum (auto), not their min-content: the file spans this row too, and a long file's
+   min-content would take the whole window. */
+main[data-timer-surface]:has(> :is([data-part="drill"], [data-part="cross"])),
+main:has(> [data-part="scramble"]):has(
+  > :is([data-part="drill"], [data-part="cross"])
+) {
+  grid-template-rows: auto minmax(auto, 1fr) auto auto auto minmax(0, 1fr) auto;
 }
 @media (max-width: 699px) {
-  main > [data-part="drill"] {
+  main > :is([data-part="drill"], [data-part="cross"]) {
     grid-column: 1;
     grid-row: 3;
   }
   /* The same on a phone, where the free row is the third. */
-  main[data-timer-surface]:has(> [data-part="drill"]),
-  main:has(> [data-part="scramble"]):has(> [data-part="drill"]) {
+  main[data-timer-surface]:has(> :is([data-part="drill"], [data-part="cross"])),
+  main:has(> [data-part="scramble"]):has(
+    > :is([data-part="drill"], [data-part="cross"])
+  ) {
     grid-template-rows:
       auto auto minmax(min-content, 1fr) auto auto auto minmax(min-content, 3fr)
       auto auto;
   }
+}
+
+/* ---- the cross colour (DESIGN.md section 11, Cross colour): one mark by the scramble, a
+   swatch drawn as a sticker on the cube's core and the colour's name, which stays through
+   inspection when the drill's words have gone ---- */
+[data-part="cross-mark"] {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+  color: var(--ink);
+  white-space: nowrap;
+}
+[data-part="cross-swatch"] {
+  flex: none;
+  align-self: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--c, var(--pz-grey));
+  box-shadow: 0 0 0 1.5px var(--pz-body);
+}
+[data-part="cross-swatch"][data-face="U"] {
+  --c: var(--pz-U);
+}
+[data-part="cross-swatch"][data-face="D"] {
+  --c: var(--pz-D);
+}
+[data-part="cross-swatch"][data-face="F"] {
+  --c: var(--pz-F);
+}
+[data-part="cross-swatch"][data-face="B"] {
+  --c: var(--pz-B);
+}
+[data-part="cross-swatch"][data-face="R"] {
+  --c: var(--pz-R);
+}
+[data-part="cross-swatch"][data-face="L"] {
+  --c: var(--pz-L);
+}
+/* The mark and the drill's words on one line: the mark leads, the words follow it. */
+main > [data-part="drill"] > [data-part="cross-mark"] {
+  margin-inline-end: var(--s2);
+}
+
+/* Choosing the cross: in inspection, one word per colour in play with its sticker and,
+   with a keyboard, its key; after the pick, every colour's shortest cross. */
+[data-part="cross-choice"] {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: var(--s4);
+}
+main > [data-part="drill"] [data-action="cross-pick"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  font: 500 15px var(--font-ui);
+  color: var(--ink);
+  text-decoration: none;
+}
+[data-action="cross-pick"] > kbd {
+  font: 500 13px var(--font-mono);
+  color: var(--gutter);
+}
+@media (hover: none), (pointer: coarse) {
+  [data-action="cross-pick"] > kbd[data-input="keys"] {
+    display: none;
+  }
+}
+/* Narrow: opposite colours share a column (white over yellow), so the words make even
+   rows and no colour stands alone on a line. */
+@media (max-width: 699px) {
+  [data-part="cross-choice"] {
+    display: inline-grid;
+    grid-template-rows: repeat(2, auto);
+    grid-auto-flow: column;
+    justify-items: start;
+  }
+}
+[data-part="choice-result"] {
+  flex-basis: 100%;
+  font: 500 15px var(--font-mono);
+  color: var(--gutter);
+}
+/* The pick is underlined, so it reads apart from the shortest even when it is one. */
+[data-part="choice-result"] > [data-picked] {
+  color: var(--ink);
+  text-decoration: underline 1px;
+  text-underline-offset: 4px;
+}
+[data-part="choice-result"] > [data-shortest] {
+  color: var(--pb);
+}
+[data-part="choice-over"] {
+  margin-inline-start: 1ch;
+  color: color-mix(in srgb, var(--warn) 75%, var(--dim));
+}
+[data-part="choice-result"][data-near] > [data-part="choice-over"] {
+  color: var(--pb);
 }

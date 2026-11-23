@@ -12,21 +12,30 @@ import { F2L } from "./data/f2l";
 import { F2L_BACK } from "./data/f2l-back";
 import { F2L_BACK_LEFT } from "./data/f2l-back-left";
 import { F2L_LEFT } from "./data/f2l-left";
+import { LS_FRONT } from "./data/ls-front";
+import { LS_RIGHT } from "./data/ls-right";
 import { OLL } from "./data/oll";
 import { PLL } from "./data/pll";
+import { TWO_ADJ } from "./data/two-adj";
 import { TWO_CLL } from "./data/two-cll";
+import { TWO_DIAG } from "./data/two-diag";
 import { TWO_OLL } from "./data/two-oll";
 import { TWO_PBL } from "./data/two-pbl";
 import { applyTwo, twoStickers } from "./two";
 import { stateFromKey } from "./two-cases";
-import type { SetId, TrainerCaseData } from "./types";
+import type { LastSlotSetId, SetId, TrainerCaseData } from "./types";
 
 /**
  * The trainer's sets at run time: verified algorithms, pictures and explanations, with no
  * cube library behind them.
  */
 export type { Metrics } from "./metrics";
-export type { SetId, TrainerCaseData, TwoSetId } from "./types";
+export type {
+  LastSlotSetId,
+  SetId,
+  TrainerCaseData,
+  TwoSetId,
+} from "./types";
 
 const SETS: Record<SetId, readonly TrainerCaseData[]> = {
   pll: PLL,
@@ -39,6 +48,42 @@ const SETS: Record<SetId, readonly TrainerCaseData[]> = {
   "two-oll": TWO_OLL,
   "two-pbl": TWO_PBL,
   "two-cll": TWO_CLL,
+  "two-adj": TWO_ADJ,
+  "two-diag": TWO_DIAG,
+  "ls-right": LS_RIGHT,
+  "ls-front": LS_FRONT,
+};
+
+/**
+ * Names for the sets whose common names say little: the 2×2's top in one go with the
+ * bottom's pieces swapped side by side or across. `short` fits the sets row.
+ */
+export const SET_NAMES: Partial<
+  Record<
+    SetId | LastSlotSetId,
+    { short: { en: string; ru: string }; en: string; ru: string }
+  >
+> = {
+  "two-adj": {
+    short: { en: "Adj", ru: "Сосед" },
+    en: "Top in one go, bottom pieces swapped side by side",
+    ru: "Верх за раз, внизу обмен соседних",
+  },
+  "ls-right": {
+    short: { en: "LS-R", ru: "LS-R" },
+    en: "Last slot: insert the joined pair with R U' R', orient the corners",
+    ru: "Последний слот: вставка пары R U' R' с ориентацией углов",
+  },
+  "ls-front": {
+    short: { en: "LS-F", ru: "LS-F" },
+    en: "Last slot: insert the joined pair with F' U F, orient the corners",
+    ru: "Последний слот: вставка пары F' U F с ориентацией углов",
+  },
+  "two-diag": {
+    short: { en: "Diag", ru: "Диаг" },
+    en: "Top in one go, bottom pieces swapped across",
+    ru: "Верх за раз, внизу обмен по диагонали",
+  },
 };
 
 /** The puzzle a set is for. */
@@ -59,6 +104,38 @@ export function trainerSet(id: SetId): readonly TrainerCaseData[] {
 }
 
 /**
+ * The last-slot sets (last-slot.ts), typed with what every case carries: its pictures and
+ * eight drill scrambles; `generateTraining({ kind: set, caseIds })` makes more.
+ */
+export function lastSlotSet(id: LastSlotSetId): readonly (TrainerCaseData & {
+  scrambles: readonly string[];
+  pictures: { top: string; slot: string };
+})[] {
+  return id === "ls-right" ? LS_RIGHT : LS_FRONT;
+}
+
+/** The U places (0–8) of each top-row sticker of the 21-letter picture, F R B L. */
+const ROW_PLACES = [6, 7, 8, 8, 5, 2, 2, 1, 0, 0, 3, 6];
+
+/**
+ * A last-slot case's top as the person reads it: the pair's stickers in their colours,
+ * every other last-layer sticker the top colour (`U`) or saying nothing (`x`), since only
+ * the corners' twists tell the cases apart. 21 letters, as the OLL pictures. The pair is
+ * where the slot picture shows a top place in a colour that is not the top's.
+ */
+export function lastSlotTop(c: TrainerCaseData): string {
+  const top = c.pictures?.top ?? "";
+  const slot = c.pictures?.slot ?? "";
+  const pair = (place: number) => !/[Ux]/.test(slot[place] ?? "U");
+  return [...top]
+    .map((letter, i) => {
+      const place = i < 9 ? i : (ROW_PLACES[i - 9] as number);
+      return pair(place) || letter === "U" ? letter : "x";
+    })
+    .join("");
+}
+
+/**
  * The case's picture after `turns` U turns (an AUF before the algorithm): 21 letters for a
  * last-layer case (last-layer-cases.ts), 27 for an F2L case (f2l-state.ts), drawn from
  * above its slot's corner. A left slot's case is drawn mirrored, where a U turn is the
@@ -67,12 +144,13 @@ export function trainerSet(id: SetId): readonly TrainerCaseData[] {
 export function pictureOf(c: TrainerCaseData, turns = 0): string {
   if (c.id.startsWith("two-")) {
     const n = ((turns % 4) + 4) % 4;
-    // PBL shows both layers' sides; the others the top layer's.
+    // PBL and the bottom swaps show both layers' sides; the others the top layer's.
     return twoStickers(
       applyTwo(stateFromKey(c.state), ["", "U", "U2", "U'"][n] as string),
-      c.id.startsWith("two-pbl-"),
+      /^two-(pbl|adj|diag)-/.test(c.id),
     );
   }
+  if (c.pictures) return turnPicture(c.pictures.top, turns);
   const slot = slotOf(c.id);
   if (slot)
     return slotStickers(
@@ -91,6 +169,18 @@ export {
   slotMirrored,
 } from "@cubehaus/scramble/f2l-state";
 export { type Arrow, pllArrows } from "./arrows";
+export {
+  type F2lFacing,
+  type F2lFacts,
+  type F2lPlace,
+  type F2lSection,
+  type F2lSetId,
+  type F2lWhere,
+  f2lFacts,
+  f2lGroups,
+  f2lOrder,
+  f2lSections,
+} from "./f2l-order";
 export { lookalikes } from "./lookalike";
 export {
   type ReviewCounts,
@@ -119,3 +209,20 @@ export {
   recolour,
   turnScramble,
 } from "./show";
+
+/**
+ * A 21-letter top picture after `turns` U turns of the cube: the U face's stickers turn a
+ * quarter clockwise each time, and each side's top row moves to the side on its left as
+ * seen from above (F's to L, R's to F).
+ */
+export function turnPicture(picture: string, turns: number): string {
+  let p = picture;
+  for (let k = ((turns % 4) + 4) % 4; k > 0; k--) {
+    const u = [...p.slice(0, 9)];
+    const turned = [6, 3, 0, 7, 4, 1, 8, 5, 2].map((i) => u[i]).join("");
+    const row = (side: number) => p.slice(9 + side * 3, 12 + side * 3);
+    // Sides F R B L: after U, F shows R's row, R shows B's, B shows L's, L shows F's.
+    p = turned + row(1) + row(2) + row(3) + row(0);
+  }
+  return p;
+}

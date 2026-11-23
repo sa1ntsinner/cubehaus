@@ -1,4 +1,9 @@
-import { eventInfo } from "@cubehaus/core";
+import {
+  CROSS_COLOURS,
+  type CrossColour,
+  eventInfo,
+  faceOfCrossColour,
+} from "@cubehaus/core";
 import { type FaceLetter, frontsFor } from "@cubehaus/cube/holding";
 import { eventOfScrType } from "@cubehaus/importers";
 import {
@@ -30,7 +35,7 @@ import { isMacPlatform, keyLabel } from "../keys/label";
 import { drillName } from "../scramble/training-client";
 import { slotKey } from "../session-stats";
 import { eventNamed } from "../session-switch";
-import { isLayout, type Settings as Values } from "../settings";
+import { coloursInPlay, isLayout, type Settings as Values } from "../settings";
 import type { Text } from "../text";
 import { isThemeChoice } from "../theme";
 import {
@@ -334,13 +339,17 @@ export function Settings({
       setBusy(false);
     }
   }
-  async function saveExport(format: keyof typeof exportFormats) {
+  /** Another timer's file: every session, or only the open one. */
+  async function saveExport(
+    format: keyof typeof exportFormats,
+    sessionId?: string,
+  ) {
     const { kind, extension, type } = exportFormats[format];
     setBusy(true);
     setPreview(null);
     setResult("");
     try {
-      const saved = await app.exportFile(format);
+      const saved = await app.exportFile(format, sessionId);
       download(backupFileName(new Date(), kind, extension), saved.text, type);
       setResult(t.exported(saved));
     } catch {
@@ -467,6 +476,24 @@ export function Settings({
     const name = words.drill.colour[face];
     return name.charAt(0).toUpperCase() + name.slice(1);
   };
+  // The colours in play: at least one; the colour held at the bottom and its opposite
+  // are stored as none chosen, so they follow the colours held.
+  const inPlay = coloursInPlay(values);
+  const toggleColour = (colour: CrossColour) => {
+    const on = inPlay.includes(colour);
+    if (on && inPlay.length === 1) return;
+    const next = CROSS_COLOURS.filter((each) =>
+      each === colour ? !on : inPlay.includes(each),
+    );
+    const own = coloursInPlay({ holding: values.holding, crossColours: null });
+    set(
+      "crossColours",
+      next.length === own.length && own.every((each) => next.includes(each))
+        ? null
+        : next,
+      true,
+    );
+  };
   const row = (
     key: string,
     label: string,
@@ -543,6 +570,52 @@ export function Settings({
                 {words.drill.change}
               </a>
             </span>
+          </li>
+        )}
+        {session?.event === "333" &&
+          row("cross", t.cross, (id) => (
+            <select
+              id={id}
+              value={values.cross}
+              disabled={!enabled}
+              onChange={(e) =>
+                set(
+                  "cross",
+                  e.currentTarget.value === "assigned" ? "assigned" : "any",
+                  true,
+                )
+              }
+            >
+              <option value="any">{t.crossChoices.any}</option>
+              <option value="assigned">{t.crossChoices.assigned}</option>
+            </select>
+          ))}
+        {session?.event === "333" && values.cross === "assigned" && (
+          <li data-setting="crossColours">
+            <span id="setting-crossColours">{t.crossColours}</span>{" "}
+            <fieldset
+              data-part="cross-colours"
+              aria-labelledby="setting-crossColours"
+            >
+              {CROSS_COLOURS.map((colour) => (
+                <button
+                  key={colour}
+                  type="button"
+                  data-action="cross-colour"
+                  data-colour={colour}
+                  aria-pressed={inPlay.includes(colour)}
+                  disabled={!enabled}
+                  onClick={() => toggleColour(colour)}
+                >
+                  <span
+                    data-part="cross-swatch"
+                    data-face={faceOfCrossColour(colour)}
+                    aria-hidden="true"
+                  />
+                  {words.cross.name[colour]}
+                </button>
+              ))}
+            </fieldset>
           </li>
         )}
         {row("calls", t.calls, (id) => (
@@ -879,25 +952,45 @@ export function Settings({
         </li>
         <li data-setting="export-cstimer">
           <span>{t.exportCsTimer}</span>{" "}
-          <button
-            type="button"
-            data-action="export-cstimer"
-            disabled={!exportEnabled || busy}
-            onClick={() => void saveExport("cstimer")}
-          >
-            {t.backupSave}
-          </button>
+          <span data-part="export-choice">
+            <button
+              type="button"
+              data-action="export-cstimer-session"
+              disabled={!exportEnabled || busy || !view.current}
+              onClick={() => void saveExport("cstimer", view.current?.id)}
+            >
+              {t.exportSession}
+            </button>
+            <button
+              type="button"
+              data-action="export-cstimer"
+              disabled={!exportEnabled || busy}
+              onClick={() => void saveExport("cstimer")}
+            >
+              {t.exportAll}
+            </button>
+          </span>
         </li>
         <li data-setting="export-csv">
           <span>{t.exportCsv}</span>{" "}
-          <button
-            type="button"
-            data-action="export-csv"
-            disabled={!exportEnabled || busy}
-            onClick={() => void saveExport("csv")}
-          >
-            {t.backupSave}
-          </button>
+          <span data-part="export-choice">
+            <button
+              type="button"
+              data-action="export-csv-session"
+              disabled={!exportEnabled || busy || !view.current}
+              onClick={() => void saveExport("csv", view.current?.id)}
+            >
+              {t.exportSession}
+            </button>
+            <button
+              type="button"
+              data-action="export-csv"
+              disabled={!exportEnabled || busy}
+              onClick={() => void saveExport("csv")}
+            >
+              {t.exportAll}
+            </button>
+          </span>
         </li>
       </ul>
       {preview && (

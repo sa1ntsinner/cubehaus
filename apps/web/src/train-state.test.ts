@@ -1,14 +1,22 @@
+import { trainerSet } from "@cubehaus/algs";
 import { expect, test } from "vitest";
+import { texts } from "./text";
 import {
+  caseLabels,
   chooseAlg,
   drillElapsed,
   drillStep,
+  FAMILIES,
+  familyOf,
   HOLD_MS,
+  learnGroups,
+  memberOf,
   myAlg,
   otherAlgs,
   parseChoices,
   setOfSlot,
   showCase,
+  storedMember,
   storedSlot,
 } from "./train-state";
 
@@ -142,4 +150,70 @@ test("F2L's four slots each open their own set, and the slot last chosen is read
   expect(storedSlot("right")).toBe("fr");
   expect(storedSlot(null)).toBe("fr");
   expect(storedSlot("nonsense")).toBe("fr");
+});
+
+test("the set row stays short: F2L, last slot and the 2×2's top in one go each stand for a family", () => {
+  expect(familyOf("f2l-back")).toBe("f2l");
+  expect(familyOf("ls-front")).toBe("ls");
+  expect(familyOf("two-adj")).toBe("two-cll");
+  expect(familyOf("two-cll")).toBe("two-cll");
+  expect(familyOf("pll")).toBe("pll");
+  expect(FAMILIES.ls.members).toEqual(["ls-right", "ls-front"]);
+  expect(FAMILIES["two-cll"].members).toEqual([
+    "two-cll",
+    "two-adj",
+    "two-diag",
+  ]);
+  // Each member is one word of the family's quiet choice, and reads back from storage.
+  expect(memberOf("ls", "front")).toBe("ls-front");
+  expect(memberOf("two-cll", "diag")).toBe("two-diag");
+  expect(storedMember("ls", "front")).toBe("front");
+  expect(storedMember("ls", "nonsense")).toBe("right");
+  expect(storedMember("two-cll", null)).toBe("solved");
+  expect(storedMember("f2l", "left")).toBe("fl");
+});
+
+test("F2L reads in the learner's order, numbered 1 to 41 in it, in four groups", () => {
+  for (const set of ["f2l", "f2l-left", "f2l-back", "f2l-back-left"] as const) {
+    const labels = caseLabels(set);
+    const groups = learnGroups(set);
+    const ids = groups?.flatMap((g) => g.ids) ?? [];
+    expect(ids.map((id) => labels.get(id))).toEqual(
+      ids.map((_, i) => `F2L ${i + 1}`),
+    );
+    // Every case once, its id as stored.
+    expect([...ids].sort()).toEqual(
+      trainerSet(set)
+        .map((c) => c.id)
+        .sort(),
+    );
+    expect(groups?.map((g) => g.en)).toEqual([
+      "Both on top",
+      "Edge in the slot",
+      "Corner in the slot",
+      "Both in the slot",
+    ]);
+  }
+  // Other sets keep their own names and one list.
+  expect(learnGroups("pll")).toBeNull();
+  expect(caseLabels("ls-right").get("ls-right-1011")).toBe(
+    trainerSet("ls-right").find((c) => c.id === "ls-right-1011")?.label,
+  );
+});
+
+test("a case whose main algorithm changed keeps the one chosen as mine, and says how many others there are", () => {
+  // PLL E: the review put a new main algorithm first and kept the three it had.
+  const e = trainerSet("pll").find((c) => c.label === "E");
+  if (!e) throw new Error("no E");
+  expect(e.algs).toHaveLength(4);
+  const before = "x' R U' R' D R U R' D' R U R' D R U' R' D' x";
+  const stored = parseChoices(JSON.stringify({ [`pll/${e.id}`]: before }));
+  expect(myAlg(e, stored, "pll").moves).toBe(before);
+  const others = otherAlgs(e, stored, "pll");
+  expect(others).toHaveLength(3);
+  expect(others[0]?.moves).toBe(e.algs[0]?.moves);
+  expect(texts.en.train.more(others.length)).toBe("3 more");
+  expect(texts.ru.train.more(others.length)).toBe("Ещё 3");
+  // Nothing chosen: the new main leads, three more.
+  expect(otherAlgs(e, {}, "pll")).toHaveLength(3);
 });

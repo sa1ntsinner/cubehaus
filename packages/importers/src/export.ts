@@ -49,15 +49,24 @@ function json(text: Value): Record<string, unknown> | undefined {
   }
 }
 
+/** What to export: every live session, or one of them. */
+export interface ExportOptions {
+  sessionId?: string;
+}
+
 /** Live sessions in their order, each with its live solves by date. */
-function sessions(source: ExportSource): Session[] {
+function sessions(source: ExportSource, options?: ExportOptions): Session[] {
   const meta = new Map<Value, Record<string, unknown> | undefined>();
   for (const row of source.tables.import_session ?? [])
     if (row.source === "cstimer" && !meta.has(row.session_id))
       meta.set(row.session_id, json(row.source_meta));
   const byId = new Map<Value, Session>();
   const list = (source.tables.session ?? [])
-    .filter((row) => row.deleted_at === null)
+    .filter(
+      (row) =>
+        row.deleted_at === null &&
+        (options?.sessionId === undefined || row.id === options.sessionId),
+    )
     .sort((a, b) => compare(a.order_key, b.order_key) || compare(a.id, b.id))
     .map((row): Session => {
       const session: Session = {
@@ -86,11 +95,14 @@ function sessions(source: ExportSource): Session[] {
  * session that came from csTimer keeps its own options and type; split times and extra
  * row items kept at import go back where they were.
  */
-export function encodeCsTimer(source: ExportSource): ExportResult {
+export function encodeCsTimer(
+  source: ExportSource,
+  options?: ExportOptions,
+): ExportResult {
   const issues: ExportIssue[] = [];
   const file: Record<string, unknown> = {};
   const sessionData: Record<string, unknown> = {};
-  sessions(source).forEach((session, index) => {
+  sessions(source, options).forEach((session, index) => {
     const n = index + 1;
     const opt = session.meta?.opt;
     const options =
@@ -171,10 +183,13 @@ function cell(value: Value): string {
  * One row per live solve, UTF-8, CRLF lines, dates in RFC 3339 UTC with milliseconds and
  * durations in whole milliseconds. Split times and source-only fields stay out.
  */
-export function encodeCsv(source: ExportSource): ExportResult {
+export function encodeCsv(
+  source: ExportSource,
+  options?: ExportOptions,
+): ExportResult {
   const issues: ExportIssue[] = [];
   const lines = [csvHeadings.join(",")];
-  for (const session of sessions(source))
+  for (const session of sessions(source, options))
     for (const row of session.solves) {
       if (row.import_extra !== null && row.import_extra !== undefined)
         issues.push({

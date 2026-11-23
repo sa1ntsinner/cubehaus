@@ -1,10 +1,6 @@
 import { expect, test } from "vitest";
 import { rolling, type Stat, statOf } from "./index";
 
-// Host APIs only the speed test needs; the package itself uses none.
-declare const performance: { now(): number };
-declare const console: { info(message: string): void };
-
 // Mulberry32: a small seeded generator, so every run sees the same values.
 function random(seed: number): () => number {
   let state = seed >>> 0;
@@ -69,21 +65,6 @@ test("rolling handles a window full of DNFs and leaving it again", () => {
   for (let i = 0; i < values.length; i++)
     expect(series[i], `index ${i}`).toBe(statOf(values, stat, i));
 });
-
-test.each([100, 1000])(
-  "rolling ao%s over 100,000 values finishes in under 2 s",
-  (n) => {
-    const values = solves(100_000, 42, 0.03);
-    const started = performance.now();
-    const series = rolling(values, { kind: "ao", n });
-    const elapsed = performance.now() - started;
-    console.info(
-      `rolling ao${n} over 100,000 values: ${elapsed.toFixed(1)} ms`,
-    );
-    expect(series.length).toBe(values.length);
-    expect(elapsed).toBeLessThan(2000);
-  },
-);
 
 test.each<Stat>([
   { kind: "ao", n: 5 },

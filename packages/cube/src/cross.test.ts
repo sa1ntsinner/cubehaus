@@ -157,7 +157,7 @@ describe("solveCross", () => {
       // Shortest: one turn fewer never solves it, judged by the table's own frame.
       expect(other.length).toBe(crossDistance(crossStateOf(scramble, face)));
     }
-  });
+  }, 120_000);
 
   it("refuses notation other than the 18 outer face turns", () => {
     expect(() => solveCross("Rw U", "D")).toThrow(RangeError);

@@ -553,3 +553,57 @@ main[data-part="progress"] > [role="alert"] {
 [data-part="progress-target-slope"][data-sign="faster"] {
   color: var(--pb);
 }
+
+/* By cross colour (DESIGN.md section 14): set as the bests are, a label in `gutter` mono
+   over a 24 px figure; the label carries the colour's sticker, the figure its average,
+   then how far it is behind the best colour, and under it that gap over time as one
+   line that falls as the colour closes in. */
+[data-part="progress-colours"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s4) var(--s7);
+  margin: var(--s7) 0 0;
+}
+[data-part="progress-colours"] dt {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--gutter);
+}
+[data-part="progress-colours"] dd {
+  margin: var(--s1) 0 0;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+[data-part="progress-colours"] data[data-empty] {
+  color: var(--gutter);
+}
+[data-part="progress-colour-gap"] {
+  margin-inline-start: var(--s2);
+  font-weight: 500;
+  font-size: 16px;
+  color: color-mix(in srgb, var(--warn) 75%, var(--dim));
+}
+[data-part="progress-colour-gap"][data-there] {
+  color: var(--dim);
+}
+[data-part="progress-colour-trend"] {
+  display: block;
+  margin-top: var(--s2);
+  overflow: visible;
+}
+[data-part="progress-colour-trend"] line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+[data-part="progress-colour-trend"] path {
+  fill: none;
+  stroke: var(--dim);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}

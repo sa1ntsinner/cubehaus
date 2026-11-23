@@ -1,6 +1,10 @@
 import type { CrossResult, Face } from "@cubehaus/cube";
 import { holdingFaces, renameTurns } from "@cubehaus/cube/holding";
-import type { TrainingBase, TrainingLL } from "@cubehaus/scramble";
+import type {
+  TrainingBase,
+  TrainingLastSlot,
+  TrainingLL,
+} from "@cubehaus/scramble";
 import type { Text } from "../text";
 
 /**
@@ -14,8 +18,9 @@ import type { Text } from "../text";
  * holds up the next one.
  */
 export type TrainingProfile =
-  | { request: TrainingBase | TrainingLL }
-  | { request: null };
+  | { request: TrainingBase | TrainingLL | TrainingLastSlot }
+  /** Official scrambles; `choice`: the drill of choosing the cross colour in inspection. */
+  | { request: null; choice?: true };
 
 export type WorkerLike = {
   postMessage(message: unknown): void;
@@ -27,17 +32,25 @@ export type WorkerLike = {
 export function drillName(
   profile: TrainingProfile,
   words: Text,
+  /** The cross colour is assigned and marked beside the line: the line leaves it out. */
+  colourless = false,
 ): string | null {
   const request = profile.request;
   const t = words.drill;
-  if (!request) return null;
+  if (!request) return isChoosing(profile) ? t.choose : null;
   switch (request.kind) {
     case "easy-cross":
-      return t.crossIn(request.length, t.colour[request.face]);
+      return colourless
+        ? t.anyCrossIn(request.length)
+        : t.crossIn(request.length, t.colour[request.face]);
     case "easy-xcross":
-      return t.xcrossIn(request.length, t.colour[request.face]);
+      return colourless
+        ? t.anyXcrossIn(request.length)
+        : t.xcrossIn(request.length, t.colour[request.face]);
     case "cross-solved":
-      return t.crossSolvedOn(t.colour[request.face]);
+      return colourless
+        ? t.anyCrossSolved
+        : t.crossSolvedOn(t.colour[request.face]);
     case "edges-only":
       return t.edgesOnly;
     case "corners-only":
@@ -50,6 +63,10 @@ export function drillName(
     case "ll":
     case "f2l":
       return t.cases(request.kind.toUpperCase(), request.caseIds.length);
+    // Drilled in the trainer only (Algorithms), never as the timer's drill.
+    case "ls-right":
+    case "ls-front":
+      return t.cases("LS", request.caseIds?.length ?? 0);
   }
 }
 
@@ -70,11 +87,20 @@ export function heldScramble(
     case "coll":
     case "ll":
     case "f2l":
+    case "ls-right":
+    case "ls-front":
     case "two-gen":
       return renameTurns(scramble, holdingFaces(holding));
     default:
       return scramble;
   }
+}
+
+/** The drill of choosing the cross colour: official scrambles, inspection, a colour key. */
+export function isChoosing(profile: TrainingProfile): boolean {
+  return (
+    profile.request === null && "choice" in profile && profile.choice === true
+  );
 }
 
 type Reply = { id: number; ok: boolean; value?: unknown; error?: string };

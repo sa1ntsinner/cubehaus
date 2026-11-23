@@ -1,5 +1,14 @@
-import type { EventId } from "@cubehaus/core";
-import { DEFAULT_HOLDING, isHolding } from "@cubehaus/cube/holding";
+import {
+  type CrossColour,
+  crossColourOfFace,
+  type EventId,
+  isCrossColour,
+} from "@cubehaus/core";
+import {
+  DEFAULT_HOLDING,
+  holdingFaces,
+  isHolding,
+} from "@cubehaus/cube/holding";
 import type { TrainingProfile } from "./scramble/training-client";
 import { type SlotPreferences, statId } from "./session-stats";
 import { isThemeChoice, type ThemeChoice } from "./theme";
@@ -49,13 +58,23 @@ export interface Settings {
   holding: string;
   /** The screen stays on while the app shows (Screen Wake Lock, where there is one). */
   awake: boolean;
+  /**
+   * 3×3: `assigned` names the colour to build each cross on, from the colours in play;
+   * `any` leaves it to the hand and shows nothing.
+   */
+  cross: "any" | "assigned";
+  /**
+   * The colours in play, or null for the colour held at the bottom (`holding`) and its
+   * opposite: the holding stays the one place that says which colour is the person's own.
+   */
+  crossColours: CrossColour[] | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   language: "en",
   theme: "system",
   inspection: "official",
-  calls: "tick",
+  calls: "off",
   startMode: "space",
   holdMs: 300,
   precision: 2,
@@ -70,6 +89,8 @@ export const DEFAULT_SETTINGS: Settings = {
   sizes: DEFAULT_SIZES,
   holding: DEFAULT_HOLDING,
   awake: true,
+  cross: "any",
+  crossColours: null,
 };
 
 export function languageFrom(tag: string | undefined): Settings["language"] {
@@ -121,7 +142,31 @@ const choices: {
   sizes: isViewSizes,
   holding: isHolding,
   awake: (v): v is boolean => typeof v === "boolean",
+  cross: (v): v is Settings["cross"] => v === "any" || v === "assigned",
+  crossColours: (v): v is Settings["crossColours"] =>
+    v === null ||
+    (Array.isArray(v) &&
+      v.length >= 1 &&
+      v.length <= 6 &&
+      new Set(v).size === v.length &&
+      v.every(isCrossColour)),
 };
+
+/**
+ * The colours in play, the person's own first: the colour held at the bottom (with
+ * yellow on top, white) when it is among them. With none chosen, that colour and its
+ * opposite.
+ */
+export function coloursInPlay(
+  settings: Pick<Settings, "holding" | "crossColours">,
+): CrossColour[] {
+  const faces = holdingFaces(settings.holding);
+  const main = crossColourOfFace(faces.D);
+  const chosen = settings.crossColours ?? [main, crossColourOfFace(faces.U)];
+  return chosen.includes(main)
+    ? [main, ...chosen.filter((colour) => colour !== main)]
+    : [...chosen];
+}
 
 const FACE_NAMES = ["U", "L", "F", "R", "B", "D"];
 const isLength = (v: unknown, most: number) =>
@@ -132,7 +177,10 @@ export function isTrainingProfile(value: unknown): value is TrainingProfile {
   if (!value || typeof value !== "object" || !("request" in value))
     return false;
   const request = (value as { request: unknown }).request;
-  if (request === null) return true;
+  if (request === null)
+    return (
+      !("choice" in value) || (value as { choice: unknown }).choice === true
+    );
   if (!request || typeof request !== "object") return false;
   const r = request as Record<string, unknown>;
   switch (r.kind) {

@@ -1,4 +1,5 @@
 import {
+  type CrossColour,
   type EventId,
   eventInfo,
   type Folder,
@@ -71,6 +72,7 @@ export type ProgressScope =
   | { kind: "selection"; ids: readonly string[]; event: EventId };
 
 export type ProgressSeries = { values: Float64Array; startedAt: Float64Array };
+export type ColourSeries = ProgressSeries & { colours: CrossColour[] };
 
 export interface Store {
   sessions: {
@@ -225,6 +227,8 @@ export interface Store {
       sessionId: string,
     ): Promise<{ values: Float64Array; startedAt: Float64Array }>;
     scopedSeries(scope: ProgressScope): Promise<ProgressSeries>;
+    /** The scope's solves that have a cross colour, oldest first; DNF is infinite. */
+    colourSeries(scope: ProgressScope): Promise<ColourSeries>;
     progressCounts(): Promise<Record<string, number>>;
   };
   /**
@@ -384,12 +388,23 @@ const sessionFields =
   "id, name, event, order_key AS orderKey, folder_id AS folderId, archived, created_at AS createdAt";
 const solveFields = `id, session_id AS sessionId, event, time_ms AS timeMs, plus2, dnf,
   scramble, started_at AS startedAt, inspection_ms AS inspectionMs, comment, input,
-  moves, solution, cubes_solved AS cubesSolved, cubes_attempted AS cubesAttempted`;
+  moves, solution, cubes_solved AS cubesSolved, cubes_attempted AS cubesAttempted,
+  cross_colour AS crossColour`;
 const insertSolve = `INSERT OR IGNORE INTO solve (
   id, session_id, event, time_ms, plus2, dnf, scramble, started_at, inspection_ms,
   comment, input, import_source, import_hash, updated_at,
-  moves, solution, cubes_solved, cubes_attempted
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  moves, solution, cubes_solved, cubes_attempted, cross_colour
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+/** A solve as read: DNF as a flag, and a cross colour only where one is known. */
+function solveOf<T extends SolveRow>(row: T): Omit<T, "dnf"> & Solve {
+  const { crossColour, ...rest } = row;
+  return {
+    ...rest,
+    dnf: row.dnf !== 0,
+    ...(crossColour ? { crossColour } : {}),
+  } as Omit<T, "dnf"> & Solve;
+}
 
 // Serialize compound operations across stores sharing a connection. This also
 // keeps import counts and append keys correct when callers do not await writes.
@@ -431,8 +446,26 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
         solve.solution ?? null,
         solve.cubesSolved ?? null,
         solve.cubesAttempted ?? null,
+        solve.crossColour ?? null,
       ],
     };
+  }
+
+  /** The live sessions of a progress scope's puzzle. */
+  function scopeSessions(scope: ProgressScope) {
+    const membership =
+      scope.kind === "session"
+        ? "id = ?"
+        : scope.kind === "folder"
+          ? "folder_id = ? AND EXISTS (SELECT 1 FROM folder WHERE folder.id = session.folder_id AND folder.deleted_at IS NULL)"
+          : "id IN (SELECT value FROM json_each(?))";
+    return db.all<{ id: string }>(
+      `SELECT id FROM session WHERE deleted_at IS NULL AND event = ? AND ${membership}`,
+      [
+        scope.event,
+        scope.kind === "selection" ? JSON.stringify(scope.ids) : scope.id,
+      ],
+    );
   }
 
   function deletion(
@@ -1095,7 +1128,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
               id: row.id,
               deletedAt,
               expiresAt: deletedAt + trashMs,
-              solve: { ...row, dnf: row.dnf !== 0 },
+              solve: solveOf(row),
               sessionName,
             })),
           ];
@@ -1468,7 +1501,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
             `SELECT ${solveFields} FROM solve WHERE id = ? AND deleted_at IS NULL`,
             [id],
           );
-          return row && { ...row, dnf: row.dnf !== 0 };
+          return row && solveOf(row);
         }),
       page: (sessionId, { limit, before, atOrBefore, offset = 0 }) =>
         run(async () =>
@@ -1489,9 +1522,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
               ],
             )
           ).map(({ repeats, ...row }) =>
-            repeats
-              ? { ...row, dnf: row.dnf !== 0, repeats }
-              : { ...row, dnf: row.dnf !== 0 },
+            repeats ? { ...solveOf(row), repeats } : solveOf(row),
           ),
         ),
       near: (sessionId, from, step) =>
@@ -1503,7 +1534,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
               LIMIT 1`,
             [sessionId, from.startedAt, from.id],
           );
-          return row && { ...row, dnf: row.dnf !== 0 };
+          return row && solveOf(row);
         }),
       getStatWindow: (sessionId, end, n) =>
         run(async () => {
@@ -1517,7 +1548,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
           const newest = rows[0];
           if (newest?.id !== end.id || newest.startedAt !== end.startedAt)
             return [];
-          return rows.reverse().map((row) => ({ ...row, dnf: row.dnf !== 0 }));
+          return rows.reverse().map(solveOf);
         }),
       ids: (sessionId, a, b) =>
         run(async () => {
@@ -1556,21 +1587,35 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
             ).map(({ id, count }) => [id, count]),
           ),
         ),
+      colourSeries: (scope) =>
+        run(async () => {
+          const sessions = await scopeSessions(scope);
+          const rows = sessions.length
+            ? await db.all<{
+                colour: CrossColour;
+                value: number;
+                startedAt: number;
+              }>(
+                `SELECT cross_colour AS colour,
+                  CASE WHEN dnf = 1 THEN 1e999 ELSE time_ms + 2000 * plus2 END AS value,
+                  started_at AS startedAt
+                FROM solve INDEXED BY solve_cross_colour
+                WHERE deleted_at IS NULL AND cross_colour IS NOT NULL
+                  AND session_id IN (${sessions.map(() => "?").join(",")})
+                ORDER BY started_at, id`,
+                sessions.map(({ id }) => id),
+              )
+            : [];
+          return {
+            colours: rows.map((row) => row.colour),
+            // SQLite hands an infinite real back as null over some bridges.
+            values: Float64Array.from(rows, (row) => row.value ?? Infinity),
+            startedAt: Float64Array.from(rows, (row) => row.startedAt),
+          };
+        }),
       scopedSeries: (scope) =>
         run(async () => {
-          const membership =
-            scope.kind === "session"
-              ? "id = ?"
-              : scope.kind === "folder"
-                ? "folder_id = ? AND EXISTS (SELECT 1 FROM folder WHERE folder.id = session.folder_id AND folder.deleted_at IS NULL)"
-                : "id IN (SELECT value FROM json_each(?))";
-          const sessions = await db.all<{ id: string }>(
-            `SELECT id FROM session WHERE deleted_at IS NULL AND event = ? AND ${membership}`,
-            [
-              scope.event,
-              scope.kind === "selection" ? JSON.stringify(scope.ids) : scope.id,
-            ],
-          );
+          const sessions = await scopeSessions(scope);
           if (!sessions.length)
             return {
               values: new Float64Array(),

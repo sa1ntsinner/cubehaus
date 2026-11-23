@@ -77,7 +77,8 @@ describe("trainer sets", () => {
     ).toEqual(["H", "T", "Ua", "Ub", "Y", "Z"]);
     for (const c of cases) {
       expect(c.algs.length, c.label).toBeGreaterThanOrEqual(1);
-      expect(c.algs.length).toBeLessThanOrEqual(3);
+      // Up to three, and a review find first (build.ts, withReview).
+      expect(c.algs.length).toBeLessThanOrEqual(4);
       // The main algorithm solves the picture as it stands.
       expect(c.algs[0]?.auf).toBe(0);
       const key = c.id.slice(4);
@@ -215,10 +216,16 @@ describe("trainer sets", () => {
       cases.filter((c) => c.group === group).length;
     expect(["top", "edge", "corner", "slot"].map(count)).toEqual([24, 6, 6, 5]);
     for (const c of cases) {
-      expect(c.algs, c.label).toHaveLength(3);
+      // Three from the R, U, F search; a fourth first where the review found a clearly
+      // better one in U R F D L (build.ts, withReview).
+      expect([3, 4], c.label).toContain(c.algs.length);
       expect(c.algs[0]?.auf).toBe(0);
-      for (const alg of c.algs) {
-        expect(alg.moves, c.label).toMatch(/^[RUF]['2]?( [RUF]['2]?)*$/);
+      for (const [n, alg] of c.algs.entries()) {
+        expect(alg.moves, c.label).toMatch(
+          n === 0 && c.algs.length === 4
+            ? /^[RUFDL]['2]?( [RUFDL]['2]?)*$/
+            : /^[RUF]['2]?( [RUF]['2]?)*$/,
+        );
         const verdict = await verifyF2l(c.id.slice(4), alg.moves);
         expect(verdict.ok, `${c.label}: ${alg.moves}`).toBe(true);
       }
@@ -244,9 +251,13 @@ describe("trainer sets", () => {
       const r = right[i] as (typeof right)[number];
       const key = r.id.slice(4);
       expect(c.id).toBe(`f2l-left-${key}`);
-      expect(c.algs, c.label).toHaveLength(3);
-      for (const alg of c.algs) {
-        expect(alg.moves, c.label).toMatch(/^[LUF]['2]?( [LUF]['2]?)*$/);
+      expect(c.algs.length, c.label).toBe(r.algs.length);
+      for (const [n, alg] of c.algs.entries()) {
+        expect(alg.moves, c.label).toMatch(
+          n === 0 && c.algs.length === 4
+            ? /^[LUFDR]['2]?( [LUFDR]['2]?)*$/
+            : /^[LUF]['2]?( [LUF]['2]?)*$/,
+        );
         const verdict = await verifyF2l(key, alg.moves, "left");
         expect(verdict.ok, `${c.label}: ${alg.moves}`).toBe(true);
       }

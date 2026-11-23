@@ -188,7 +188,10 @@ async function execute(method: string, args: unknown[]): Promise<unknown> {
   if (method === "importFile") return importFile(args[0] as ImportInput);
   if (method === "exportBackup") return exportBackup();
   if (method === "exportFile")
-    return exportFile(args[0] === "csv" ? "csv" : "cstimer");
+    return exportFile(
+      args[0] === "csv" ? "csv" : "cstimer",
+      typeof args[1] === "string" ? args[1] : undefined,
+    );
   if (method === "restoreBackup") return restoreBackup(args[0] as File);
   if (method === "progress.counts") return progress.counts(args[0] as number);
   if (method === "progress.read")

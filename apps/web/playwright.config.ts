@@ -6,11 +6,14 @@ import { defineConfig } from "@playwright/test";
 // itself: `playwright test --project=perf --no-deps`.
 const perfSpec = /perf\.spec\.ts$/;
 const gpu = { args: ["--use-angle=metal"] };
+// 4173 unless PW_PORT names another, for a run beside a preview that holds it.
+const port = Number(process.env.PW_PORT ?? 4173);
+const origin = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,
-  use: { baseURL: "http://127.0.0.1:4173", trace: "retain-on-failure" },
+  use: { baseURL: origin, trace: "retain-on-failure" },
   projects: [
     {
       name: "chromium",
@@ -51,8 +54,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "VITE_TEST_HOOKS=1 pnpm build && pnpm preview",
-    url: "http://127.0.0.1:4173",
+    command: `VITE_TEST_HOOKS=1 pnpm build && pnpm exec vite preview --host 127.0.0.1 --port ${port} --strictPort`,
+    url: origin,
     reuseExistingServer: false,
     timeout: 30_000,
   },

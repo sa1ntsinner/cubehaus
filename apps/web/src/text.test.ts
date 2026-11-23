@@ -41,6 +41,8 @@ describe("text", () => {
         "progress.dnf",
         "settings.languages.en",
         "settings.languages.ru",
+        "train.memberWords.ls.front",
+        "train.memberWords.ls.right",
         "train.puzzles.222",
         "train.puzzles.333",
         "train.slots.bl",

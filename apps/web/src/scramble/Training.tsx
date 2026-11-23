@@ -8,16 +8,17 @@ import {
 } from "@cubehaus/scramble/last-layer";
 import { useMemo, useState } from "react";
 import type { Text } from "../text";
-import type { TrainingProfile } from "./training-client";
+import { isChoosing, type TrainingProfile } from "./training-client";
 
 /**
  * Drill scrambles for 3×3: the sheet that picks one, and the line under the scramble
  * that says a drill is on. A drill is not a WCA scramble; the line says so in words.
  */
 
-/** The timer's drills: F2L cases are drilled in the trainer only. */
+/** The timer's drills: F2L and last-slot cases are drilled in the trainer only. */
 export type DrillKind =
   | "official"
+  | "cross-choice"
   | TrainingBase["kind"]
   | Exclude<TrainingLL["kind"], "f2l">;
 
@@ -59,8 +60,9 @@ export function CaseDiagram({
 }) {
   // stickers: U 0–8 row by row from the back left, then the top rows of F, R, B, L as
   // each is seen from outside. Seen from above, B runs right to left, R and L top down.
+  // `x` is a sticker that says nothing (a last-slot case's last layer), drawn grey.
   const at = (index: number) =>
-    edgesOnTop && [10, 13, 16, 19].includes(index)
+    (edgesOnTop && [10, 13, 16, 19].includes(index)) || stickers[index] === "x"
       ? "grey"
       : (stickers[index] ?? "U");
   const paint = (face: string) => `var(--pz-${faces?.[face] ?? face})`;
@@ -191,7 +193,65 @@ export function TwoDiagram({
           width={cell.w - gap}
           height={cell.h - gap}
           rx={0.12}
+          data-letter={cell.c}
           fill={fill(cell.c)}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/**
+ * A PBL case as a small tile: the four sides, each as a 2 × 2 face of its own (the top
+ * layer's row over the bottom layer's), in the order met walking round the cube, front
+ * and right over back and left. PBL is told by the bars on the sides of each layer, which
+ * this shows at a size the rings round the top cannot; the top, one colour in every PBL
+ * case, says nothing and is left out. `stickers` is the 20 letters of TwoDiagram.
+ */
+export function TwoSides({
+  stickers,
+  faces,
+}: {
+  stickers: string;
+  faces?: Record<string, string> | undefined;
+}) {
+  const paint = (face: string) => `var(--pz-${faces?.[face] ?? face})`;
+  const gap = 0.1;
+  const apart = 0.7;
+  const cells: { x: number; y: number; c: string; key: string }[] = [];
+  for (let k = 0; k < 4; k++) {
+    const ox = (k % 2) * (2 + apart);
+    const oy = Math.floor(k / 2) * (2 + apart);
+    for (let row = 0; row < 2; row++)
+      for (let col = 0; col < 2; col++)
+        cells.push({
+          x: ox + col,
+          y: oy + row,
+          c: stickers[4 + row * 8 + k * 2 + col] ?? "U",
+          key: `${k}${row}${col}`,
+        });
+  }
+  const size = 4 + apart;
+  const pad = 0.24;
+  return (
+    <svg
+      data-part="case-diagram"
+      data-shape="two-sides"
+      viewBox={`${-pad} ${-pad} ${size + 2 * pad} ${size + 2 * pad}`}
+      aria-hidden="true"
+    >
+      {cells.map((cell) => (
+        <rect
+          key={cell.key}
+          // Not data-sticker: the scramble picture paints those in the standard scheme,
+          // which would override the colours as the person holds the cube.
+          data-letter={cell.c}
+          x={cell.x + gap / 2}
+          y={cell.y + gap / 2}
+          width={1 - gap}
+          height={1 - gap}
+          rx={0.14}
+          fill={paint(cell.c)}
         />
       ))}
     </svg>
@@ -386,6 +446,8 @@ const defaults = (kind: DrillKind, face: Face): TrainingProfile => {
   switch (kind) {
     case "official":
       return { request: null };
+    case "cross-choice":
+      return { request: null, choice: true };
     case "easy-cross":
       return { request: { kind, face, length: 4 } };
     case "easy-xcross":
@@ -405,12 +467,15 @@ const defaults = (kind: DrillKind, face: Face): TrainingProfile => {
 export function Training({
   profile,
   holding,
+  colourAssigned = false,
   words,
   onChange,
   onClose,
 }: {
   profile: TrainingProfile;
   holding: string;
+  /** The session assigns the cross colour: a cross drill takes it, so it has no colour here. */
+  colourAssigned?: boolean;
   words: Text;
   onChange(profile: TrainingProfile): void;
   onClose(): void;
@@ -423,8 +488,16 @@ export function Training({
     onChange(next);
   };
   const request = draft.request;
-  const kind: DrillKind =
-    !request || request.kind === "f2l" ? "official" : request.kind;
+  // F2L and last-slot cases are drilled in the trainer only.
+  const kind: DrillKind = !request
+    ? isChoosing(draft)
+      ? "cross-choice"
+      : "official"
+    : request.kind === "f2l" ||
+        request.kind === "ls-right" ||
+        request.kind === "ls-front"
+      ? "official"
+      : request.kind;
   // A new cross drill is on the colour held at the bottom.
   const faces = holdingFaces(holding);
   const face: Face =
@@ -436,6 +509,7 @@ export function Training({
     "easy-cross",
     "easy-xcross",
     "cross-solved",
+    "cross-choice",
     "edges-only",
     "corners-only",
     "two-gen",
@@ -519,26 +593,32 @@ export function Training({
                   </select>
                 </label>
               )}
-            {kind === option && request && "face" in request && (
-              <label data-part="training-face">
-                {t.cross}{" "}
-                <select
-                  data-action="training-face"
-                  value={request.face}
-                  onChange={(event) =>
-                    change({
-                      request: { ...request, face: event.target.value as Face },
-                    })
-                  }
-                >
-                  {FACES.map((side) => (
-                    <option key={side} value={side}>
-                      {t.colour[side]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+            {kind === option &&
+              request &&
+              "face" in request &&
+              !colourAssigned && (
+                <label data-part="training-face">
+                  {t.cross}{" "}
+                  <select
+                    data-action="training-face"
+                    value={request.face}
+                    onChange={(event) =>
+                      change({
+                        request: {
+                          ...request,
+                          face: event.target.value as Face,
+                        },
+                      })
+                    }
+                  >
+                    {FACES.map((side) => (
+                      <option key={side} value={side}>
+                        {t.colour[side]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
           </div>
         ))}
       </fieldset>

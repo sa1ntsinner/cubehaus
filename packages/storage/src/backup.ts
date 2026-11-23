@@ -200,6 +200,13 @@ manifest[8] = (manifest[7] ?? []).map(([name, table]) =>
     : [name, table],
 );
 
+// 9 adds the colour a solve's cross was built on.
+manifest[9] = (manifest[8] ?? []).map(([name, table]) =>
+  name === "solve"
+    ? [name, { ...table, columns: [...table.columns, "cross_colour"] }]
+    : [name, table],
+);
+
 export function backupTables(
   schema = SCHEMA_VERSION,
 ): readonly [string, Table][] {

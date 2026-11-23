@@ -5,6 +5,7 @@ export {
   type CrossResult,
   type CrossState,
   crossDistance,
+  crossLengths,
   crossStateOf,
   decodeCross,
   framedMoves,

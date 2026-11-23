@@ -1,3 +1,13 @@
+import {
+  type F2lSection,
+  type F2lSetId,
+  f2lGroups,
+  f2lOrder,
+  type SetId,
+  slotOf,
+  trainerSet,
+} from "@cubehaus/algs";
+
 /**
  * One drill attempt, from input event timestamps only (a result is the
  * difference of two input events). The case is shown, a key or the screen is held, let
@@ -207,4 +217,80 @@ export function storedSlot(value: string | null): F2lSlot {
   if (value === "fr" || value === "fl" || value === "br" || value === "bl")
     return value;
   return "fr";
+}
+
+/**
+ * Sets that stand as one word in the set row, with a quiet choice of member at the far
+ * end of Learn's `All` line: F2L's four slots, last slot's two inserts (the pair goes in
+ * with R U' R' or with F' U F), and the 2×2's top in one go over a bottom that is solved,
+ * swapped side by side, or swapped across. Each remembers the member last chosen.
+ */
+export const FAMILIES = {
+  f2l: {
+    key: "trainer.slot",
+    choices: ["fr", "fl", "br", "bl"],
+    members: ["f2l", "f2l-left", "f2l-back", "f2l-back-left"],
+  },
+  ls: {
+    key: "trainer.ls",
+    choices: ["right", "front"],
+    members: ["ls-right", "ls-front"],
+  },
+  "two-cll": {
+    key: "trainer.bottom",
+    choices: ["solved", "adj", "diag"],
+    members: ["two-cll", "two-adj", "two-diag"],
+  },
+} as const satisfies Record<
+  string,
+  { key: string; choices: readonly string[]; members: readonly SetId[] }
+>;
+export type Family = keyof typeof FAMILIES;
+export type Choice<F extends Family> = (typeof FAMILIES)[F]["choices"][number];
+
+/** The word in the set row a set stands under: its family, or itself. */
+export function familyOf(set: SetId): Family | SetId {
+  for (const [family, { members }] of Object.entries(FAMILIES))
+    if ((members as readonly SetId[]).includes(set)) return family as Family;
+  return set;
+}
+
+export function memberOf<F extends Family>(
+  family: F,
+  choice: Choice<F>,
+): SetId {
+  const f = FAMILIES[family];
+  return f.members[(f.choices as readonly string[]).indexOf(choice)] as SetId;
+}
+
+/** The choice a set is in its family. */
+export function choiceOf(family: Family, set: SetId): string {
+  const f = FAMILIES[family];
+  return f.choices[(f.members as readonly SetId[]).indexOf(set)] as string;
+}
+
+/** The member last chosen, as stored; the first when nothing (or nothing known) is. */
+export function storedMember<F extends Family>(
+  family: F,
+  value: string | null,
+): Choice<F> {
+  if (family === "f2l") return storedSlot(value) as Choice<F>;
+  const choices = FAMILIES[family].choices as readonly string[];
+  return (
+    value !== null && choices.includes(value) ? value : choices[0]
+  ) as Choice<F>;
+}
+
+/** Case names as Learn and the drill show them: F2L numbered in the learner's order. */
+export function caseLabels(set: SetId): ReadonlyMap<string, string> {
+  if (slotOf(set) !== null)
+    return new Map(
+      f2lOrder(set as F2lSetId).map((place) => [place.id, place.label]),
+    );
+  return new Map(trainerSet(set).map((c) => [c.id, c.label]));
+}
+
+/** F2L's list in Learn: the learner's order in four groups. Other sets: one list. */
+export function learnGroups(set: SetId): F2lSection[] | null {
+  return slotOf(set) !== null ? f2lGroups(set as F2lSetId) : null;
 }

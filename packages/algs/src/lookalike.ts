@@ -1,5 +1,5 @@
 import { cornerPairs } from "./collwords";
-import { pictureOf, trainerSet } from "./index";
+import { lastSlotTop, pictureOf, trainerSet } from "./index";
 import { recolour } from "./show";
 import type { SetId, TrainerCaseData } from "./types";
 
@@ -14,7 +14,13 @@ import type { SetId, TrainerCaseData } from "./types";
  * - COLL: cases of the same corner shape, nearest by how many sides read differently by
  *   their two corner stickers (headlights, two opposite or two neighbouring colours, as the
  *   recognition words read them), up to a U turn; twins the words cannot tell apart are 0.
- * - F2L: none (the pair's place says which case it is).
+ * - Last slot: cases with the same corners up, nearest by how many side stickers differ
+ *   (up or not); the pair stands where the case puts it, so no U turn.
+ * - The 2×2's top in one go (CLL, and with the bottom swapped side by side or across):
+ *   cases with the same top up to a U turn, nearest by how many sides of each layer read
+ *   differently by their two stickers (a pair, opposite or neighbouring colours, or which
+ *   of them shows the top's colour).
+ * - F2L, the 2×2's OLL and PBL: none (the picture alone says which case it is).
  *
  * The relation is symmetric: B is among A's look-alikes exactly when A is among B's.
  */
@@ -29,7 +35,11 @@ export function lookalikes(set: SetId): ReadonlyMap<string, readonly string[]> {
       ? pllNear(cases)
       : set === "oll" || set === "coll"
         ? sideNear(set)
-        : () => null;
+        : set === "ls-right" || set === "ls-front"
+          ? lastSlotNear
+          : set === "two-cll" || set === "two-adj" || set === "two-diag"
+            ? twoNear
+            : () => null;
   const map = new Map<string, string[]>();
   cases.forEach((a, i) => {
     const found: [number, number, string][] = [];
@@ -96,4 +106,45 @@ function sideNear(set: "oll" | "coll") {
     }
     return best;
   };
+}
+
+const upMask = (p: string) =>
+  [...p].map((c) => (c === "U" ? "U" : "x")).join("");
+
+/** Last slot: the same corners up on top, then the side stickers that differ. */
+function lastSlotNear(a: TrainerCaseData, b: TrainerCaseData): number | null {
+  const pa = upMask(lastSlotTop(a));
+  const pb = upMask(lastSlotTop(b));
+  if (pa.slice(0, 9) !== pb.slice(0, 9)) return null;
+  return differ(pa, pb, 9, 21);
+}
+
+const OPPOSITE: Record<string, string> = { F: "B", B: "F", R: "L", L: "R" };
+/** How a side's two stickers read: which show the top's colour, else their colours. */
+function reading(a: string, b: string): string {
+  if (a === "U" || b === "U")
+    return `${a === "U" ? "U" : "-"}${b === "U" ? "U" : "-"}`;
+  return a === b ? "pair" : OPPOSITE[a] === b ? "opposite" : "neighbours";
+}
+/** Each side's reading, the top layer's four, then the bottom's where drawn. */
+function readings(p: string): string[] {
+  const out: string[] = [];
+  for (let at = 4; at + 1 < p.length; at += 2)
+    out.push(reading(p[at] as string, p[at + 1] as string));
+  return out;
+}
+
+/** The 2×2: the same top up to a U turn, then the sides that read differently. */
+function twoNear(a: TrainerCaseData, b: TrainerCaseData): number | null {
+  const pa = pictureOf(a);
+  const ra = readings(pa);
+  let best: number | null = null;
+  for (const t of turns) {
+    const pb = pictureOf(b, t);
+    if (upMask(pa.slice(0, 4)) !== upMask(pb.slice(0, 4))) continue;
+    const rb = readings(pb);
+    const d = ra.filter((r, i) => r !== rb[i]).length;
+    if (best === null || d < best) best = d;
+  }
+  return best;
 }

@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { applyTwo, SOLVED } from "./two";
 import {
+  bottomBars,
   classesOf,
   composeTwo,
   HOLD_COUNT,
+  inSet,
   inverseTwo,
   membersOf,
+  stateKey,
   upright,
 } from "./two-cases";
+import { STATES, stateOf } from "./two-search";
 
 describe("2×2 cases, counted from the model", () => {
   it("there are 24 ways to hold the cube, and the DBL corner comes home in exactly one", () => {
@@ -50,4 +54,35 @@ describe("2×2 cases, counted from the model", () => {
       expect(turned).toEqual(asU);
     }
   });
+
+  it("the bottom one colour but swapped: 43 cases side by side, 43 across, every state counted", () => {
+    // Every state of the puzzle (DBL home) that belongs to each set, found by checking
+    // all 3 674 160 of them, is exactly the set's members.
+    const found = { "two-adj": 0, "two-diag": 0 };
+    for (let i = 0; i < STATES; i++) {
+      const s = stateOf(i);
+      if (inSet("two-adj", s)) found["two-adj"]++;
+      if (inSet("two-diag", s)) found["two-diag"]++;
+    }
+    for (const [set, bars, lows] of [
+      ["two-adj", 1, 4],
+      ["two-diag", 0, 1],
+    ] as const) {
+      const members = membersOf(set);
+      // The top's 24 places and 27 twists, the bottom's places with DBL home.
+      expect(members).toHaveLength(24 * 27 * lows);
+      expect(found[set]).toBe(members.length);
+      expect(new Set(members.map(stateKey)).size).toBe(members.length);
+      for (const m of members) expect(bottomBars(m)).toBe(bars);
+      const classes = classesOf(set);
+      expect(classes.reduce((n, c) => n + c.length, 0)).toBe(members.length);
+      expect(classes).toHaveLength(43);
+      // None is solved; three have the top's colour all up (the top's pieces in place,
+      // swapped side by side or across), the other 40 need it turned.
+      const up = classes.filter((c) =>
+        c.every((k) => k.slice(8, 12) === "0000"),
+      );
+      expect(up).toHaveLength(3);
+    }
+  }, 60_000);
 });

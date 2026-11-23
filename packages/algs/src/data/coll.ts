@@ -1259,6 +1259,19 @@ export const COLL: readonly TrainerCaseData[] = [
     "state": "3102000020131020",
     "algs": [
       {
+        "moves": "R' U2 R' D' R U2 R' D R2",
+        "metrics": {
+          "moves": 9,
+          "rotations": 0,
+          "wide": 0,
+          "fbd": 2,
+          "left": 0,
+          "regrips": 4,
+          "score": 14
+        },
+        "auf": 0
+      },
+      {
         "moves": "R' U F U F' U' R U2 F U2 F'",
         "auf": 0,
         "metrics": {
@@ -1611,8 +1624,8 @@ export const COLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Sune shape: two neighbouring colours on the right.",
-      "ru": "Форма Суне: два соседних цвета справа."
+      "en": "Sune shape: two neighbouring colours on the right; the front left corner's front sticker matches the back right corner's back one.",
+      "ru": "Форма Суне: два соседних цвета справа; наклейка переднего левого угла спереди совпадает по цвету с наклейкой заднего правого сзади."
     },
     "subsets": []
   },
@@ -1672,11 +1685,24 @@ export const COLL: readonly TrainerCaseData[] = [
     "id": "coll-01322220",
     "label": "S 5",
     "group": "S",
-    "state": "0231000013202202",
+    "state": "2310000032012022",
     "algs": [
       {
+        "moves": "L U' R' U L' U' R",
+        "metrics": {
+          "moves": 7,
+          "rotations": 0,
+          "wide": 0,
+          "fbd": 0,
+          "left": 2,
+          "regrips": 3,
+          "score": 11
+        },
+        "auf": 0
+      },
+      {
         "moves": "F R' U R U' F' U R' U' R",
-        "auf": 0,
+        "auf": 3,
         "metrics": {
           "moves": 10,
           "rotations": 0,
@@ -1689,7 +1715,7 @@ export const COLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "F U' F' U R' U' F U F' R",
-        "auf": 0,
+        "auf": 3,
         "metrics": {
           "moves": 10,
           "rotations": 0,
@@ -1702,7 +1728,7 @@ export const COLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "R U2 F' U2 R' U' R U' F U R'",
-        "auf": 3,
+        "auf": 2,
         "metrics": {
           "moves": 11,
           "rotations": 0,
@@ -1715,8 +1741,8 @@ export const COLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Sune shape: two neighbouring colours at the back.",
-      "ru": "Форма Суне: два соседних цвета сзади."
+      "en": "Sune shape: two neighbouring colours on the right; the front right corner's right sticker matches the back right corner's back one.",
+      "ru": "Форма Суне: два соседних цвета справа; наклейка переднего правого угла справа совпадает по цвету с наклейкой заднего правого сзади."
     },
     "subsets": []
   },

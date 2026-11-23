@@ -1462,3 +1462,42 @@ test("a case taken out and put back keeps its schedule", async () => {
   expect(await store.trainer.restoreCase("pll", "pll-T")).toBe(false);
   await db.close();
 });
+
+test("a solve keeps its cross colour; one without reads with none", async () => {
+  await store.solves.add(solve("1", 1, { crossColour: "yellow" }));
+  await store.solves.add(solve("2", 2));
+  expect(await store.solves.get("1")).toMatchObject({ crossColour: "yellow" });
+  expect(await store.solves.get("2")).not.toHaveProperty("crossColour");
+  const page = await store.solves.page(sessionId, { limit: 10 });
+  expect(page.map((s) => s.crossColour ?? null)).toEqual([null, "yellow"]);
+});
+
+test("colour series: the scope's solves with a cross colour, oldest first, DNF infinite", async () => {
+  await store.solves.add(solve("1", 1, { crossColour: "white" }));
+  await store.solves.add(solve("2", 2));
+  await store.solves.add(
+    solve("3", 3, { crossColour: "yellow", plus2: 1, timeMs: 12000 }),
+  );
+  await store.solves.add(solve("4", 4, { crossColour: "yellow", dnf: true }));
+  await store.solves.add(solve("5", 5, { crossColour: "white" }));
+  await store.solves.remove("5");
+  const other = await store.sessions.create({ name: "B", event: "333" });
+  await store.solves.add({
+    ...solve("6", 6, { crossColour: "green" }),
+    sessionId: other.id,
+  });
+  const series = await store.solves.colourSeries({
+    kind: "session",
+    id: sessionId,
+    event: "333",
+  });
+  expect(series.colours).toEqual(["white", "yellow", "yellow"]);
+  expect([...series.values]).toEqual([10000, 14000, Infinity]);
+  expect([...series.startedAt]).toEqual([1, 3, 4]);
+  const both = await store.solves.colourSeries({
+    kind: "selection",
+    ids: [sessionId, other.id],
+    event: "333",
+  });
+  expect(both.colours).toEqual(["white", "yellow", "yellow", "green"]);
+});

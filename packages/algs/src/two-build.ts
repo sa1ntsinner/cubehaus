@@ -3,13 +3,15 @@ import { applyTwo, SOLVED, type Two } from "./two";
 import {
   classesOf,
   composeTwo,
+  inverseTwo,
   membersOf,
+  seenKey,
   stateFromKey,
   stateKey,
   type TwoSet,
   upright,
 } from "./two-cases";
-import { layerKind, twoNoteRaw } from "./two-notes";
+import { cllNote, layerKind, twoNoteRaw } from "./two-notes";
 import { distances, SOLVED_UP_TO_U, scrambleTo, solveTwo } from "./two-search";
 import type { TrainerCaseData } from "./types";
 
@@ -30,15 +32,26 @@ const turnU = (k: number) => applyTwo(SOLVED, U_TURNS[k] as string);
 const turnD = (k: number) =>
   applyTwo(SOLVED, ["", "D", "D2", "D'"][k] as string);
 
-/** The goal an algorithm of the set reaches: both faces one colour, or solved. */
+const isSwap = (set: TwoSet) => set === "two-adj" || set === "two-diag";
+
+/**
+ * The goal an algorithm of the set reaches: both faces one colour, or solved (up to a turn
+ * of the top, and for a bottom swap of the bottom too, seen with DBL home).
+ */
 export function goalOf(set: TwoSet): readonly Two[] {
-  return set === "two-oll" ? membersOf("two-pbl") : SOLVED_UP_TO_U;
+  if (set === "two-oll") return membersOf("two-pbl");
+  if (!isSwap(set)) return SOLVED_UP_TO_U;
+  return SOLVED_UP_TO_U.flatMap((s) =>
+    [0, 1, 2, 3].map((k) => upright(composeTwo(s, turnD(k)))),
+  );
 }
 
 const LABEL: Record<TwoSet, string> = {
   "two-oll": "OLL",
   "two-pbl": "PBL",
   "two-cll": "CLL",
+  "two-adj": "Adj",
+  "two-diag": "Diag",
 };
 
 function seeded(seed: number) {
@@ -50,7 +63,7 @@ function seeded(seed: number) {
 }
 
 /** A class's states as full states (OLL classes are the top's twists alone). */
-const statesOf = (set: TwoSet, keys: readonly string[]) =>
+export const statesOf = (set: TwoSet, keys: readonly string[]) =>
   keys.map((k) =>
     set === "two-oll"
       ? {
@@ -92,6 +105,14 @@ function drawMember(set: TwoSet, shown: Two, rng: () => number): Two {
     return s;
   }
   s = composeTwo(turnU(pick(4)), s);
+  if (isSwap(set)) {
+    // A turn of the bottom after, and the cube held turned about the vertical.
+    s = upright(composeTwo(s, turnD(pick(4))));
+    const y = applyTwo(SOLVED, "U D'");
+    for (let k = pick(4); k > 0; k--)
+      s = upright(composeTwo(composeTwo(inverseTwo(y), s), y));
+    return s;
+  }
   if (set === "two-pbl")
     s = upright(composeTwo(composeTwo(turnD(pick(4)), s), turnD(pick(4))));
   return s;
@@ -109,7 +130,9 @@ export function buildTwo(
 ): BuiltTwo {
   const goal = tables?.goal ?? distances(goalOf(set));
   const exact = tables?.exact ?? distances([SOLVED]);
-  const classes = classesOf(set).slice(1);
+  // Every class but the solved one (the bottom swaps have none).
+  const solved = seenKey(set, SOLVED);
+  const classes = classesOf(set).filter((c) => !c.includes(solved));
   let candidates = 0;
   const built = classes.map((keys) => {
     // Every state of the case, each with its best algorithms from it as it stands.
@@ -155,11 +178,27 @@ export function buildTwo(
       (stateKey(a.shown) < stateKey(b.shown) ? -1 : 1),
   );
   // A note is kept only where no other case shows the same words from any side.
-  const seenNotes = built.map(
-    (c) => new Set(statesOf(set, c.keys).map((s) => twoNoteRaw(set, s).en)),
-  );
+  const cllLike = set === "two-cll" || isSwap(set);
+  const seenNotes = cllLike
+    ? []
+    : built.map(
+        (c) =>
+          new Set(
+            statesOf(set, c.keys).map(
+              (s) => twoNoteRaw(set as "two-oll" | "two-pbl", s).en,
+            ),
+          ),
+      );
   const noteOf = (i: number, shown: Two) => {
-    const note = twoNoteRaw(set, shown);
+    // CLL: the plainest facts that single the case out (two-notes.ts).
+    if (cllLike) {
+      const others = built.flatMap((c, j) =>
+        j === i ? [] : statesOf(set, c.keys),
+      );
+      const note = cllNote(shown, others);
+      return note ? { en: note.en, ru: note.ru } : null;
+    }
+    const note = twoNoteRaw(set as "two-oll" | "two-pbl", shown);
     return seenNotes.some((notes, j) => j !== i && notes.has(note.en))
       ? null
       : note;
@@ -188,7 +227,8 @@ export function buildTwo(
 export function groupOf(set: TwoSet, s: Two): string {
   const up = s.co.slice(0, 4).filter((o) => o === 0).length;
   if (set === "two-oll") return `${up} up`;
-  if (set === "two-cll") return up === 4 ? "oriented" : `${up} up`;
+  if (set === "two-cll" || isSwap(set))
+    return up === 4 ? "oriented" : `${up} up`;
   const kind = (layer: "top" | "bottom") =>
     ({ 4: "whole", 1: "bar", 0: "none" })[layerKind(s, layer)];
   return `${kind("top")}-${kind("bottom")}`;

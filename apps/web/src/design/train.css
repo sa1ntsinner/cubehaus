@@ -67,7 +67,32 @@ main[data-part="train"] h1 {
 /* F2L's slot, one of four: at the row's far end, apart from what goes in drills. */
 [data-part="train-slot"] {
   display: flex;
+  gap: var(--s2);
   margin-inline-start: auto;
+}
+/* F2L's cross colour: one word with its sticker before the slots, a step apart from them;
+   a press turns the whole cube to the next colour. */
+[data-action="train-cross"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-inline-end: var(--s3);
+}
+@media (max-width: 359px) {
+  /* The sticker and four slots beside `All` on one line: closer, each still 44 px. */
+  [data-part="train-slot"] {
+    gap: var(--s1);
+  }
+  [data-action="train-cross"] {
+    margin-inline-end: 0;
+  }
+  [data-part="train-cross-name"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 }
 /* The other puzzle, 3×3 or 2×2: one word at the bar's far end, a step apart from the
    modes (on a phone at the right of the modes' line). */
@@ -139,11 +164,24 @@ main[data-part="train"] button:active:not(:disabled) {
   flex-direction: column;
   align-items: center;
 }
+/* F2L's four groups, by where the pair is: the group's name in the list's own voice, a
+   plain line over its cases, with room above it to tell the groups apart. */
+[data-part="train-group-name"] {
+  margin: var(--s6) 0 var(--s2);
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--dim);
+}
+[data-part="train-filter"] + [data-part="train-group-name"] {
+  margin-top: var(--s3);
+}
 [data-part="train-case-list"] button {
   display: grid;
   place-items: center;
   width: 100%;
-  padding: var(--s2) var(--s1) var(--s1);
+  /* The same room above and below, so the open case's fill sits evenly round it. */
+  padding: var(--s2) var(--s1);
   border-radius: 6px;
   transition: background-color 100ms ease;
 }
@@ -171,6 +209,8 @@ main[data-part="train"] [data-part="case-diagram"][data-shape="slot"] {
   padding-inline: var(--s2);
   font-family: var(--font-mono);
   font-size: 13px;
+  /* A name stays on one line (`Diag 10`, `LS-F 10`); the column's gap takes the few px. */
+  white-space: nowrap;
   color: var(--dim);
   cursor: pointer;
 }
@@ -237,8 +277,9 @@ main[data-part="train"] [data-part="case-diagram"][data-shape="slot"] {
 }
 [data-part="train-case-head"] {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s5);
+  gap: var(--s4) var(--s5);
 }
 main[data-part="train"]
   [data-part="train-case-head"]
@@ -419,6 +460,8 @@ main[data-part="train"]
 [data-part="train-show"] {
   justify-content: center;
   column-gap: var(--s5);
+  /* Two lines on a phone: their targets stay 8 px apart. */
+  row-gap: var(--s2);
   margin: calc(-1 * var(--s3)) 0 0;
   font-size: 14px;
 }

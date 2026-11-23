@@ -15,12 +15,22 @@ import { COLL_WRITTEN } from "./candidates/coll";
 import SEARCHED from "./candidates/coll-search.json";
 import { OLL } from "./candidates/oll";
 import { PLL } from "./candidates/pll";
+import REVIEW from "./candidates/review-search.json";
 import type { CaseSource } from "./candidates/types";
 import { collCases } from "./coll";
 import { collWords } from "./collwords";
+import { f2lIdea, frontRightAlg } from "./f2l-idea";
 import { type Metrics, metricsOf, tidy } from "./metrics";
 import { noteFor } from "./notes";
-import { caseOf, memberState, type SetId, verify, verifyF2l } from "./verify";
+import {
+  caseOf,
+  kpuzzle,
+  memberState,
+  type SetId,
+  type Verdict,
+  verify,
+  verifyF2l,
+} from "./verify";
 
 /**
  * Builds a set's shipped data from its candidates: each is verified (verify.ts), the
@@ -36,6 +46,7 @@ export type BuiltCase = {
   state: string;
   algs: BuiltAlg[];
   recognise: { en: string; ru: string } | null;
+  idea?: { en: string; ru: string } | null;
   subsets: string[];
 };
 export type BuiltSet = {
@@ -151,6 +162,43 @@ async function collCandidates(
   return out;
 }
 
+type ReviewRow = { friendly: string[] };
+
+/**
+ * The algorithm review's finger-friendly finds (review-algs.test.ts, in U R F D L): the best
+ * by score that the set's verifier accepts goes first when it scores at least 2 below the
+ * main algorithm; the three kept before stay after it, so an algorithm someone chose as
+ * theirs is still there.
+ */
+async function withReview(
+  best: BuiltAlg[],
+  id: string,
+  check: (alg: string) => Promise<Verdict>,
+): Promise<BuiltAlg[]> {
+  const main = best[0];
+  const rows = Object.values(
+    REVIEW as Record<string, Record<string, ReviewRow>>,
+  );
+  const found = rows.find((r) => r[id])?.[id]?.friendly ?? [];
+  if (!main) return best;
+  const ranked = found
+    .map(tidy)
+    .filter((alg) => !best.some((b) => b.moves === alg))
+    .map((alg) => ({ moves: alg, metrics: metricsOf(alg) }))
+    .sort(
+      (a, b) =>
+        a.metrics.score - b.metrics.score ||
+        a.metrics.moves - b.metrics.moves ||
+        (a.moves < b.moves ? -1 : 1),
+    );
+  for (const r of ranked) {
+    if (r.metrics.score > main.metrics.score - 2) break;
+    const verdict = await check(r.moves);
+    if (verdict.ok) return [{ ...r, auf: verdict.auf }, ...best];
+  }
+  return best;
+}
+
 /** `state` after `k` U turns before an algorithm: the state the algorithm then solves. */
 export function turned(state: LastLayer, k: number): LastLayer {
   let s = state;
@@ -161,8 +209,11 @@ export function turned(state: LastLayer, k: number): LastLayer {
 export async function buildSet(
   set: SetId,
   more: Readonly<Record<string, readonly string[]>> = {},
+  /** Cases that keep their algorithms without the review's find (see below). */
+  unreviewed: ReadonlySet<string> = new Set(),
 ): Promise<BuiltSet> {
   let extra = more;
+  const reviewed = new Set<string>();
   const sources = SOURCES[set];
   const rejected: BuiltSet["rejected"] = [];
   let candidates = 0;
@@ -191,7 +242,12 @@ export async function buildSet(
         a.metrics.moves - b.metrics.moves ||
         (a.moves < b.moves ? -1 : a.moves > b.moves ? 1 : 0),
     );
-    const best = kept.slice(0, 3);
+    const best = unreviewed.has(entry.id)
+      ? kept.slice(0, 3)
+      : await withReview(kept.slice(0, 3), entry.id, (alg) =>
+          verify(set, entry.key, alg),
+        );
+    if (best[0] && best[0] !== kept[0]) reviewed.add(entry.id);
     const member = memberState(set, entry.key);
     const main = best[0];
     // Shown as the main algorithm expects it; every other algorithm's AUF is counted from
@@ -263,6 +319,13 @@ export async function buildSet(
     throw new Error(
       `${set}: explanations whose checks fail: ${failing.join(", ")}`,
     );
+  // A review find that turns the picture to an angle where the case's words no longer
+  // single it out is not taken: the case keeps its algorithms and its words.
+  const mute = cases
+    .filter((c) => reviewed.has(c.id) && !c.recognise)
+    .map((c) => c.id);
+  if (mute.length > 0)
+    return buildSet(set, more, new Set([...unreviewed, ...mute]));
   return { set, candidates, rejected, cases };
 }
 
@@ -298,6 +361,7 @@ export async function buildF2l(
   let candidates = 0;
   const cases: BuiltCase[] = [];
   const prefix = slot === "br" ? "f2l-back-" : "f2l-";
+  const puzzle = await kpuzzle();
   for (const c of F2L_CASES) {
     const kept: BuiltAlg[] = [];
     for (const alg of [...new Set((searched[c.key] ?? []).map(tidy))]) {
@@ -313,16 +377,26 @@ export async function buildF2l(
         a.metrics.moves - b.metrics.moves ||
         (a.moves < b.moves ? -1 : a.moves > b.moves ? 1 : 0),
     );
-    const best = kept.slice(0, 3);
+    const best =
+      slot === "fr"
+        ? await withReview(kept.slice(0, 3), `f2l-${c.key}`, (alg) =>
+            verifyF2l(c.key, alg, slot),
+          )
+        : kept.slice(0, 3);
     const base = best[0]?.auf ?? 0;
     const shown = f2lTurned(f2lState(c.key), base);
+    const state = `${shown.corner}${shown.twist}${shown.edge}${shown.flip}`;
+    const idea = best[0]
+      ? f2lIdea(puzzle, state, frontRightAlg(best[0].moves, slot))
+      : null;
     cases.push({
       id: `${prefix}${c.key}`,
       label: c.label,
       group: c.group,
-      state: `${shown.corner}${shown.twist}${shown.edge}${shown.flip}`,
+      state,
       algs: best.map((a) => ({ ...a, auf: (a.auf - base + 4) % 4 })),
       recognise: null,
+      idea: idea ? { en: idea.en, ru: idea.ru } : null,
       subsets: [],
     });
   }

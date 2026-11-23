@@ -43,6 +43,7 @@ import {
   validateBindings,
 } from "./keys/keymap";
 import { isMacPlatform } from "./keys/label";
+import { cleanName, lonelyFolders } from "./session-grid";
 import {
   type LayoutItem,
   listed,
@@ -586,6 +587,71 @@ export function createAppState(
     return made;
   }
 
+  /**
+   * The folders the given ones were and now hold one listed session let it go to where
+   * the folder stood; the folder, left with none, goes. Part of the change that left it,
+   * so one undo puts both back.
+   */
+  async function dissolve(db: Store, left: readonly (string | null)[]) {
+    const lonely = lonelyFolders(
+      tree(listed(sessions, current?.id), folders),
+      left,
+    );
+    for (const { sessionId, place } of lonely)
+      await db.folders.place(
+        { kind: "session", id: sessionId },
+        place.parent,
+        place.before,
+      );
+    if (lonely.length) await readLayout(db);
+  }
+
+  /** Sessions into the trash, with one undo; the open one gives way to a neighbour. */
+  function removeSessions(ids: readonly string[]): Promise<void> {
+    return edit(async (db) => {
+      const removed = ids.flatMap(
+        (id) => sessions.find((session) => session.id === id) ?? [],
+      );
+      if (removed.length === 0) return;
+      const before = layoutNow();
+      const going = new Set(removed.map(({ id }) => id));
+      const open = current;
+      const wasCurrent = open !== null && going.has(open.id);
+      if (wasCurrent) {
+        // The neighbour that stays opens, or a new session when none does.
+        const shown = listed(sessions, open.id);
+        const index = shown.findIndex(({ id }) => id === open.id);
+        const next =
+          shown
+            .slice(0, index)
+            .reverse()
+            .find(({ id }) => !going.has(id)) ??
+          shown.slice(index + 1).find(({ id }) => !going.has(id)) ??
+          (await createDefaultSession(db));
+        knownSessions.add(next.id);
+        await select(db, next);
+      }
+      for (const { id } of removed) await db.sessions.remove(id);
+      await readLayout(db);
+      await dissolve(
+        db,
+        removed.map(({ folderId }) => folderId),
+      );
+      history.push({
+        label: text.undoSession,
+        async undo() {
+          for (const { id } of removed) await db.sessions.restore(id);
+          await db.folders.restoreLayout(before);
+          await readLayout(db);
+          if (wasCurrent) {
+            const back = sessions.find(({ id }) => id === open.id);
+            if (back) await select(db, back);
+          }
+        },
+      });
+    });
+  }
+
   /** Where the shown solve stands now; with it gone, the newest shows again. */
   async function locateShown(db: Store) {
     if (!shown) return;
@@ -850,7 +916,11 @@ export function createAppState(
       return text;
     },
     /** The history as another timer's file, pending solves written first. */
-    async exportFile(format: "cstimer" | "csv"): Promise<ExportFileResult> {
+    /** Another timer's file of every session, or of the one given. */
+    async exportFile(
+      format: "cstimer" | "csv",
+      sessionId?: string,
+    ): Promise<ExportFileResult> {
       const next = dbState;
       if (
         (next?.kind !== "memory" && next?.kind !== "persistent") ||
@@ -861,7 +931,7 @@ export function createAppState(
       let result: ExportFileResult | undefined;
       await run(async () => {
         if (store) await flush(store);
-        result = await exportFile(format);
+        result = await exportFile(format, sessionId);
       });
       if (!result) throw new Error("The export failed");
       return result;
@@ -1090,6 +1160,21 @@ export function createAppState(
         await select(db, created);
       });
     },
+    /**
+     * A new session in the list, last, without opening it (the grid's new tile, named
+     * in place next). Resolves to its id, or null for an empty name.
+     */
+    createSession(name: string, event: EventId): Promise<string | null> {
+      let id: string | null = null;
+      return edit(async (db) => {
+        const clean = cleanName(name);
+        if (!clean) return;
+        const created = await db.sessions.create({ name: clean, event });
+        knownSessions.add(created.id);
+        await readLayout(db);
+        id = created.id;
+      }).then(() => id);
+    },
     renameSession(id: string, name: string): Promise<void> {
       return edit(async (db) => {
         const session = sessions.find((item) => item.id === id);
@@ -1118,8 +1203,13 @@ export function createAppState(
     /** Moves a session or folder; one undo puts it back. */
     placeItem(item: LayoutItem, place: Place): Promise<void> {
       return edit(async (db) => {
+        const from = sessions.find(({ id }) => id === item.id)?.folderId;
         await relayout(db, async () => {
           await db.folders.place(item, place.parent, place.before);
+          if (item.kind === "session" && from && from !== place.parent) {
+            await readLayout(db);
+            await dissolve(db, [from]);
+          }
           return null;
         });
       });
@@ -1133,8 +1223,39 @@ export function createAppState(
           step,
         );
         if (!place) return;
+        const from = sessions.find(({ id }) => id === item.id)?.folderId;
         await relayout(db, async () => {
           await db.folders.place(item, place.parent, place.before);
+          if (item.kind === "session" && from && from !== place.parent) {
+            await readLayout(db);
+            await dissolve(db, [from]);
+          }
+          return null;
+        });
+      });
+    },
+    /** Every session out of a folder, where it stood, in order; the folder goes. One undo. */
+    ungroupFolder(id: string): Promise<void> {
+      return edit(async (db) => {
+        const nodes = tree(listed(sessions, current?.id), folders);
+        const at = nodes.findIndex(
+          (node) => node.kind === "folder" && node.folder.id === id,
+        );
+        const host = nodes[at];
+        if (host?.kind !== "folder") return;
+        const next = nodes[at + 1];
+        const before = next
+          ? next.kind === "folder"
+            ? next.folder.id
+            : next.session.id
+          : null;
+        await relayout(db, async () => {
+          for (const session of host.sessions)
+            await db.folders.place(
+              { kind: "session", id: session.id },
+              null,
+              before,
+            );
           return null;
         });
       });
@@ -1166,13 +1287,16 @@ export function createAppState(
         const session = sessions.find((item) => item.id === id);
         if (!session || session.archived === value) return;
         const wasCurrent = current?.id === id;
+        const before = layoutNow();
         if (value && wasCurrent) await leave(db, id);
         await db.sessions.setArchived(id, value);
         await readLayout(db);
+        await dissolve(db, [session.folderId]);
         history.push({
           label: text.undoArchive,
           async undo() {
             await db.sessions.setArchived(id, !value);
+            await db.folders.restoreLayout(before);
             await readLayout(db);
             const back = sessions.find((item) => item.id === id);
             if (value && wasCurrent && back) await select(db, back);
@@ -1182,23 +1306,10 @@ export function createAppState(
     },
     /** Into the trash: kept 30 days, its solves hidden with it. */
     deleteSession(id: string): Promise<void> {
-      return edit(async (db) => {
-        const removed = sessions.find((session) => session.id === id);
-        if (!removed) return;
-        const wasCurrent = current?.id === id;
-        if (wasCurrent) await leave(db, id);
-        await db.sessions.remove(id);
-        await readLayout(db);
-        history.push({
-          label: text.undoSession,
-          async undo() {
-            await db.sessions.restore(id);
-            await readLayout(db);
-            if (wasCurrent) await select(db, removed);
-          },
-        });
-      });
+      return removeSessions([id]);
     },
+    /** Several sessions into the trash at once, with one undo. */
+    deleteSessions: removeSessions,
     more(): Promise<void> {
       return edit(async (db) => {
         const last = rows.at(-1);

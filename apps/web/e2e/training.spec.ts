@@ -10,6 +10,7 @@ import {
   createSession,
   inspectionOff,
   keyboardSolve,
+  sessionButton,
   switchSession,
 } from "./helpers";
 
@@ -202,6 +203,8 @@ test("a search that runs too long ends and leaves the timer working", async ({
   page,
 }) => {
   await page.goto("/?solver-timeout=1");
+  // A scramble made ahead by the page before shows at once; the drills wait for the store.
+  await expect(sessionButton(page)).toBeEnabled();
   await readyScramble(page);
   await page.keyboard.press("KeyL");
   await pickDrill(page, "cross-solved");

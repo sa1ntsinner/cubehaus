@@ -114,11 +114,24 @@ export const PLL: readonly TrainerCaseData[] = [
     "id": "pll-01231032",
     "label": "E",
     "group": "corners",
-    "state": "1230000003210000",
+    "state": "0123000010320000",
     "algs": [
       {
+        "moves": "F2 U' F2 U2 R2 U R2 U F2 R2 U2 R2 U F2",
+        "metrics": {
+          "moves": 14,
+          "rotations": 0,
+          "wide": 0,
+          "fbd": 4,
+          "left": 0,
+          "regrips": 4,
+          "score": 20
+        },
+        "auf": 0
+      },
+      {
         "moves": "R2 U R' U' y R U R' U' R U R' U' R U R' y' R U' R2",
-        "auf": 0,
+        "auf": 1,
         "metrics": {
           "moves": 18,
           "rotations": 2,
@@ -131,7 +144,7 @@ export const PLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "x' R U' R' D R U R' D' R U R' D R U' R' D' x",
-        "auf": 3,
+        "auf": 0,
         "metrics": {
           "moves": 16,
           "rotations": 2,
@@ -144,7 +157,7 @@ export const PLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "x' L' U L D' L' U' L D L' U' L D' L' U L D x",
-        "auf": 3,
+        "auf": 0,
         "metrics": {
           "moves": 16,
           "rotations": 2,
@@ -675,11 +688,24 @@ export const PLL: readonly TrainerCaseData[] = [
     "id": "pll-01321023",
     "label": "Ra",
     "group": "adjacent",
-    "state": "0132000010230000",
+    "state": "1320000002310000",
     "algs": [
       {
+        "moves": "R U' R F2 U R U R U' R' U' F2 R2",
+        "metrics": {
+          "moves": 13,
+          "rotations": 0,
+          "wide": 0,
+          "fbd": 2,
+          "left": 0,
+          "regrips": 4,
+          "score": 18
+        },
+        "auf": 0
+      },
+      {
         "moves": "R U R' F' R U2 R' U2 R' F R U R U2 R'",
-        "auf": 0,
+        "auf": 3,
         "metrics": {
           "moves": 15,
           "rotations": 0,
@@ -692,7 +718,7 @@ export const PLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "R U' R' U' R U R D R' U' R D' R' U2 R'",
-        "auf": 0,
+        "auf": 3,
         "metrics": {
           "moves": 15,
           "rotations": 0,
@@ -705,7 +731,7 @@ export const PLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "L U2 L' U2 L F' L' U' L U L F L2",
-        "auf": 3,
+        "auf": 2,
         "metrics": {
           "moves": 13,
           "rotations": 0,
@@ -718,8 +744,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on the left; a pair in front next to the left side; three colours at the back.",
-      "ru": "Фары слева; пара спереди у левой стороны; сзади три цвета."
+      "en": "Headlights at the back; a pair on the left next to the back; three colours on the right.",
+      "ru": "Фары сзади; пара слева у задней стороны; справа три цвета."
     },
     "subsets": []
   },

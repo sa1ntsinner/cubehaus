@@ -12,9 +12,18 @@ import { applyTwo, SOLVED, sameTwo, type Two } from "./two";
  * - `two-cll`: the bottom layer whole, the top to solve in one go. A case is a state up to
  *   a turn of the top before and after; holding the cube another way about the vertical
  *   is one of those (with the bottom whole, a y turn moves the top as a U turn does).
+ * - `two-adj`, `two-diag`: the bottom one colour, its pieces needing a swap of two side by
+ *   side (one bar on the bottom's sides) or across (no bar), the top to solve with it in
+ *   one go. A case is a state up to a turn of the top before and after, a turn of the
+ *   bottom after, and the cube held another way about the vertical (which is how the
+ *   bottom's bar is put where the algorithm wants it).
  */
 
-export type TwoSet = "two-oll" | "two-pbl" | "two-cll";
+export type TwoSet = "two-oll" | "two-pbl" | "two-cll" | "two-adj" | "two-diag";
+
+/** The sets whose bottom is one colour but needs its pieces swapped. */
+export const BOTTOM_SWAP = ["two-adj", "two-diag"] as const;
+const isSwap = (set: TwoSet) => set === "two-adj" || set === "two-diag";
 
 /** a then b: the state after a's turns, then b's. */
 export function composeTwo(a: Two, b: Two): Two {
@@ -74,6 +83,18 @@ export function stateFromKey(key: string): Two {
   };
 }
 
+/** The bottom's pieces in order round the bottom: 4 bars on its sides, one, or none. */
+export function bottomBars(s: Two): 0 | 1 | 4 {
+  const places = [4, 5, 6, 7];
+  let bars = 0;
+  for (let i = 0; i < 4; i++) {
+    const a = (s.cp[places[i] as number] as number) - 4;
+    const b = (s.cp[places[(i + 1) % 4] as number] as number) - 4;
+    if ((((b - a) % 4) + 4) % 4 === 1) bars++;
+  }
+  return bars as 0 | 1 | 4;
+}
+
 const bottomWhole = (s: Two) =>
   [4, 5, 6, 7].every((p) => s.cp[p] === p && s.co[p] === 0);
 const bottomOneColour = (s: Two) =>
@@ -106,6 +127,20 @@ export function membersOf(set: TwoSet): Two[] {
         });
     return out;
   }
+  if (isSwap(set)) {
+    // The bottom's pieces with DBL home (our frame), one bar or none on its sides.
+    const want = set === "two-adj" ? 1 : 0;
+    const lows = perms([4, 5, 7])
+      .map((low) => [low[0], low[1], 6, low[2]] as number[])
+      .filter(
+        (low) => bottomBars({ cp: [0, 1, 2, 3, ...low], co: [] }) === want,
+      );
+    for (const low of lows)
+      for (const top of perms([0, 1, 2, 3]))
+        for (const co of twists)
+          out.push({ cp: [...top, ...low], co: [...co, 0, 0, 0, 0] });
+    return out;
+  }
   for (const top of set === "two-cll" ? perms([0, 1, 2, 3]) : [[0, 1, 2, 3]])
     for (const co of twists)
       out.push({ cp: [...top, 4, 5, 6, 7], co: [...co, 0, 0, 0, 0] });
@@ -116,6 +151,11 @@ export function membersOf(set: TwoSet): Two[] {
 function neighbours(set: TwoSet, s: Two): Two[] {
   if (set === "two-oll") return [composeTwo(s, U)];
   const out = [composeTwo(s, U), composeTwo(U, s)];
+  if (isSwap(set))
+    out.push(
+      upright(composeTwo(s, D)),
+      upright(composeTwo(composeTwo(inverseTwo(Y), s), Y)),
+    );
   if (set === "two-pbl")
     out.push(
       upright(composeTwo(s, D)),
@@ -172,7 +212,11 @@ export const inSet = (set: TwoSet, s: Two) =>
     ? bottomOneColour(s)
     : set === "two-pbl"
       ? facesOneColour(s)
-      : bottomWhole(s);
+      : set === "two-adj"
+        ? bottomOneColour(s) && bottomBars(s) === 1
+        : set === "two-diag"
+          ? bottomOneColour(s) && bottomBars(s) === 0
+          : bottomWhole(s);
 
 /** What the set sees of a state, the key its class is found by. */
 export const seenKey = seen;

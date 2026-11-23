@@ -51,6 +51,8 @@ const en = {
   nextScramble: "Next scramble",
   scrambleCopied: "Scramble copied",
   scrambleCopyFailed: "Could not copy scramble",
+  solveCopied: "Solve copied",
+  solveCopyFailed: "Could not copy the solve",
   noLater: "This is the newest solve",
   movedTo: (n: number, name: string) =>
     n === 1 ? `Moved to ${name}` : `${n} solves moved to ${name}`,
@@ -112,12 +114,12 @@ const en = {
   // Dates and counts on screen (Intl locale).
   locale: "en-GB",
   train: {
+    crossOn: (colour: string) => `F2L for a ${colour} cross`,
     title: "Algorithms",
     // The status line's word on the narrowest phones, where the session's name needs room.
     short: "Algs",
     modes: { learn: "Learn", drill: "Drill", review: "Review" },
     all: "All",
-    none: "None",
     twoLook: "2-look",
     // The other puzzle, one word at the bar's far end.
     puzzles: { "333": "3×3", "222": "2×2" },
@@ -129,6 +131,24 @@ const en = {
       fl: "Front left slot",
       br: "Back right slot",
       bl: "Back left slot",
+    },
+    // A family's member, quiet words at the far end of Learn's All line (F2L's are `slots`):
+    // the insert that puts the last pair in (last slot), the 2×2's bottom under its top in
+    // one go.
+    memberWords: {
+      ls: { right: "R U' R'", front: "F' U F" },
+      "two-cll": { solved: "Solved", adj: "Adj", diag: "Diag" },
+    },
+    members: {
+      ls: {
+        right: "Last pair in with R U' R'",
+        front: "Last pair in with F' U F",
+      },
+      "two-cll": {
+        solved: "Bottom solved",
+        adj: "Bottom pieces swapped side by side",
+        diag: "Bottom pieces swapped across",
+      },
     },
     add: "Add to drills",
     remove: "Take out of drills",
@@ -200,6 +220,8 @@ const en = {
     days: "days",
     run: "in a row",
     needs: (n: number) => `An average needs ${n} solves.`,
+    colours: "By cross colour",
+    colourNeeds: (n: number) => `An average needs ${n} solves of the colour`,
     none: "No solves yet.",
     solveAt: (solve: string, date: string) => `Solve ${solve} · ${date}`,
     trend: (average: string, from: string, to: string) =>
@@ -301,6 +323,7 @@ const en = {
       pll: "PLL cases",
       coll: "COLL cases",
       ll: "Last-layer cases",
+      "cross-choice": "Choosing the cross",
     },
     turns: "Turns",
     cross: "Cross",
@@ -317,6 +340,10 @@ const en = {
     xcrossIn: (n: number, colour: string) =>
       `${colour} xcross in ${n} ${n === 1 ? "turn" : "turns"}`,
     crossSolvedOn: (colour: string) => `${colour} cross solved`,
+    anyCrossIn: (n: number) => `cross in ${n} ${n === 1 ? "turn" : "turns"}`,
+    anyXcrossIn: (n: number) => `xcross in ${n} ${n === 1 ? "turn" : "turns"}`,
+    anyCrossSolved: "cross solved",
+    choose: "choose the cross",
     edgesOnly: "edges only",
     cornersOnly: "corners only",
     twoGen: "R and U only",
@@ -343,6 +370,27 @@ const en = {
     showSolution: "Show the cross solution",
     setting: "Scrambles",
     official: "Official",
+  },
+  cross: {
+    name: {
+      white: "white",
+      yellow: "yellow",
+      green: "green",
+      blue: "blue",
+      red: "red",
+      orange: "orange",
+    },
+    /** The mark by the scramble. */
+    mark: (colour: string) => `${colour} cross`,
+    /** The line after a solve: `cross  white 6 · yellow 4`. */
+    line: "cross",
+    lineLabel: "Shortest cross by colour",
+    alwaysShown: "The cross lengths show after every solve",
+    pickLabel: "Colour to start on",
+    overTip: (n: number) =>
+      n === 0
+        ? "The shortest cross"
+        : `${n} ${n === 1 ? "turn" : "turns"} longer than the shortest`,
   },
   waiting: (event: string) => `// preparing a ${event} scramble`,
   toGo: (n: number) => `in ${n}`,
@@ -430,6 +478,13 @@ const en = {
   palettePlaceholder: "Type a command",
   keysTitle: "Keys",
   switcher: {
+    newSession: "New session",
+    find: "Find",
+    moveTo: "Move to…",
+    ungroup: "Ungroup",
+    deletePicked: (n: number) => `Delete ${n}`,
+    folderTile: (name: string, n: number) =>
+      `${name}, folder of ${n} ${n === 1 ? "session" : "sessions"}`,
     query: "Find or create",
     create: (name: string) => `Create “${name}”`,
     rename: "Rename",
@@ -580,6 +635,8 @@ const en = {
       `${n} of them ${n === 1 ? "gets" : "get"} the +2 or DNF the CSV left out.`,
     exportCsTimer: "Solves for csTimer",
     exportCsv: "Solves as a table",
+    exportSession: "This session",
+    exportAll: "All",
     exported: (r: { solves: number; fields: string[] }) =>
       r.solves === 0
         ? "Saved."
@@ -675,6 +732,9 @@ const en = {
     precision: "Decimal places",
     holdingTop: "Colour on top",
     holdingFront: "Colour in front",
+    cross: "Cross colour in this session",
+    crossChoices: { any: "Any", assigned: "Assigned" },
+    crossColours: "Colours in play",
     layout: "Timer layout",
     layouts: { lift: "Lift", times: "Times", focus: "Focus" },
     recordCue: "Highlight records",
@@ -795,6 +855,8 @@ const ru: Text = {
   nextScramble: "Следующий скрамбл",
   scrambleCopied: "Скрамбл скопирован",
   scrambleCopyFailed: "Не удалось скопировать скрамбл",
+  solveCopied: "Сборка скопирована",
+  solveCopyFailed: "Не удалось скопировать сборку",
   noLater: "Это последняя сборка",
   movedTo: (n, name) =>
     n === 1
@@ -852,11 +914,11 @@ const ru: Text = {
   backToTimer: "Таймер",
   locale: "ru-RU",
   train: {
+    crossOn: (colour: string) => `F2L для креста: ${colour}`,
     title: "Алгоритмы",
     short: "Алги",
     modes: { learn: "Учить", drill: "Отработка", review: "Повтор" },
     all: "Все",
-    none: "Ни одного",
     twoLook: "В два этапа",
     puzzles: { "333": "3×3", "222": "2×2" },
     puzzleNames: { "333": "Кубик 3×3", "222": "Кубик 2×2" },
@@ -866,6 +928,21 @@ const ru: Text = {
       fl: "Передний левый слот",
       br: "Задний правый слот",
       bl: "Задний левый слот",
+    },
+    memberWords: {
+      ls: { right: "R U' R'", front: "F' U F" },
+      "two-cll": { solved: "Собран", adj: "Сосед", diag: "Диаг" },
+    },
+    members: {
+      ls: {
+        right: "Последняя пара через R U' R'",
+        front: "Последняя пара через F' U F",
+      },
+      "two-cll": {
+        solved: "Низ собран",
+        adj: "Внизу обмен соседних",
+        diag: "Внизу обмен по диагонали",
+      },
     },
     add: "В отработку",
     remove: "Убрать из отработки",
@@ -930,6 +1007,9 @@ const ru: Text = {
     single: "сборка",
     days: "дней",
     run: "подряд",
+    colours: "По цвету креста",
+    colourNeeds: (n: number) =>
+      `Для среднего нужно ${n} ${plural(n, "сборка", "сборки", "сборок")} этого цвета`,
     needs: (n: number) =>
       `Для среднего ${plural(n, "нужна", "нужны", "нужно")} ${n} ${plural(n, "сборка", "сборки", "сборок")}.`,
     none: "Сборок пока нет.",
@@ -1027,6 +1107,7 @@ const ru: Text = {
       pll: "Случаи PLL",
       coll: "Случаи COLL",
       ll: "Случаи последнего слоя",
+      "cross-choice": "Выбор креста",
     },
     turns: "Ходов",
     cross: "Крест",
@@ -1043,6 +1124,12 @@ const ru: Text = {
     xcrossIn: (n: number, colour: string) =>
       `${colour} икс-крест, ${n} ${plural(n, "ход", "хода", "ходов")}`,
     crossSolvedOn: (colour: string) => `${colour} крест собран`,
+    anyCrossIn: (n: number) =>
+      `крест, ${n} ${plural(n, "ход", "хода", "ходов")}`,
+    anyXcrossIn: (n: number) =>
+      `икс-крест, ${n} ${plural(n, "ход", "хода", "ходов")}`,
+    anyCrossSolved: "крест собран",
+    choose: "выбор креста",
     edgesOnly: "только рёбра",
     cornersOnly: "только углы",
     twoGen: "только R и U",
@@ -1069,6 +1156,25 @@ const ru: Text = {
     showSolution: "Показать решение креста",
     setting: "Скрамблы",
     official: "Обычные",
+  },
+  cross: {
+    name: {
+      white: "белый",
+      yellow: "жёлтый",
+      green: "зелёный",
+      blue: "синий",
+      red: "красный",
+      orange: "оранжевый",
+    },
+    mark: (colour: string) => `${colour} крест`,
+    line: "крест",
+    lineLabel: "Самый короткий крест по цветам",
+    alwaysShown: "Длины крестов видны после каждой сборки",
+    pickLabel: "Цвет, с которого начать",
+    overTip: (n: number) =>
+      n === 0
+        ? "Самый короткий крест"
+        : `На ${n} ${plural(n, "ход", "хода", "ходов")} длиннее самого короткого`,
   },
   waiting: (event: string) => `// готовлю скрамбл: ${event}`,
   toGo: (n: number) => `ещё ${n}`,
@@ -1157,6 +1263,13 @@ const ru: Text = {
   palettePlaceholder: "Введите команду",
   keysTitle: "Клавиши",
   switcher: {
+    newSession: "Новая сессия",
+    find: "Найти",
+    moveTo: "Переместить в…",
+    ungroup: "Разгруппировать",
+    deletePicked: (n) => `Удалить ${n}`,
+    folderTile: (name, n) =>
+      `${name}, папка: ${n} ${n % 10 === 1 && n % 100 !== 11 ? "сессия" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "сессии" : "сессий"}`,
     query: "Найти или создать",
     create: (name) => `Создать «${name}»`,
     rename: "Переименовать",
@@ -1300,6 +1413,8 @@ const ru: Text = {
       `${n} из них ${plural(n, "получит", "получат", "получат")} +2 или DNF, которых не было в CSV.`,
     exportCsTimer: "Сборки для csTimer",
     exportCsv: "Сборки таблицей",
+    exportSession: "Эта сессия",
+    exportAll: "Все",
     exported: (r) =>
       r.solves === 0
         ? "Сохранено."
@@ -1386,6 +1501,9 @@ const ru: Text = {
     precision: "Знаков после запятой",
     holdingTop: "Цвет сверху",
     holdingFront: "Цвет спереди",
+    cross: "Цвет креста в этой сессии",
+    crossChoices: { any: "Любой", assigned: "Назначенный" },
+    crossColours: "Цвета в игре",
     layout: "Вид таймера",
     layouts: { lift: "Журнал", times: "Времена", focus: "Фокус" },
     recordCue: "Выделять рекорды",

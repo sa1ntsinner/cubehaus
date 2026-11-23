@@ -89,3 +89,20 @@ export function renameTurns(
     })
     .join(" ");
 }
+
+/**
+ * The holding with `face`'s colour at the bottom (a cross on that colour), the cube turned
+ * whole from `holding`: the front colour stays in front where it can; where it cannot (it
+ * goes to the top or the bottom), the colour that was on top comes to the front.
+ */
+export function holdingWithBottom(holding: string, face: FaceLetter): string {
+  const faces = holdingFaces(holding);
+  const top = OPPOSITE[face];
+  const front =
+    faces.F !== face && faces.F !== top
+      ? faces.F
+      : faces.U !== face && faces.U !== top
+        ? faces.U
+        : (frontsFor(top)[0] as FaceLetter);
+  return `${top}${front}`;
+}

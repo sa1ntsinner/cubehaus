@@ -1119,11 +1119,24 @@ export const OLL: readonly TrainerCaseData[] = [
     "id": "oll-00112100",
     "label": "OLL 29",
     "group": "L",
-    "state": "2301110023010021",
+    "state": "3012100130120210",
     "algs": [
       {
+        "moves": "F R' U' R2 U' R2 U2 R U' F'",
+        "metrics": {
+          "moves": 10,
+          "rotations": 0,
+          "wide": 0,
+          "fbd": 2,
+          "left": 0,
+          "regrips": 2,
+          "score": 13
+        },
+        "auf": 0
+      },
+      {
         "moves": "R U R' U' R U' R' F' U' F R U R'",
-        "auf": 0,
+        "auf": 3,
         "metrics": {
           "moves": 13,
           "rotations": 0,
@@ -1136,7 +1149,7 @@ export const OLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "M U R U R' U' R' F R F' M'",
-        "auf": 3,
+        "auf": 2,
         "metrics": {
           "moves": 11,
           "rotations": 0,
@@ -1149,8 +1162,8 @@ export const OLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "An L at the back and on the left; both right corners up; the back left corner faces the back.",
-      "ru": "Уголок сзади и слева; оба правых угла сверху; задний левый угол смотрит назад."
+      "en": "An L at the back and on the right; both front corners up; the back left corner faces left.",
+      "ru": "Уголок сзади и справа; оба передних угла сверху; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -1392,11 +1405,24 @@ export const OLL: readonly TrainerCaseData[] = [
     "id": "oll-00111020",
     "label": "OLL 36",
     "group": "L",
-    "state": "1230011012300201",
+    "state": "2301110023012010",
     "algs": [
       {
+        "moves": "R U R2 F' U' F U R2 U2 R'",
+        "metrics": {
+          "moves": 10,
+          "rotations": 0,
+          "wide": 0,
+          "fbd": 2,
+          "left": 0,
+          "regrips": 2,
+          "score": 13
+        },
+        "auf": 0
+      },
+      {
         "moves": "R' U' R U' R' U R U l U' R' U x",
-        "auf": 0,
+        "auf": 3,
         "metrics": {
           "moves": 12,
           "rotations": 1,
@@ -1409,7 +1435,7 @@ export const OLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "L' U' L U' L' U L U L F' L' F",
-        "auf": 2,
+        "auf": 1,
         "metrics": {
           "moves": 12,
           "rotations": 0,
@@ -1422,8 +1448,8 @@ export const OLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "An L in front and on the left; two corners up across, the back left and the front right; the back right corner faces right.",
-      "ru": "Уголок спереди и слева; два угла сверху по диагонали, задний левый и передний правый; задний правый угол смотрит вправо."
+      "en": "An L at the back and on the left; two corners up across, the back right and the front left; the back left corner faces left.",
+      "ru": "Уголок сзади и слева; два угла сверху по диагонали, задний правый и передний левый; задний левый угол смотрит влево."
     },
     "subsets": []
   },
@@ -1472,6 +1498,19 @@ export const OLL: readonly TrainerCaseData[] = [
     "group": "L",
     "state": "2301110023011020",
     "algs": [
+      {
+        "moves": "F' U' F2 R U R' U' F2 U2 F",
+        "metrics": {
+          "moves": 10,
+          "rotations": 0,
+          "wide": 0,
+          "fbd": 4,
+          "left": 0,
+          "regrips": 2,
+          "score": 14
+        },
+        "auf": 0
+      },
       {
         "moves": "R U R' U R U' R' U' R' F R F'",
         "auf": 0,
@@ -1613,11 +1652,24 @@ export const OLL: readonly TrainerCaseData[] = [
     "id": "oll-00111200",
     "label": "OLL 42",
     "group": "L",
-    "state": "1230011012302001",
+    "state": "3012100130120120",
     "algs": [
       {
+        "moves": "R' U R U2 R' U' F' U F U R",
+        "metrics": {
+          "moves": 11,
+          "rotations": 0,
+          "wide": 0,
+          "fbd": 2,
+          "left": 0,
+          "regrips": 2,
+          "score": 14
+        },
+        "auf": 0
+      },
+      {
         "moves": "R' U' R U' R' U2 R F R U R' U' F'",
-        "auf": 0,
+        "auf": 2,
         "metrics": {
           "moves": 13,
           "rotations": 0,
@@ -1630,7 +1682,7 @@ export const OLL: readonly TrainerCaseData[] = [
       },
       {
         "moves": "R' F R F' R' F R F' R U R' U' R U R'",
-        "auf": 1,
+        "auf": 3,
         "metrics": {
           "moves": 15,
           "rotations": 0,
@@ -1643,8 +1695,8 @@ export const OLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "An L in front and on the left; both back corners up; headlights of the top colour in front.",
-      "ru": "Уголок спереди и слева; оба задних угла сверху; спереди фары верхнего цвета."
+      "en": "An L at the back and on the right; both front corners up; headlights of the top colour at the back.",
+      "ru": "Уголок сзади и справа; оба передних угла сверху; сзади фары верхнего цвета."
     },
     "subsets": []
   },

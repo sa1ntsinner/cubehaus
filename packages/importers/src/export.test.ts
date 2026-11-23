@@ -276,3 +276,26 @@ test("a fresh database exports a file csTimer reads with no sessions lost", asyn
     `${csvHeadings.join(",")}\r\n`,
   );
 });
+
+test("one session alone: csTimer's file holds it as its only session, the table only its rows", async () => {
+  const backup = await history();
+  const cstimer = JSON.parse(encodeCsTimer(backup, { sessionId: "a" }).text);
+  expect(Object.keys(cstimer)).toEqual(["session1", "properties"]);
+  expect(cstimer.session1).toHaveLength(4);
+  expect(JSON.parse(cstimer.properties.sessionData)).toEqual({
+    1: { name: "A, main", opt: { scrType: "333" } },
+  });
+  // csTimer's own reader (ours) takes it back as one session.
+  expect(
+    parseCsTimer(encodeCsTimer(backup, { sessionId: "a" }).text).sessions,
+  ).toHaveLength(1);
+  const rows = encodeCsv(backup, { sessionId: "f" })
+    .text.split("\r\n")
+    .filter(Boolean);
+  expect(rows).toHaveLength(2);
+  expect(rows[1]?.startsWith("f,FTO,fto,f1,")).toBe(true);
+  // A session that is not there, or deleted, gives an empty file of that kind.
+  expect(
+    encodeCsv(backup, { sessionId: "gone" }).text.split("\r\n").filter(Boolean),
+  ).toEqual([csvHeadings.join(",")]);
+});

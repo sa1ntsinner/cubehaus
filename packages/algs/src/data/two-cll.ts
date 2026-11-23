@@ -50,8 +50,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "None up; two face front, two back; opposite colours right, left.",
-      "ru": "Вверх ни одного; два смотрят вперёд, два назад; противоположные цвета справа, слева."
+      "en": "None up; two face front, two back; no pair at the sides; opposite colours on the right.",
+      "ru": "Вверх ни одного; два смотрят вперёд, два назад; по бокам без пар; противоположные цвета справа."
     },
     "subsets": [],
     "scrambles": [
@@ -111,7 +111,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, front left; one faces front, one right, one back; neighbouring colours on the left; the left sticker in front and the left one on the right match.",
+      "ru": "Один вверх, спереди слева; один смотрит вперёд, один вправо, один назад; соседние цвета слева; левая наклейка спереди и левая справа одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R F2 R' F' U F' R'",
@@ -170,7 +173,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, back right; one faces front, one right, one left; neighbouring colours at the back; the right sticker in front and the right one on the right match.",
+      "ru": "Один вверх, сзади справа; один смотрит вперёд, один вправо, один влево; соседние цвета сзади; правая наклейка спереди и правая справа одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R U R2 U' R2 U R",
@@ -230,8 +236,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Two up, right; two face left; opposite colours right.",
-      "ru": "Два вверх, справа; два смотрят влево; противоположные цвета справа."
+      "en": "Two up, right; two face left; no pair at the sides; the left sticker in front and the right one on the right are opposite colours.",
+      "ru": "Два вверх, справа; два смотрят влево; по бокам без пар; левая наклейка спереди и правая справа противоположных цветов."
     },
     "subsets": [],
     "scrambles": [
@@ -291,7 +297,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, front left and back right; one faces right, one back; opposite colours in front; the left sticker in front and the right one on the right match.",
+      "ru": "Два вверх, спереди слева и сзади справа; один смотрит вправо, один назад; противоположные цвета спереди; левая наклейка спереди и правая справа одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R U R' F U F' U' F'",
@@ -350,7 +359,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, front; one faces right, one left; no pair at the sides; the right sticker at the back and the right one on the left match.",
+      "ru": "Два вверх, спереди; один смотрит вправо, один влево; по бокам без пар; правая наклейка сзади и правая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "U' R U2 F R' F' U2 R'",
@@ -409,7 +421,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, right; one faces front, one back; no pair at the sides; the left sticker at the back and the left one on the left match.",
+      "ru": "Два вверх, справа; один смотрит вперёд, один назад; по бокам без пар; левая наклейка сзади и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "F' R' U' R F R' U R",
@@ -468,7 +483,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, front left and back right; one faces right, one back; neighbouring colours in front; the right sticker in front and the left one on the left match.",
+      "ru": "Два вверх, спереди слева и сзади справа; один смотрит вправо, один назад; соседние цвета спереди; правая наклейка спереди и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "U F' R' U R U F R'",
@@ -527,7 +545,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "None up; one faces front, one back, two left; no pair at the sides; the left sticker in front and the right one at the back match.",
+      "ru": "Вверх ни одного; один смотрит вперёд, один назад, два влево; по бокам без пар; левая наклейка спереди и правая сзади одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R' U R2 U' R2 U' R2 U R' U'",
@@ -586,7 +607,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, front right and back left; one faces back, one left; neighbouring colours in front; the left sticker in front and the left one on the left match.",
+      "ru": "Два вверх, спереди справа и сзади слева; один смотрит назад, один влево; соседние цвета спереди; левая наклейка спереди и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R2 U' F U2 F' R2 F U' R2 U'",
@@ -645,7 +669,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, back right; one faces front, one back, one left; neighbouring colours on the right; the left sticker in front and the left one at the back are opposite colours.",
+      "ru": "Один вверх, сзади справа; один смотрит вперёд, один назад, один влево; соседние цвета справа; левая наклейка спереди и левая сзади противоположных цветов."
+    },
     "subsets": [],
     "scrambles": [
       "U2 R' U R F' U F R'",
@@ -704,7 +731,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, back left; one faces front, one right, one back; neighbouring colours on the left; the right sticker in front and the right one at the back are opposite colours.",
+      "ru": "Один вверх, сзади слева; один смотрит вперёд, один вправо, один назад; соседние цвета слева; правая наклейка спереди и правая сзади противоположных цветов."
+    },
     "subsets": [],
     "scrambles": [
       "F2 R' F2 U' R' U F R",
@@ -763,7 +793,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, back left; one faces front, one right, one back; neighbouring colours on the left; the right sticker in front and the right one at the back match.",
+      "ru": "Один вверх, сзади слева; один смотрит вперёд, один вправо, один назад; соседние цвета слева; правая наклейка спереди и правая сзади одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R' F2 R U2 R U' R' F U",
@@ -822,7 +855,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, back right; one faces front, one back, one left; opposite colours on the right; the left sticker at the back and the left one on the left match.",
+      "ru": "Один вверх, сзади справа; один смотрит вперёд, один назад, один влево; противоположные цвета справа; левая наклейка сзади и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "U' F' R U R' U2 R' F2 R",
@@ -881,7 +917,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, front left; one faces right, one back, one left; opposite colours in front; the right sticker at the back and the right one on the left match.",
+      "ru": "Один вверх, спереди слева; один смотрит вправо, один назад, один влево; противоположные цвета спереди; правая наклейка сзади и правая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "F U' F' R F2 R F2 R' U'",
@@ -940,7 +979,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, back left; one faces front, one right, one left; neighbouring colours at the back; the left sticker on the right and the left one on the left match.",
+      "ru": "Один вверх, сзади слева; один смотрит вперёд, один вправо, один влево; соседние цвета сзади; левая наклейка справа и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R F2 R' F2 R' F U F' U'",
@@ -1000,8 +1042,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Two up, back; one faces right, one left; a pair front, back.",
-      "ru": "Два вверх, сзади; один смотрит вправо, один влево; пара спереди, сзади."
+      "en": "Two up, back; one faces right, one left; a pair in front; a pair at the back.",
+      "ru": "Два вверх, сзади; один смотрит вправо, один влево; пара спереди; пара сзади."
     },
     "subsets": [],
     "scrambles": [
@@ -1061,7 +1103,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, front right and back left; one faces front, one right; neighbouring colours at the back; the left sticker on the right and the right one at the back match.",
+      "ru": "Два вверх, спереди справа и сзади слева; один смотрит вперёд, один вправо; соседние цвета сзади; левая наклейка справа и правая сзади одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "F2 U R' F2 R U' F' U2 F'",
@@ -1120,7 +1165,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, back; two face front; no pair at the sides; the left sticker on the right and the left one on the left match.",
+      "ru": "Два вверх, сзади; два смотрят вперёд; по бокам без пар; левая наклейка справа и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "F' U2 F U R2 U R U' R2",
@@ -1179,7 +1227,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, left; two face right; no pair at the sides; the right sticker in front and the right one at the back match.",
+      "ru": "Два вверх, слева; два смотрят вправо; по бокам без пар; правая наклейка спереди и правая сзади одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R' U2 R' U' F R2 F' U R2 U'",
@@ -1238,7 +1289,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, front right and back left; one faces front, one right; opposite colours at the back; the right sticker in front and the left one on the left match.",
+      "ru": "Два вверх, спереди справа и сзади слева; один смотрит вперёд, один вправо; противоположные цвета сзади; правая наклейка спереди и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "F' U R' U' R2 U' R' F2 U R'",
@@ -1298,7 +1352,7 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "None up; two face right, two left; a pair front; opposite colours back.",
+      "en": "None up; two face right, two left; a pair in front; opposite colours at the back.",
       "ru": "Вверх ни одного; два смотрят вправо, два влево; пара спереди; противоположные цвета сзади."
     },
     "subsets": [],
@@ -1359,7 +1413,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "None up; one faces right, two back, one left; a pair in front; the right sticker on the right and the left one on the left match.",
+      "ru": "Вверх ни одного; один смотрит вправо, два назад, один влево; пара спереди; правая наклейка справа и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R U F2 U R2 U R U2 F2",
@@ -1418,7 +1475,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, back right; one faces front, one right, one left; neighbouring colours at the back; the right sticker in front and the right one on the right are opposite colours.",
+      "ru": "Один вверх, сзади справа; один смотрит вперёд, один вправо, один влево; соседние цвета сзади; правая наклейка спереди и правая справа противоположных цветов."
+    },
     "subsets": [],
     "scrambles": [
       "F' U' R' U2 R2 F2 R' F U' F2",
@@ -1477,7 +1537,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "Two up, front right and back left; one faces front, one right; neighbouring colours at the back; the right sticker at the back and the right one on the left match.",
+      "ru": "Два вверх, спереди справа и сзади слева; один смотрит вперёд, один вправо; соседние цвета сзади; правая наклейка сзади и правая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R' U2 R F' U F R2 U2 R",
@@ -1536,7 +1599,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "None up; one faces front, two right, one back; a pair on the left; the right sticker in front and the left one at the back are opposite colours.",
+      "ru": "Вверх ни одного; один смотрит вперёд, два вправо, один назад; пара слева; правая наклейка спереди и левая сзади противоположных цветов."
+    },
     "subsets": [],
     "scrambles": [
       "R2 U F2 R' U2 R F2 U' R2",
@@ -1595,7 +1661,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, front right; one faces right, one back, one left; neighbouring colours in front; the left sticker on the right and the left one at the back are opposite colours.",
+      "ru": "Один вверх, спереди справа; один смотрит вправо, один назад, один влево; соседние цвета спереди; левая наклейка справа и левая сзади противоположных цветов."
+    },
     "subsets": [],
     "scrambles": [
       "F2 U' F' R2 U F U F2 R' F",
@@ -1654,7 +1723,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "None up; two face front, one right, one left; no pair at the sides; the left sticker on the right and the left one at the back are opposite colours.",
+      "ru": "Вверх ни одного; два смотрят вперёд, один вправо, один влево; по бокам без пар; левая наклейка справа и левая сзади противоположных цветов."
+    },
     "subsets": [],
     "scrambles": [
       "R2 U R U F' R2 U2 R F' R",
@@ -1714,8 +1786,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "None up; two face right, two left; no pair at the sides.",
-      "ru": "Вверх ни одного; два смотрят вправо, два влево; по бокам без пар."
+      "en": "None up; two face right, two left; neighbouring colours in front.",
+      "ru": "Вверх ни одного; два смотрят вправо, два влево; соседние цвета спереди."
     },
     "subsets": [],
     "scrambles": [
@@ -1776,8 +1848,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "None up; two face front, two back; a pair right, left.",
-      "ru": "Вверх ни одного; два смотрят вперёд, два назад; пара справа, слева."
+      "en": "None up; two face front, two back; a pair on the right; a pair on the left.",
+      "ru": "Вверх ни одного; два смотрят вперёд, два назад; пара справа; пара слева."
     },
     "subsets": [],
     "scrambles": [
@@ -1838,8 +1910,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "All up; a pair back; opposite colours front.",
-      "ru": "Все вверх; пара сзади; противоположные цвета спереди."
+      "en": "All up; a pair at the back.",
+      "ru": "Все вверх; пара сзади."
     },
     "subsets": [],
     "scrambles": [
@@ -1900,8 +1972,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Two up, front; two face back; opposite colours front, right, left.",
-      "ru": "Два вверх, спереди; два смотрят назад; противоположные цвета спереди, справа, слева."
+      "en": "Two up, front; two face back; no pair at the sides; opposite colours on the right.",
+      "ru": "Два вверх, спереди; два смотрят назад; по бокам без пар; противоположные цвета справа."
     },
     "subsets": [],
     "scrambles": [
@@ -1962,8 +2034,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Two up, front; one faces right, one left; opposite colours front, back.",
-      "ru": "Два вверх, спереди; один смотрит вправо, один влево; противоположные цвета спереди, сзади."
+      "en": "Two up, front; one faces right, one left; no pair at the sides; opposite colours in front.",
+      "ru": "Два вверх, спереди; один смотрит вправо, один влево; по бокам без пар; противоположные цвета спереди."
     },
     "subsets": [],
     "scrambles": [
@@ -2024,7 +2096,7 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Two up, back; one faces right, one left; a pair front; opposite colours back.",
+      "en": "Two up, back; one faces right, one left; a pair in front; opposite colours at the back.",
       "ru": "Два вверх, сзади; один смотрит вправо, один влево; пара спереди; противоположные цвета сзади."
     },
     "subsets": [],
@@ -2085,7 +2157,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "None up; one faces front, two right, one back; no pair at the sides; the right sticker in front and the left one on the left are opposite colours.",
+      "ru": "Вверх ни одного; один смотрит вперёд, два вправо, один назад; по бокам без пар; правая наклейка спереди и левая слева противоположных цветов."
+    },
     "subsets": [],
     "scrambles": [
       "R F2 R' U2 F2 R U' F' U' F2",
@@ -2145,8 +2220,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Two up, front; two face back; a pair front.",
-      "ru": "Два вверх, спереди; два смотрят назад; пара спереди."
+      "en": "Two up, front; two face back; a pair in front; neighbouring colours on the right.",
+      "ru": "Два вверх, спереди; два смотрят назад; пара спереди; соседние цвета справа."
     },
     "subsets": [],
     "scrambles": [
@@ -2207,7 +2282,7 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Two up, right; one faces front, one back; a pair right; opposite colours left.",
+      "en": "Two up, right; one faces front, one back; a pair on the right; opposite colours on the left.",
       "ru": "Два вверх, справа; один смотрит вперёд, один назад; пара справа; противоположные цвета слева."
     },
     "subsets": [],
@@ -2269,8 +2344,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "Two up, back; two face front; a pair back; opposite colours right, left.",
-      "ru": "Два вверх, сзади; два смотрят вперёд; пара сзади; противоположные цвета справа, слева."
+      "en": "Two up, back; two face front; opposite colours on the right; a pair at the back.",
+      "ru": "Два вверх, сзади; два смотрят вперёд; противоположные цвета справа; пара сзади."
     },
     "subsets": [],
     "scrambles": [
@@ -2330,7 +2405,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "None up; one faces front, two right, one back; no pair at the sides; the left sticker at the back and the right one on the left are opposite colours.",
+      "ru": "Вверх ни одного; один смотрит вперёд, два вправо, один назад; по бокам без пар; левая наклейка сзади и правая слева противоположных цветов."
+    },
     "subsets": [],
     "scrambles": [
       "F R' U' F2 U F' U2 R F2 R'",
@@ -2389,7 +2467,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, front right; one faces right, one back, one left; opposite colours in front; the left sticker on the right and the left one on the left match.",
+      "ru": "Один вверх, спереди справа; один смотрит вправо, один назад, один влево; противоположные цвета спереди; левая наклейка справа и левая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R2 F R2 U' F U' R' F R2 F2",
@@ -2448,7 +2529,10 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
         }
       }
     ],
-    "recognise": null,
+    "recognise": {
+      "en": "One up, front left; one faces right, one back, one left; opposite colours in front; the right sticker on the right and the right one on the left match.",
+      "ru": "Один вверх, спереди слева; один смотрит вправо, один назад, один влево; противоположные цвета спереди; правая наклейка справа и правая слева одного цвета."
+    },
     "subsets": [],
     "scrambles": [
       "R2 F' U' R2 F R2 U F R2",
@@ -2508,8 +2592,8 @@ export const TWO_CLL: readonly (TrainerCaseData & { scrambles: readonly string[]
       }
     ],
     "recognise": {
-      "en": "All up; opposite colours front, right, back, left.",
-      "ru": "Все вверх; противоположные цвета спереди, справа, сзади, слева."
+      "en": "All up; no pair at the sides.",
+      "ru": "Все вверх; по бокам без пар."
     },
     "subsets": [],
     "scrambles": [

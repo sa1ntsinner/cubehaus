@@ -17,10 +17,10 @@ export async function openSwitch(page: Page) {
 const escapeRegExp = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** A session's row in the open switch, by its name. */
+/** A session's tile in the open switch, by its name. */
 export function switchRow(page: Page, name: string) {
   return page
-    .locator('[data-part="switch-list"] > li[data-row="session"]')
+    .locator('[data-part="switch-grid"] li[data-tile="session"]')
     .filter({
       has: page.locator('[data-part="switch-label"]', {
         hasText: new RegExp(`^${escapeRegExp(name)}$`),
@@ -33,7 +33,7 @@ export async function sessionNames(page: Page): Promise<string[]> {
   await openSwitch(page);
   const names = await page
     .locator(
-      '[data-part="switch-list"] > li[data-row="session"] [data-part="switch-label"]',
+      '[data-part="switch-grid"] li[data-tile="session"] [data-part="switch-label"]',
     )
     .allTextContents();
   await page.keyboard.press("Escape");
@@ -49,12 +49,23 @@ export async function switchSession(page: Page, name: string) {
   await expect(sessionButton(page)).toHaveText(name);
 }
 
+/** The find line of the open switch: typed into with keys, or `Find` on a touch screen. */
+export async function findInSwitch(page: Page, text: string) {
+  const query = page.locator('[data-part="switch-query"]');
+  if (!(await query.isVisible())) {
+    const find = page.locator('[data-action="switch-find"]');
+    if (await find.isVisible()) await find.click();
+    else await page.keyboard.type(text.slice(0, 1));
+  }
+  await query.fill(text);
+}
+
 /** Creates a session called `name` in `event`: typed, then the event stepped to. */
 export async function createSession(page: Page, name: string, event: string) {
   await openSwitch(page);
-  await page.locator('[data-part="switch-query"]').fill(name);
+  await findInSwitch(page, name);
   const create = page.locator(
-    '[data-part="switch-list"] > li[data-row="create"]',
+    '[data-part="switch-grid"] li[data-tile="create"]',
   );
   await expect(create).toHaveCount(1);
   for (let step = 0; step < 18; step++) {
@@ -68,15 +79,17 @@ export async function createSession(page: Page, name: string, event: string) {
   await expect(sessionButton(page)).toHaveAttribute("data-event", event);
 }
 
-/** The open session's row menu in the switch: Rename or Delete. */
+/** The open session's tile menu in the switch (a right click): Rename or Delete. */
 export async function currentSessionAction(
   page: Page,
   name: "switch-rename" | "switch-delete",
 ) {
   await openSwitch(page);
-  const row = page.locator('[data-part="switch-list"] > li[data-current]');
-  await row.locator('[data-action="switch-more"]').click();
-  await row.locator(`[data-action="${name}"]`).click();
+  const tile = page.locator(
+    '[data-part="switch-grid"] li[data-tile="session"][data-current]',
+  );
+  await tile.locator('[data-action="switch-pick"]').click({ button: "right" });
+  await tile.locator(`[data-action="${name}"]`).click();
 }
 
 export async function renameCurrentSession(page: Page, name: string) {
@@ -87,7 +100,7 @@ export async function renameCurrentSession(page: Page, name: string) {
   await field.press("Enter");
   await expect(
     page.locator(
-      '[data-part="switch-list"] > li[data-current] [data-part="switch-label"]',
+      '[data-part="switch-grid"] li[data-current] [data-part="switch-label"]',
     ),
   ).toHaveText(name);
   await page.keyboard.press("Escape");
@@ -99,7 +112,7 @@ export async function deleteCurrentSession(page: Page) {
   const before = await sessionButton(page).getAttribute("data-id");
   await currentSessionAction(page, "switch-delete");
   await expect(
-    page.locator(`[data-part="switch-list"] > li[data-id="${before}"]`),
+    page.locator(`[data-part="switch-grid"] li[data-id="${before}"]`),
   ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(switchSheet(page)).toHaveCount(0);

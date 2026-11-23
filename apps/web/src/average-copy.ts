@@ -9,6 +9,21 @@ import {
 } from "@cubehaus/core";
 import { type Stat, statOf, trimCount } from "@cubehaus/stats";
 
+/** A result as the copies write it: a DNF keeps its raw time, `DNF (11.28)`. */
+function copiedResult(solve: Solve, precision: 2 | 3): string {
+  const result = formatSolve(solve, { precision });
+  const raw =
+    result === "DNF"
+      ? formatSolve({ ...solve, dnf: false, plus2: 0 }, { precision })
+      : "";
+  return raw && raw !== "DNF" ? `DNF (${raw})` : result;
+}
+
+/** One solve as one line of the average's copy: its result, two spaces, its scramble. */
+export function formatSolveLine(solve: Solve, precision: 2 | 3 = 2): string {
+  return `${copiedResult(solve, precision)}  ${solve.scramble}`;
+}
+
 export function describeStatWindow(
   rows: readonly Solve[],
   stat: Stat,
@@ -35,15 +50,9 @@ export function describeStatWindow(
   }
 
   const lines = rows.map((solve, index) => {
-    const result = formatSolve(solve, { precision });
-    const raw =
-      result === "DNF"
-        ? formatSolve({ ...solve, dnf: false, plus2: 0 }, { precision })
-        : "";
-    const time = raw && raw !== "DNF" ? `DNF (${raw})` : result;
     return {
       id: solve.id,
-      time,
+      time: copiedResult(solve, precision),
       scramble: solve.scramble,
       dropped: dropped.has(index),
       penalty: penaltyOf(solve),

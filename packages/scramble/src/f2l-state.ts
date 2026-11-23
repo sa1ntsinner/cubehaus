@@ -183,3 +183,84 @@ export function mirrorAlg(alg: string): string {
  */
 export const f2lLeftStickers = (state: F2lState) =>
   f2lStickers(state).replaceAll("R", "L");
+
+/*
+ * The back slots: the same cases, the cube seen after a y turn. A y turn takes the back
+ * right slot to the front right, so a back right case is the front right case it turns
+ * into, and its algorithms are the front right ones with every side renamed for where it
+ * stands before the turn (R is B, F is R). The back left slot is the back right one in the
+ * mirror, as the front left is the front right one's.
+ */
+
+/** A slot of the first two layers: front right, front left, back right, back left. */
+export type F2lSlot = "fr" | "fl" | "br" | "bl";
+export const F2L_SLOTS: readonly F2lSlot[] = ["fr", "fl", "br", "bl"];
+
+/** Sides seen from the back right slot: the side a front right turn names, before a y. */
+const BACK: Record<string, string> = {
+  R: "B",
+  F: "R",
+  L: "F",
+  B: "L",
+  U: "U",
+  D: "D",
+};
+
+/**
+ * Front right turns for the back right slot: each face turn and wide turn renamed (R is
+ * B, F is R, B is L, L is F), its direction kept. Slices and rotations are refused: the
+ * slot's algorithms use none.
+ */
+export function backAlg(alg: string): string {
+  return alg
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((turn) => {
+      const m = /^([RLUDFBrludfb])(w?)(\d*)('?)$/.exec(turn);
+      if (!m) throw new RangeError(`No face turn ${turn}`);
+      const [, face, wide, times, prime] = m as unknown as [
+        string,
+        string,
+        string,
+        string,
+        string,
+      ];
+      const lower = face === face.toLowerCase();
+      const named = BACK[face.toUpperCase()] as string;
+      return `${lower ? named.toLowerCase() : named}${wide}${times}${prime}`;
+    })
+    .join(" ");
+}
+
+/** A front right algorithm as the same algorithm for a slot. */
+export function slotAlg(alg: string, slot: F2lSlot): string {
+  if (slot === "fr") return alg;
+  if (slot === "fl") return mirrorAlg(alg);
+  const back = backAlg(alg);
+  return slot === "br" ? back : mirrorAlg(back);
+}
+
+/** Letters of a front right picture as the slot's own sides (front, third face). */
+const SLOT_FACES: Record<F2lSlot, { F: string; R: string }> = {
+  fr: { F: "F", R: "R" },
+  fl: { F: "F", R: "L" },
+  br: { F: "R", R: "B" },
+  bl: { F: "L", R: "B" },
+};
+
+/**
+ * A slot's picture: the front right one's 27 letters with its sides named for the slot,
+ * drawn from above the slot's corner. The back right slot is seen with R at the left and
+ * B at the right; the left slots are drawn in the mirror (the third face at the left), so
+ * the front left shows L and F, the back left B and L.
+ */
+export function slotStickers(state: F2lState, slot: F2lSlot): string {
+  const faces = SLOT_FACES[slot];
+  return f2lStickers(state).replace(/[FR]/g, (side) =>
+    side === "F" ? faces.F : faces.R,
+  );
+}
+
+/** The left slots are drawn in the mirror. */
+export const slotMirrored = (slot: F2lSlot) => slot === "fl" || slot === "bl";

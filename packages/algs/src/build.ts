@@ -39,7 +39,7 @@ export type BuiltCase = {
   subsets: string[];
 };
 export type BuiltSet = {
-  set: SetId | "f2l" | "f2l-left";
+  set: SetId | "f2l" | "f2l-left" | "f2l-back" | "f2l-back-left";
   candidates: number;
   rejected: { label: string; alg: string; reason: string }[];
   cases: BuiltCase[];
@@ -274,7 +274,7 @@ export function render(built: BuiltSet): string {
     ...built.rejected.map((r) => `//   ${r.label}: ${r.alg} (${r.reason})`),
     'import type { TrainerCaseData } from "../types";',
     "",
-    `export const ${built.set.replace("-", "_").toUpperCase()}: readonly TrainerCaseData[] = ${JSON.stringify(
+    `export const ${built.set.replaceAll("-", "_").toUpperCase()}: readonly TrainerCaseData[] = ${JSON.stringify(
       built.cases,
       null,
       2,
@@ -285,20 +285,24 @@ export function render(built: BuiltSet): string {
 }
 
 /**
- * F2L's shipped data: every case's searched candidates verified (verifyF2l), ranked as the
- * other sets are, the best three kept. The member is shown as the main algorithm expects it.
+ * F2L's shipped data for the front right slot (or, with slot `br`, the back right slot):
+ * every case's searched candidates verified (verifyF2l), ranked as the other sets are,
+ * the best three kept. The member is shown as the main algorithm expects it; a back case
+ * keeps the front right state it stands for, a U turn being the same turn there.
  */
 export async function buildF2l(
   searched: Readonly<Record<string, readonly string[]>>,
+  slot: "fr" | "br" = "fr",
 ): Promise<BuiltSet> {
   const rejected: BuiltSet["rejected"] = [];
   let candidates = 0;
   const cases: BuiltCase[] = [];
+  const prefix = slot === "br" ? "f2l-back-" : "f2l-";
   for (const c of F2L_CASES) {
     const kept: BuiltAlg[] = [];
     for (const alg of [...new Set((searched[c.key] ?? []).map(tidy))]) {
       candidates++;
-      const verdict = await verifyF2l(c.key, alg);
+      const verdict = await verifyF2l(c.key, alg, slot);
       if (verdict.ok)
         kept.push({ moves: alg, auf: verdict.auf, metrics: metricsOf(alg) });
       else rejected.push({ label: c.label, alg, reason: verdict.reason });
@@ -313,7 +317,7 @@ export async function buildF2l(
     const base = best[0]?.auf ?? 0;
     const shown = f2lTurned(f2lState(c.key), base);
     cases.push({
-      id: c.id,
+      id: `${prefix}${c.key}`,
       label: c.label,
       group: c.group,
       state: `${shown.corner}${shown.twist}${shown.edge}${shown.flip}`,
@@ -322,33 +326,52 @@ export async function buildF2l(
       subsets: [],
     });
   }
-  return { set: "f2l", candidates, rejected, cases };
+  return {
+    set: slot === "br" ? "f2l-back" : "f2l",
+    candidates,
+    rejected,
+    cases,
+  };
 }
 
+/** The back right slot: buildF2l over the candidates our search found in R, U and B. */
+export const buildF2lBack = (
+  searched: Readonly<Record<string, readonly string[]>>,
+) => buildF2l(searched, "br");
+
 /**
- * The front left slot's data: each right case's algorithms in the mirror (mirrorAlg),
- * each verified on the left slot (verifyF2l), in the same order and with the same picture
- * turn, so case n there is case n here. A left case keeps the state of the right case it
- * mirrors; a U turn in the mirror is U', so an algorithm's turn before it becomes 4 - auf.
- * Its metrics are the right one's: the same work for the other hand.
+ * A left slot's data from the right slot beside it (front left from front right, back
+ * left from back right): each algorithm in the mirror (mirrorAlg), each verified on the
+ * left slot (verifyF2l), in the same order and with the same picture turn, so case n
+ * there is case n here. A left case keeps the state of the right case it mirrors; a U
+ * turn in the mirror is U', so an algorithm's turn before it becomes 4 - auf. Its metrics
+ * are the right one's: the same work for the other hand.
  */
 export async function buildF2lLeft(right: BuiltSet): Promise<BuiltSet> {
+  const back = right.set === "f2l-back";
+  const from = back ? "f2l-back-" : "f2l-";
+  const to = back ? "f2l-back-left-" : "f2l-left-";
   const rejected: BuiltSet["rejected"] = [];
   let candidates = 0;
   const cases: BuiltCase[] = [];
   for (const c of right.cases) {
-    const key = c.id.slice("f2l-".length);
+    const key = c.id.slice(from.length);
     const algs: BuiltAlg[] = [];
     for (const alg of c.algs) {
       candidates++;
       const moves = mirrorAlg(alg.moves);
-      const verdict = await verifyF2l(key, moves, "left");
+      const verdict = await verifyF2l(key, moves, back ? "bl" : "fl");
       if (verdict.ok)
         algs.push({ moves, auf: (4 - alg.auf) % 4, metrics: alg.metrics });
       else
         rejected.push({ label: c.label, alg: moves, reason: verdict.reason });
     }
-    cases.push({ ...c, id: `f2l-left-${key}`, algs });
+    cases.push({ ...c, id: `${to}${key}`, algs });
   }
-  return { set: "f2l-left", candidates, rejected, cases };
+  return {
+    set: back ? "f2l-back-left" : "f2l-left",
+    candidates,
+    rejected,
+    cases,
+  };
 }

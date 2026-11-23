@@ -92,8 +92,14 @@ for (const action of atRest) {
           .getAttribute("data-phase", { timeout: 500 })
           .catch(() => null)) ?? "",
       );
-    // A screen that opens late (Settings loads its own code) needs time first.
+    // A screen that opens late (Settings, Progress and the drills load their own code)
+    // needs time first: its code can be fetched and still not drawn, so an Escape sent
+    // before it shows closes nothing and the screen comes up after the walk.
     await page.waitForLoadState("networkidle");
+    await expect
+      .poll(away, { timeout: 2000 })
+      .toBe(true)
+      .catch(() => {});
     for (let i = 0; i < 4 && (await away()); i++) {
       await page.keyboard.press("Escape");
       await expect

@@ -1,14 +1,16 @@
 import { cubeState } from "@cubehaus/cube";
 import {
+  type F2lSlot,
   f2lKey,
-  f2lLeftStickers,
   f2lOf,
   f2lReady,
   f2lSolved,
   f2lState,
-  f2lStickers,
-  mirrorPattern,
   placePair,
+  slotMirrored,
+  slotPattern,
+  slotStickers,
+  unslotPattern,
 } from "@cubehaus/scramble/f2l";
 import {
   lastLayerCases,
@@ -198,26 +200,30 @@ export async function verify(
  * Checks an F2L algorithm against a case, the same three ways: forward from the case with U
  * 0 to 3 times before, the cross and four slots whole after; backward, the inverse on a
  * solved cube keeps the cross and the other three slots and makes this very case; and our
- * own sticker model shows the picture's stickers after the inverse. The left slot's case is
- * the right one's in the mirror (f2l-state.ts): its cube is the mirrored cube, and what an
- * inverse makes there is read in the mirror; the picture is checked against U, F and L as
- * our model turns them, each row read the other way.
+ * own sticker model shows the picture's stickers after the inverse. Another slot's case is
+ * the front right one seen from that slot (f2l-state.ts): its cube is the front right cube
+ * turned (y for the back right) or mirrored (the left slots), and what an inverse makes
+ * there is read back the same way; the picture is checked against our model turned so the
+ * slot stands at the front, a left slot's rows read the other way.
  */
 export async function verifyF2l(
   key: string,
   alg: string,
-  slot: "right" | "left" = "right",
+  slot: F2lSlot | "right" | "left" = "fr",
 ): Promise<Verdict> {
   const puzzle = await kpuzzle();
-  const left = slot === "left";
+  const at: F2lSlot = slot === "right" ? "fr" : slot === "left" ? "fl" : slot;
+  const mirrored = slotMirrored(at);
   let parsed: Alg;
   try {
     parsed = new Alg(alg);
   } catch {
     return { ok: false, reason: "does not parse" };
   }
-  const right = placePair(puzzle.defaultPattern(), f2lState(key));
-  const start = left ? mirrorPattern(right) : right;
+  const start = slotPattern(
+    placePair(puzzle.defaultPattern(), f2lState(key)),
+    at,
+  );
   let auf = -1;
   for (let k = 0; k < 4 && auf < 0; k++) {
     const pre = ["", "U", "U2", "U'"][k] as string;
@@ -232,22 +238,32 @@ export async function verifyF2l(
   const { pattern, rotation } = upright(
     puzzle.defaultPattern().applyAlg(inverse),
   );
-  const seen = left ? mirrorPattern(pattern) : pattern;
+  const seen = unslotPattern(pattern, at);
   if (!f2lReady(seen))
     return { ok: false, reason: "its inverse breaks the cross or a slot" };
   const made = f2lOf(seen);
   const got = f2lKey(made);
   if (got !== key) return { ok: false, reason: `its inverse makes f2l ${got}` };
-  const s = cubeState(3, `${inverse} ${rotation}`.trim());
-  const picture = left ? f2lLeftStickers(made) : f2lStickers(made);
-  const faces = [s.U, s.F, left ? s.L : s.R];
-  for (let at = 0; at < 27; at++) {
-    if (picture[at] === "x") continue;
-    const i = at % 9;
-    const face = faces[Math.floor(at / 9)] as readonly string[];
-    const sticker = face[left ? Math.floor(i / 3) * 3 + (2 - (i % 3)) : i];
-    if (picture[at] !== sticker)
+  // Our model turned so the slot stands at the front right, or in the mirror front left.
+  const view = SLOT_VIEW[at];
+  const s = cubeState(3, `${inverse} ${rotation} ${view}`.trim());
+  const picture = slotStickers(made, at);
+  const faces = [s.U, s.F, mirrored ? s.L : s.R];
+  for (let place = 0; place < 27; place++) {
+    if (picture[place] === "x") continue;
+    const i = place % 9;
+    const face = faces[Math.floor(place / 9)] as readonly string[];
+    const sticker = face[mirrored ? Math.floor(i / 3) * 3 + (2 - (i % 3)) : i];
+    if (picture[place] !== sticker)
       return { ok: false, reason: "the two cube models disagree" };
   }
   return { ok: true, auf };
 }
+
+/** The whole-cube turn that brings a slot to the front (y: back right to front right). */
+const SLOT_VIEW: Record<F2lSlot, string> = {
+  fr: "",
+  fl: "",
+  br: "y",
+  bl: "y'",
+};

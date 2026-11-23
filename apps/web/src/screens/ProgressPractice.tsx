@@ -9,6 +9,7 @@ import { type DailyTotal, totalOn } from "../day";
 import {
   CALENDAR_HEADER,
   calendarLevel,
+  monthAbbreviation,
   monthLayout,
   weekLayout,
 } from "../progress-chart";
@@ -74,10 +75,6 @@ export function ProgressPractice({
         ? { shape: "months" as const, grid: monthLayout(days, today, width) }
         : { shape: "weeks" as const, grid: weekLayout(days, today, width) },
     [days, today, width, phone],
-  );
-  const monthLabel = useMemo(
-    () => new Intl.DateTimeFormat(locale, { month: "narrow" }),
-    [locale],
   );
   const monthName = useMemo(
     () =>
@@ -254,7 +251,7 @@ export function ProgressPractice({
                   y={CALENDAR_HEADER - 4}
                   textAnchor="middle"
                 >
-                  {monthLabel.format(new Date(2000, index, 1))}
+                  {monthAbbreviation(locale, index)}
                 </text>
               ))}
               {layout.grid.years.map(({ year, y }) => (

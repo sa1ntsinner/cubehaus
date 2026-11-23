@@ -190,3 +190,21 @@ export function parseChoices(json: string | null): Record<string, string> {
     return {};
   }
 }
+
+/** F2L's slot sets: front right, front left, back right, back left. */
+export type F2lSlot = "fr" | "fl" | "br" | "bl";
+const SLOT_SETS = {
+  fr: "f2l",
+  fl: "f2l-left",
+  br: "f2l-back",
+  bl: "f2l-back-left",
+} as const;
+export const setOfSlot = (slot: F2lSlot) => SLOT_SETS[slot];
+
+/** The slot last chosen (setting `trainer.slot`); `left` and `right` from before. */
+export function storedSlot(value: string | null): F2lSlot {
+  if (value === "left") return "fl";
+  if (value === "fr" || value === "fl" || value === "br" || value === "bl")
+    return value;
+  return "fr";
+}

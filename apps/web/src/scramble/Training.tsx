@@ -118,6 +118,87 @@ export function CaseDiagram({
 }
 
 /**
+ * A 2×2 case as a cuber draws one: the top's four stickers with the side stickers round
+ * them. `stickers` is 12 letters (two.ts): U row by row from the back left, then the top
+ * row of F, R, B and L as each is seen from outside; with 20, the bottom row of each side
+ * after them, drawn as a second ring (PBL: both layers' places). Seen from above, B runs
+ * right to left, R and L top down. For OLL only the top's colour is drawn.
+ */
+export function TwoDiagram({
+  stickers,
+  faces,
+  orientationOnly = false,
+}: {
+  stickers: string;
+  faces?: Record<string, string> | undefined;
+  orientationOnly?: boolean;
+}) {
+  const paint = (face: string) => `var(--pz-${faces?.[face] ?? face})`;
+  const fill = (letter: string) =>
+    orientationOnly
+      ? letter === "U"
+        ? paint("U")
+        : "var(--pz-grey)"
+      : paint(letter);
+  const at = (index: number) => stickers[index] ?? "U";
+  const cells: { x: number; y: number; w: number; h: number; c: string }[] = [];
+  for (let i = 0; i < 4; i++)
+    cells.push({
+      x: 1 + (i % 2),
+      y: 1 + Math.floor(i / 2),
+      w: 1,
+      h: 1,
+      c: at(i),
+    });
+  const strip = 0.42;
+  const gap = 0.08;
+  const rings = stickers.length >= 20 ? 2 : 1;
+  for (let ring = 0; ring < rings; ring++) {
+    const out = ring * (strip + gap);
+    const base = 4 + ring * 8;
+    for (let k = 0; k < 2; k++) {
+      cells.push({ x: 1 + k, y: 3 + out, w: 1, h: strip, c: at(base + k) }); // F
+      cells.push({ x: 3 + out, y: 2 - k, w: strip, h: 1, c: at(base + 2 + k) }); // R
+      cells.push({
+        x: 2 - k,
+        y: 1 - strip - out,
+        w: 1,
+        h: strip,
+        c: at(base + 4 + k),
+      }); // B
+      cells.push({
+        x: 1 - strip - out,
+        y: 1 + k,
+        w: strip,
+        h: 1,
+        c: at(base + 6 + k),
+      }); // L
+    }
+  }
+  const edge = rings * (strip + gap);
+  return (
+    <svg
+      data-part="case-diagram"
+      data-shape="two"
+      viewBox={`${1 - edge} ${1 - edge} ${2 + 2 * edge} ${2 + 2 * edge}`}
+      aria-hidden="true"
+    >
+      {cells.map((cell) => (
+        <rect
+          key={`${cell.x},${cell.y}`}
+          x={cell.x + gap / 2}
+          y={cell.y + gap / 2}
+          width={cell.w - gap}
+          height={cell.h - gap}
+          rx={0.12}
+          fill={fill(cell.c)}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/**
  * An F2L case: the cube's top, front and right faces seen from above the front right
  * corner, each sticker a parallelogram. `stickers` is 27 letters (f2l-state.ts): U row by
  * row from the back left, then F and R row by row from the top left as each is seen from

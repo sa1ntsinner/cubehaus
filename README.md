@@ -15,7 +15,7 @@ It is free and always will be. Use it if you like it. If something is missing or
 - Every WCA event, with official scrambles, inspection, +2 and DNF.
 - Sessions, averages from ao5 to ao10000, and a progress view.
 - Your history from csTimer, CubeTime, Twisty Timer and CubeDesk, imported without duplicates.
-- Drill scrambles for the 3×3 and an algorithm trainer for PLL, OLL, COLL and F2L.
+- Drill scrambles for the 3×3 and an algorithm trainer for PLL, OLL, COLL, F2L and the 2×2.
 - Works offline, needs no account, keeps your solves on your device.
 - Keyboard first. Dark, light and custom themes. English and Russian.
 

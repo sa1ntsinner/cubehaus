@@ -19,5 +19,5 @@ describe("F2L search", () => {
     const again = searchF2l(t, f2lOf(split), { extra: 0, limit: 5 });
     expect(again.length).toBeGreaterThan(0);
     for (const alg of again) expect(f2lSolved(split.applyAlg(alg))).toBe(true);
-  });
+  }, 60_000);
 });

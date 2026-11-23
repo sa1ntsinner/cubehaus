@@ -2,7 +2,9 @@ import { cubeState } from "@cubehaus/cube";
 import { puzzles } from "cubing/puzzles";
 import { describe, expect, it } from "vitest";
 import {
+  backAlg,
   F2L_CASES,
+  type F2lSlot,
   type F2lState,
   f2lKey,
   f2lLeftStickers,
@@ -14,6 +16,10 @@ import {
   mirrorAlg,
   mirrorPattern,
   placePair,
+  slotAlg,
+  slotPattern,
+  slotStickers,
+  unslotPattern,
 } from "./f2l";
 import { generateTraining } from "./training";
 
@@ -238,4 +244,125 @@ describe("the front left slot, in the mirror", () => {
     }
     expect(reached.size).toBe(41);
   });
+});
+
+describe("the back slots, the front right slot seen after a turn of the cube", () => {
+  const TURNS = [
+    "R",
+    "L",
+    "U",
+    "D",
+    "F",
+    "B",
+    "Rw",
+    "Lw",
+    "Fw",
+    "Bw",
+    "r",
+    "f",
+  ];
+  const randomAlg = (rng: () => number, n: number) =>
+    Array.from({ length: n }, () => {
+      const face = TURNS[Math.floor(rng() * TURNS.length)] as string;
+      return face + (["", "'", "2"][Math.floor(rng() * 3)] as string);
+    }).join(" ");
+
+  it("turns renamed for the back right slot: R is B, F is R, B is L, L is F", () => {
+    expect(backAlg("R U R'")).toBe("B U B'");
+    expect(backAlg("F' U' F")).toBe("R' U' R");
+    expect(backAlg("L2 B Rw' D")).toBe("F2 L Bw' D");
+    expect(() => backAlg("M")).toThrow(RangeError);
+  });
+
+  it("for every slot, the cube after the slot's turns is the front right cube seen turned", async () => {
+    const puzzle = await kpuzzle();
+    const rng = seeded(13);
+    for (const slot of ["fr", "fl", "br", "bl"] as const)
+      for (let i = 0; i < 200; i++) {
+        const alg = randomAlg(rng, 1 + Math.floor(rng() * 10));
+        const seen = slotPattern(puzzle.defaultPattern().applyAlg(alg), slot);
+        const turned = puzzle.defaultPattern().applyAlg(slotAlg(alg, slot));
+        expect(`${slot} ${alg} ${seen.isIdentical(turned)}`).toBe(
+          `${slot} ${alg} true`,
+        );
+        expect(
+          unslotPattern(seen, slot).isIdentical(
+            puzzle.defaultPattern().applyAlg(alg),
+          ),
+        ).toBe(true);
+      }
+  });
+
+  // Our own sticker model, turned so the slot stands at the front right (or, drawn in the
+  // mirror, the front left): the faces a picture of that slot shows.
+  const VIEW: Record<F2lSlot, { turn: string; third: "R" | "L" }> = {
+    fr: { turn: "", third: "R" },
+    fl: { turn: "", third: "L" },
+    br: { turn: "y", third: "R" },
+    bl: { turn: "y'", third: "L" },
+  };
+
+  for (const slot of ["br", "bl"] as const)
+    it(`a ${slot.toUpperCase()} case's picture is what our sticker model shows from above that corner`, async () => {
+      const puzzle = await kpuzzle();
+      const rng = seeded(slot === "br" ? 17 : 19);
+      const reached = new Set<string>();
+      // Random inserts until every case is met (a few thousand), each checked.
+      for (let i = 0; i < 20_000 && reached.size < 41; i++) {
+        const right = inserts(rng);
+        const alg = slotAlg(right, slot);
+        const pattern = puzzle.defaultPattern().applyAlg(alg);
+        // Every other slot and the cross stay; the slot's pair is the right case.
+        const seen = unslotPattern(pattern, slot);
+        if (!f2lReady(seen)) expect.fail(`${alg}: a slot or the cross moved`);
+        const state = f2lOf(seen);
+        const key = f2lKey(state);
+        if (key !== f2lKey(f2lOf(puzzle.defaultPattern().applyAlg(right))))
+          expect.fail(`${alg}: not the right case's key`);
+        if (key !== null) reached.add(key);
+        const view = VIEW[slot];
+        const ours = cubeState(3, `${alg} ${view.turn}`.trim());
+        const faces = [ours.U, ours.F, ours[view.third]];
+        const picture = slotStickers(state, slot);
+        const mirrored = view.third === "L";
+        for (let at = 0; at < 27; at++) {
+          if (picture[at] === "x") continue;
+          const i = at % 9;
+          const face = faces[Math.floor(at / 9)] as readonly string[];
+          const sticker =
+            face[mirrored ? Math.floor(i / 3) * 3 + (2 - (i % 3)) : i];
+          if (picture[at] !== sticker)
+            expect.fail(
+              `${alg} @${at}: ${picture[at]} drawn, ${sticker} on the cube`,
+            );
+        }
+      }
+      expect(reached.size).toBe(41);
+    });
+
+  it("the slot's pictures: front right as before, front left as before", () => {
+    for (const c of F2L_CASES) {
+      const state = f2lState(c.key);
+      expect(slotStickers(state, "fr")).toBe(f2lStickers(state));
+      expect(slotStickers(state, "fl")).toBe(f2lLeftStickers(state));
+    }
+  });
+
+  it("a drill scramble for a slot, the front right one renamed, reaches the slot's case", async () => {
+    const puzzle = await kpuzzle();
+    const rng = seeded(23);
+    for (const slot of ["fl", "br", "bl"] as const)
+      for (const c of F2L_CASES.filter((_, i) => i % 5 === 0)) {
+        const { scramble } = await generateTraining(
+          { kind: "f2l", caseIds: [c.id] },
+          rng,
+        );
+        const reached = puzzle
+          .defaultPattern()
+          .applyAlg(slotAlg(scramble, slot));
+        const seen = unslotPattern(reached, slot);
+        expect(f2lReady(seen), `${slot} ${c.label}`).toBe(true);
+        expect(f2lKey(f2lOf(seen)), `${slot} ${c.label}`).toBe(c.key);
+      }
+  }, 60_000);
 });

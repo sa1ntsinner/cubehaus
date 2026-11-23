@@ -41,8 +41,12 @@ describe("text", () => {
         "progress.dnf",
         "settings.languages.en",
         "settings.languages.ru",
-        "train.slots.left",
-        "train.slots.right",
+        "train.puzzles.222",
+        "train.puzzles.333",
+        "train.slots.bl",
+        "train.slots.br",
+        "train.slots.fl",
+        "train.slots.fr",
       ].sort(),
     );
   });

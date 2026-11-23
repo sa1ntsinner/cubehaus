@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   calendarLevel,
   formatAxisTime,
+  monthAbbreviation,
   monthLayout,
   trendGeometry,
   weekLayout,
@@ -126,7 +127,8 @@ test("month layout groups counts by month and omits months outside the session s
   const grid = monthLayout(days, "2026-03-11", 280);
   expect(grid.cell).toBe(18);
   expect(grid.height).toBe(56);
-  expect(grid.months).toHaveLength(12);
+  // Three letters need 28 px a month: at 20 px every other month is named.
+  expect(grid.months.map(({ month }) => month)).toEqual([0, 2, 4, 6, 8, 10]);
   expect(grid.years).toEqual([
     { year: 2025, y: 25 },
     { year: 2026, y: 45 },
@@ -137,4 +139,46 @@ test("month layout groups counts by month and omits months outside the session s
     { year: 2026, month: 1, count: 2, level: 1, x: 60, y: 36 },
     { year: 2026, month: 2, count: 0, level: 0, x: 80, y: 36 },
   ]);
+});
+
+test("a wide month layout names every month", () => {
+  const grid = monthLayout(new Map([["2026-01-02", 1]]), "2026-03-11", 400);
+  expect(grid.months.map(({ month }) => month)).toEqual([
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+  ]);
+});
+
+test("month names are three letters, so June and July differ in both languages", () => {
+  const months = (locale: string) =>
+    Array.from({ length: 12 }, (_, month) => monthAbbreviation(locale, month));
+  expect(months("ru")).toEqual([
+    "янв",
+    "фев",
+    "мар",
+    "апр",
+    "май",
+    "июн",
+    "июл",
+    "авг",
+    "сен",
+    "окт",
+    "ноя",
+    "дек",
+  ]);
+  expect(months("en")).toEqual([
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ]);
+  for (const locale of ["ru", "en", "en-GB"])
+    expect(new Set(months(locale)).size).toBe(12);
 });

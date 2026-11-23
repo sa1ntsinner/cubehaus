@@ -7,7 +7,9 @@ import {
   myAlg,
   otherAlgs,
   parseChoices,
+  setOfSlot,
   showCase,
+  storedSlot,
 } from "./train-state";
 
 test("a picture drill records recognition and execution from input timestamps", () => {
@@ -127,4 +129,17 @@ test("the clock on screen runs from the start, and from the recognising press in
   p = drillStep(p, { type: "down", at: 900 });
   // Recognised: the count starts again for the execution the result will give.
   expect(drillElapsed(p, 1400)).toBe(500);
+});
+
+test("F2L's four slots each open their own set, and the slot last chosen is read back", () => {
+  expect(
+    ["fr", "fl", "br", "bl"].map((slot) => setOfSlot(slot as never)),
+  ).toEqual(["f2l", "f2l-left", "f2l-back", "f2l-back-left"]);
+  expect(storedSlot("br")).toBe("br");
+  expect(storedSlot("bl")).toBe("bl");
+  // Kept from before the back slots: "left" and "right".
+  expect(storedSlot("left")).toBe("fl");
+  expect(storedSlot("right")).toBe("fr");
+  expect(storedSlot(null)).toBe("fr");
+  expect(storedSlot("nonsense")).toBe("fr");
 });

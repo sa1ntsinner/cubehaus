@@ -2,14 +2,15 @@ import {
   type AlgPiece,
   algUnits,
   caseMedian,
+  type F2lSlot,
   type Grade,
   gradeOf,
   lookalikes,
-  mirrorAlg,
   newCard,
   nextCase,
   pictureOf,
   pllArrows,
+  puzzleOf,
   recall,
   recogMedian,
   recolour,
@@ -17,13 +18,16 @@ import {
   reviewQueue,
   roundOf,
   type SetId,
+  slotAlg,
+  slotMirrored,
+  slotOf,
   type TrainerCaseData,
   trainerSet,
   turnScramble,
   weakCases,
 } from "@cubehaus/algs";
 import { formatTime, newId } from "@cubehaus/core";
-import { holdingFaces } from "@cubehaus/cube/holding";
+import { holdingFaces, renameTurns } from "@cubehaus/cube/holding";
 import type { TrainerAttempt, TrainerCase } from "@cubehaus/storage";
 import {
   createContext,
@@ -42,7 +46,7 @@ import type { AppView, createAppState } from "../app-state";
 import type { Action } from "../keys/engine";
 import { Help } from "../keys/Help";
 import { formatRunning } from "../running";
-import { CaseDiagram, SlotDiagram } from "../scramble/Training";
+import { CaseDiagram, SlotDiagram, TwoDiagram } from "../scramble/Training";
 import {
   createTrainingClient,
   heldScramble,
@@ -60,7 +64,9 @@ import {
   myAlg,
   otherAlgs,
   parseChoices,
+  setOfSlot,
   showCase,
+  storedSlot,
 } from "../train-state";
 import "../design/train.css";
 import "../input/train-behavior.css";
@@ -73,11 +79,23 @@ import "../input/train-behavior.css";
  * and often missed ones. Attempts are stored apart from solves.
  */
 const SETS: readonly SetId[] = ["pll", "oll", "coll", "f2l"];
+/** The 2×2's sets, in the set row while the 2×2 is chosen. */
+const TWO_SETS: readonly SetId[] = ["two-oll", "two-pbl", "two-cll"];
+const isTwo = (set: SetId) => set.startsWith("two-");
+const setName = (id: SetId) => id.replace("two-", "").toUpperCase();
 /** F2L's front left slot: the same cases in the mirror, a set of its own under F2L's tab. */
-const ROUTE_SETS: readonly SetId[] = [...SETS, "f2l-left"];
-const isF2l = (set: SetId) => set === "f2l" || set === "f2l-left";
+const ROUTE_SETS: readonly SetId[] = [
+  ...SETS,
+  ...TWO_SETS,
+  "f2l-left",
+  "f2l-back",
+  "f2l-back-left",
+];
+const isF2l = (set: SetId) => slotOf(set) !== null;
+const SLOTS: readonly F2lSlot[] = ["fr", "fl", "br", "bl"];
 const showKey = "trainer.show";
 const slotKey = "trainer.slot";
+const puzzleKey = "trainer.puzzle";
 const poolKey = (set: SetId) => `trainer.pool.${set}`;
 const algsKey = "trainer.algs";
 const splitKey = "trainer.split";
@@ -187,12 +205,20 @@ function Picture({
   arrows?: boolean;
 }) {
   const faces = useContext(Held);
+  if (isTwo(set))
+    return (
+      <TwoDiagram
+        stickers={stickers}
+        faces={faces}
+        orientationOnly={set === "two-oll"}
+      />
+    );
   if (isF2l(set))
     return (
       <SlotDiagram
         stickers={stickers}
         faces={faces}
-        mirrored={set === "f2l-left"}
+        mirrored={slotMirrored(slotOf(set) ?? "fr")}
       />
     );
   return (
@@ -234,15 +260,23 @@ export function Train({
   const [split, setSplit] = useState(false);
   // The trainer's keys, listed on `?`.
   const [keysOpen, setKeysOpen] = useState(false);
-  // F2L's slot, front right or front left: the tab opens the one last chosen.
-  const [slot, setSlot] = useState<"right" | "left">("right");
+  // F2L's slot, one of four: the tab opens the one last chosen.
+  const [slot, setSlot] = useState<F2lSlot>("fr");
+  // The set each puzzle was left on: the puzzle switch goes back to it.
+  const [puzzleWas, setPuzzleWas] = useState<
+    Partial<Record<"333" | "222", SetId>>
+  >({});
   const ru = view.settings.language === "ru";
   const holding = view.settings.holding;
   const faces = useMemo(() => holdingFaces(holding), [holding]);
 
+  // While the database opens there is no store yet: wait for it rather than draw the
+  // cases without it and again with it, which would drop a case opened in between.
+  const opening = view.dbState === null;
   useEffect(() => {
     let stale = false;
     setRows(null);
+    if (!store && opening) return;
     if (!store) {
       setRows([]);
       setByPicture(true);
@@ -257,7 +291,8 @@ export function Train({
       stored?.get(algsKey) ?? null,
       stored?.get(splitKey) ?? null,
       stored?.get(slotKey) ?? null,
-    ]).then(([c, a, show, pool, algs, splitOn, slotWas]) => {
+      stored?.get(puzzleKey) ?? null,
+    ]).then(([c, a, show, pool, algs, splitOn, slotWas, left]) => {
       if (stale) return;
       setRows(c);
       setAttempts(a);
@@ -265,12 +300,18 @@ export function Train({
       setWhole(pool === "all");
       setChoices(parseChoices(algs));
       setSplit(splitOn === "on");
-      setSlot(slotWas === "left" ? "left" : "right");
+      setSlot(storedSlot(slotWas));
+      // The set last left on the other puzzle (setting `trainer.puzzle`).
+      if (left && ROUTE_SETS.includes(left as SetId))
+        setPuzzleWas((was) => ({
+          ...was,
+          [puzzleOf(left as SetId)]: left as SetId,
+        }));
     });
     return () => {
       stale = true;
     };
-  }, [store, stored, set]);
+  }, [store, stored, set, opening]);
 
   useEffect(() => {
     function close(event: KeyboardEvent) {
@@ -292,6 +333,7 @@ export function Train({
   };
   const learning = useMemo(() => new Set(rows?.map((r) => r.caseId)), [rows]);
 
+  const otherPuzzle = puzzleOf(set) === "222" ? "333" : "222";
   return (
     <Held.Provider value={faces}>
       <main data-no-timer data-part="train" data-mode={mode}>
@@ -303,7 +345,7 @@ export function Train({
         <h1>{t.title}</h1>
         <div data-part="train-bar">
           <p data-part="train-sets">
-            {SETS.map((id) => (
+            {(isTwo(set) ? TWO_SETS : SETS).map((id) => (
               <button
                 key={id}
                 type="button"
@@ -312,11 +354,11 @@ export function Train({
                 aria-pressed={id === set || (id === "f2l" && isF2l(set))}
                 onClick={() =>
                   go({
-                    set: id === "f2l" && slot === "left" ? "f2l-left" : id,
+                    set: id === "f2l" ? setOfSlot(slot) : id,
                   })
                 }
               >
-                {id.toUpperCase()}
+                {setName(id)}
               </button>
             ))}
           </p>
@@ -333,6 +375,25 @@ export function Train({
                 {t.modes[id]}
               </button>
             ))}
+            {/* The other puzzle, one quiet word at the bar's far end: the sets already say
+                which puzzle is open. */}
+            <button
+              type="button"
+              data-action="train-puzzle"
+              data-puzzle={otherPuzzle}
+              aria-label={t.puzzleNames[otherPuzzle]}
+              onClick={() => {
+                void stored?.set(puzzleKey, set);
+                setPuzzleWas((was) => ({ ...was, [puzzleOf(set)]: set }));
+                go({
+                  set:
+                    puzzleWas[otherPuzzle] ??
+                    (otherPuzzle === "222" ? "two-oll" : "pll"),
+                });
+              }}
+            >
+              {t.puzzles[otherPuzzle]}
+            </button>
           </p>
         </div>
         {rows === null || byPicture === null || whole === null ? null : mode ===
@@ -354,7 +415,7 @@ export function Train({
             onSlot={(next) => {
               setSlot(next);
               void stored?.set(slotKey, next);
-              go({ set: next === "left" ? "f2l-left" : "f2l" });
+              go({ set: setOfSlot(next) });
             }}
             onDrill={async (ids, on) => {
               if (!store) return;
@@ -486,8 +547,8 @@ function Learn({
   onDrill(ids: readonly string[], on: boolean): Promise<void>;
   choices: AlgChoices;
   onChoose(next: AlgChoices): void;
-  /** F2L only: the slot, front right or front left. */
-  onSlot(next: "right" | "left"): void;
+  /** F2L only: the slot, one of four. */
+  onSlot(next: F2lSlot): void;
 }) {
   const t = words.train;
   const [open, setOpen] = useState<string | null>(null);
@@ -585,14 +646,14 @@ function Learn({
           )}
           {isF2l(set) && (
             <span data-part="train-slot">
-              {(["right", "left"] as const).map((id) => (
+              {SLOTS.map((id) => (
                 <button
                   key={id}
                   type="button"
                   data-action="train-slot"
                   data-slot={id}
                   aria-label={t.slotNames[id]}
-                  aria-pressed={(set === "f2l-left") === (id === "left")}
+                  aria-pressed={slotOf(set) === id}
                   onClick={() => onSlot(id)}
                 >
                   {t.slots[id]}
@@ -996,6 +1057,22 @@ function Practice({
       }
       setShown({ caseId: id, auf, colour, scramble: null });
       moveDrill(showCase(false, split));
+      if (isTwo(set)) {
+        // The 2×2's scrambles come with its data, each one leading to its case.
+        const list = cases.find((c) => c.id === id)?.scrambles ?? [];
+        const picked = list[Math.floor(Math.random() * list.length)];
+        if (picked === undefined) return;
+        setShown({
+          caseId: id,
+          auf,
+          colour,
+          scramble: renameTurns(
+            turnScramble(picked, colour),
+            holdingFaces(holding),
+          ),
+        });
+        return;
+      }
       client.current ??= createTrainingClient(
         () =>
           new Worker(
@@ -1006,11 +1083,16 @@ function Practice({
           ) as unknown as WorkerLike,
       );
       const ask = ++sequence.current;
-      // The left slot's scramble is its right case's, seen in the mirror.
-      const left = set === "f2l-left";
+      // Another slot's scramble is its front right case's, renamed for the slot (seen
+      // after a y turn, or in the mirror).
+      const at = slotOf(set);
+      const other = at !== null && at !== "fr";
       const request = {
-        kind: left ? ("f2l" as const) : set,
-        caseIds: [left ? id.replace("f2l-left-", "f2l-") : id],
+        kind:
+          at !== null
+            ? ("f2l" as const)
+            : (set as Exclude<SetId, `f2l${string}` | `two-${string}`>),
+        caseIds: [other ? `f2l-${id.slice(-4)}` : id],
       };
       const result = await client.current.requestTraining({ request }, ask);
       if (!result || ask !== sequence.current) return;
@@ -1021,7 +1103,7 @@ function Practice({
         scramble: heldScramble(
           request,
           turnScramble(
-            left ? mirrorAlg(result.scramble) : result.scramble,
+            other ? slotAlg(result.scramble, at) : result.scramble,
             colour,
           ),
           holding,
@@ -1035,6 +1117,7 @@ function Practice({
       whole,
       pool,
       set,
+      cases,
       holding,
       moveDrill,
       todayQueue,

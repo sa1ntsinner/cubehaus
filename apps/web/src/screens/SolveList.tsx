@@ -13,6 +13,7 @@ import { parseStat, type StatId } from "@cubehaus/stats";
 import {
   type CSSProperties,
   memo,
+  type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -295,6 +296,55 @@ export const SolveList = memo(function SolveList({
     [],
   );
 
+  // The file is one tab stop, the line on show (else the newest); the arrows walk it:
+  // up and down show the line before or after (the timer's own keys) and the keyboard
+  // goes with it, left and right move between a line's time and its comment word.
+  const focusId = shownId ?? newest?.id;
+  const tabId = shown.rows.some(({ solve }) => solve.id === focusId)
+    ? focusId
+    : shown.rows[0]?.solve.id;
+  const keyFollows = useRef(focusId);
+  const refocus = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const element = list.current;
+    const was = keyFollows.current;
+    keyFollows.current = focusId;
+    if (!element) return;
+    const row = (id: string, action: string) =>
+      element.querySelector<HTMLElement>(
+        `li[data-solve-id="${CSS.escape(id)}"] [data-action="${action}"]`,
+      );
+    if (refocus.current && editing === null) {
+      (
+        row(refocus.current, "comment-edit") ??
+        row(refocus.current, "solve-show")
+      )?.focus();
+      refocus.current = null;
+      return;
+    }
+    const active = document.activeElement;
+    if (was === focusId || !focusId || !active || !element.contains(active))
+      return;
+    if (active.closest("form")) return;
+    row(focusId, "solve-show")?.focus({ preventScroll: true });
+  });
+  const walkRow = (key: ReactKeyboardEvent<HTMLOListElement>) => {
+    if (key.altKey || key.metaKey || key.ctrlKey || key.shiftKey) return;
+    if (key.key !== "ArrowLeft" && key.key !== "ArrowRight") return;
+    const at = key.target as HTMLElement;
+    const line = at.closest("li");
+    if (!line || at.tagName !== "BUTTON") return;
+    const stops = [
+      ...line.querySelectorAll<HTMLElement>(
+        '[data-action="solve-show"], [data-action="comment-edit"], [data-action="solve-split"]',
+      ),
+    ];
+    const next = stops[stops.indexOf(at) + (key.key === "ArrowRight" ? 1 : -1)];
+    if (!next) return;
+    key.preventDefault();
+    next.focus();
+  };
+
   const height = rowHeight.current;
   const newer = shown.first;
   const older = Math.max(0, count - newer - shown.rows.length);
@@ -334,6 +384,7 @@ export const SolveList = memo(function SolveList({
             reversed
             start={count - newer}
             onScroll={(event) => updateRange(event.currentTarget)}
+            onKeyDown={walkRow}
             onWheel={handsOn}
             onTouchStart={handsOn}
             onPointerDown={handsOn}
@@ -359,6 +410,7 @@ export const SolveList = memo(function SolveList({
                 <button
                   type="button"
                   data-action="solve-show"
+                  tabIndex={solve.id === tabId ? 0 : -1}
                   aria-pressed={solve.id === shownId}
                   onPointerDown={(down) => {
                     pressedBy.current = down.pointerType;
@@ -447,6 +499,7 @@ export const SolveList = memo(function SolveList({
                     onSubmit={(submit) => {
                       submit.preventDefault();
                       void app.setComment(solve, comment);
+                      refocus.current = solve.id;
                       setEditing(null);
                     }}
                   >
@@ -454,6 +507,16 @@ export const SolveList = memo(function SolveList({
                       {text.comment}
                       <textarea
                         data-part="comment-input"
+                        // biome-ignore lint/a11y/noAutofocus: opened by its own button; the keyboard follows.
+                        autoFocus
+                        onKeyDown={(key) => {
+                          if (key.key !== "Escape") return;
+                          // Esc leaves the comment as it was and stays on the line.
+                          key.preventDefault();
+                          key.stopPropagation();
+                          refocus.current = solve.id;
+                          setEditing(null);
+                        }}
                         value={comment}
                         onChange={(change) =>
                           setComment(change.currentTarget.value)
@@ -463,7 +526,13 @@ export const SolveList = memo(function SolveList({
                     <button type="submit" data-action="comment-save">
                       {text.save}
                     </button>
-                    <button type="button" onClick={() => setEditing(null)}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        refocus.current = solve.id;
+                        setEditing(null);
+                      }}
+                    >
                       {text.cancel}
                     </button>
                   </form>
@@ -472,6 +541,7 @@ export const SolveList = memo(function SolveList({
                   <button
                     type="button"
                     data-action="solve-split"
+                    tabIndex={-1}
                     onClick={() => onSplit(solve.id)}
                   >
                     {text.splitHere}
@@ -482,6 +552,7 @@ export const SolveList = memo(function SolveList({
                     <button
                       type="button"
                       data-action="comment-edit"
+                      tabIndex={-1}
                       onClick={() => {
                         setComment(solve.comment ?? "");
                         setEditing(solve.id);
@@ -827,8 +898,11 @@ function StatSlots({
           })}
           {today !== undefined && (
             <span data-slot="today">
-              <span data-part="slot-name">{words.progress.today}</span>{" "}
-              <span data-stat="today">{today}</span>
+              {/* One line, centred in the slot's height as a button's is. */}
+              <span>
+                <span data-part="slot-name">{words.progress.today}</span>{" "}
+                <span data-stat="today">{today}</span>
+              </span>
             </span>
           )}
         </p>

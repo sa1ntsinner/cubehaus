@@ -64,11 +64,15 @@ main[data-part="train"] h1 {
   gap: 0 var(--s2);
   margin: 0;
 }
-/* F2L's slot, FR or FL: its own pair at the row's far end, apart from what goes in drills. */
+/* F2L's slot, one of four: at the row's far end, apart from what goes in drills. */
 [data-part="train-slot"] {
   display: flex;
-  gap: 0 var(--s2);
   margin-inline-start: auto;
+}
+/* The other puzzle, 3×3 or 2×2: one word at the bar's far end, a step apart from the
+   modes (on a phone at the right of the modes' line). */
+[data-part="train-modes"] > [data-action="train-puzzle"] {
+  margin-inline-start: var(--s5);
 }
 :is(
     [data-part="train-sets"],
@@ -644,6 +648,9 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   }
   [data-part="train-modes"] {
     margin: var(--s2) 0 0 calc(-1 * var(--s2));
+  }
+  [data-part="train-modes"] > [data-action="train-puzzle"] {
+    margin-inline: auto calc(-1 * var(--s2));
   }
   main[data-part="train"] [data-part="train-drill"] {
     box-sizing: border-box;

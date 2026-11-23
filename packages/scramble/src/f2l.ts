@@ -1,5 +1,11 @@
 import { KPattern } from "cubing/kpuzzle";
-import { type F2lState, f2lKey, PAIR_CORNER, PAIR_EDGE } from "./f2l-state";
+import {
+  type F2lSlot,
+  type F2lState,
+  f2lKey,
+  PAIR_CORNER,
+  PAIR_EDGE,
+} from "./f2l-state";
 
 /** The F2L pair on cubing's cube: read, checked and placed (f2l-state.ts has the cases). */
 export * from "./f2l-state";
@@ -44,6 +50,36 @@ export function mirrorPattern(pattern: KPattern): KPattern {
     EDGES: orbit(data.EDGES, EDGE_MIRROR, (o) => o),
     CENTERS: orbit(data.CENTERS, CENTRE_MIRROR, () => 0),
   });
+}
+
+/** A cube turned whole by `turn` before and `back` after: P seen through a rotation. */
+function conjugate(pattern: KPattern, turn: string, back: string): KPattern {
+  const moved = pattern.experimentalToTransformation();
+  if (!moved) throw new RangeError("Not a cube turns can reach");
+  return pattern.kpuzzle
+    .defaultPattern()
+    .applyAlg(turn)
+    .applyTransformation(moved)
+    .applyAlg(back);
+}
+
+/**
+ * A front right cube as the slot sees it: for any turns A, the cube after A becomes the
+ * cube after slotAlg(A, slot). The back right slot is the cube turned by y (y A y'), the
+ * left slots the right ones in the mirror.
+ */
+export function slotPattern(pattern: KPattern, slot: F2lSlot): KPattern {
+  if (slot === "fr") return pattern;
+  if (slot === "fl") return mirrorPattern(pattern);
+  const back = conjugate(pattern, "y", "y'");
+  return slot === "br" ? back : mirrorPattern(back);
+}
+
+/** A slot's cube seen as the front right one it stands for: slotPattern undone. */
+export function unslotPattern(pattern: KPattern, slot: F2lSlot): KPattern {
+  if (slot === "fr") return pattern;
+  if (slot === "fl") return mirrorPattern(pattern);
+  return conjugate(slot === "br" ? pattern : mirrorPattern(pattern), "y'", "y");
 }
 
 /** Where the pair stands on a cube. */

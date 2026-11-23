@@ -715,7 +715,12 @@ async function seedTrainer(store: Store): Promise<void> {
     }
   }
   // Three F2L cases in each slot, for the slots' own shots.
-  for (const setId of ["f2l", "f2l-left"] as const) {
+  for (const setId of [
+    "f2l",
+    "f2l-left",
+    "f2l-back",
+    "f2l-back-left",
+  ] as const) {
     const f2l = trainerSet(setId);
     for (const label of ["F2L 7", "F2L 13", "F2L 26"]) {
       const caseId = f2l.find((c) => c.label === label)?.id ?? label;
@@ -723,6 +728,12 @@ async function seedTrainer(store: Store): Promise<void> {
       await store.trainer.putCase({ setId, caseId, card, dueAt: now });
     }
   }
+  // Two cases of each 2×2 set, so its drill has cases of its own.
+  for (const setId of ["two-oll", "two-pbl", "two-cll"] as const)
+    for (const c of trainerSet(setId).slice(0, 2)) {
+      const { card } = await newCard(c.id, now);
+      await store.trainer.putCase({ setId, caseId: c.id, card, dueAt: now });
+    }
 }
 
 /** The desktop's copies as the Settings shots show them: a week, one a day. */

@@ -190,10 +190,59 @@ test("Tab walks the timer's controls with a visible ring on each", async ({
     expect(state, state.tag).toMatchObject({ ring: true, visible: true });
     if (state.tag.includes("settings")) break;
   }
+  // The file is one stop: its lines' times and comment words are walked with arrows.
+  expect(seen.filter((tag) => tag.includes("solve-show"))).toHaveLength(1);
+  expect(seen.filter((tag) => tag.includes("comment-edit"))).toHaveLength(0);
   // The status line's links and the session are among them.
   expect(seen.join(" ")).toContain("session-switch");
   expect(seen.join(" ")).toContain("progress");
   expect(seen.join(" ")).toContain("settings");
+});
+
+test("inside the file the arrows walk the lines and each line's comment word", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== "chromium", "one engine is enough");
+  await page.goto("/?state=session&lang=en&theme=dark");
+  await ready(page);
+  const rows = page.locator('[data-part="solves"] [data-solve-id]');
+  const time = (n: number) => rows.nth(n).locator('[data-action="solve-show"]');
+  const comment = (n: number) =>
+    rows.nth(n).locator('[data-action="comment-edit"]');
+  // The stop is the line on show: the newest while nothing is scrubbed.
+  for (let i = 0; i < 300; i++) {
+    await page.keyboard.press("Tab");
+    if ((await focusState(page)).tag.includes("solve-show")) break;
+  }
+  await expect(time(0)).toBeFocused();
+  // Right and left move between the line's time and its comment word.
+  await page.keyboard.press("ArrowRight");
+  await expect(comment(0)).toBeFocused();
+  expect(await focusState(page)).toMatchObject({ ring: true, visible: true });
+  await page.keyboard.press("ArrowLeft");
+  await expect(time(0)).toBeFocused();
+  // Up shows the line before, and the keyboard goes with it.
+  await page.keyboard.press("ArrowUp");
+  await expect(rows.nth(1)).toHaveAttribute("data-shown", "true");
+  await expect(time(1)).toBeFocused();
+  // A comment is reached and opened from the keyboard.
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Enter");
+  await expect(page.locator('[data-part="comment-input"]')).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-part="comment-input"]')).toHaveCount(0);
+  await expect(comment(1)).toBeFocused();
+  await expect(rows.nth(1)).toHaveAttribute("data-shown", "true");
+  // Tab leaves the file at once, past every other line.
+  await time(1).focus();
+  await page.keyboard.press("Tab");
+  const next = (await focusState(page)).tag;
+  expect(next).not.toContain("solve-show");
+  expect(next).not.toContain("comment-edit");
+  // Shift+Tab comes back to the same line.
+  await page.keyboard.press("Shift+Tab");
+  await expect(time(1)).toBeFocused();
 });
 
 for (const [name, opener, sheet] of [

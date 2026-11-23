@@ -1,5 +1,10 @@
 import { writeFileSync } from "node:fs";
-import { F2L_CASES, f2lState, f2lTurned } from "@cubehaus/scramble/f2l-state";
+import {
+  backAlg,
+  F2L_CASES,
+  f2lState,
+  f2lTurned,
+} from "@cubehaus/scramble/f2l-state";
 import { describe, expect, it } from "vitest";
 import { turned } from "./build";
 import { collCases, collState } from "./coll";
@@ -81,6 +86,35 @@ describe.runIf(process.env.ALGS_SEARCH === "1")("F2L search", () => {
     }
     writeFileSync(
       new URL("./candidates/f2l-search.json", import.meta.url),
+      `${JSON.stringify(out, null, 2)}\n`,
+    );
+  }, 1_200_000);
+});
+
+/**
+ * Writes `candidates/f2l-back-search.json`: for every F2L case of the back right slot and
+ * each of its four angles, the shortest algorithms in R, U and B and those up to two turns
+ * longer (up to 150 an angle, so the ones with few B turns are among them). The search in
+ * R, U and B on the back right slot is the front right search in F, U and R seen after a
+ * y turn of the cube: the same tables and bounds, each turn renamed as it is before the
+ * turn (backAlg). Run with ALGS_SEARCH=1 when the search or the cases change.
+ */
+describe.runIf(process.env.ALGS_SEARCH === "1")("F2L back right search", () => {
+  it("writes the back right candidates our search finds", async () => {
+    const t = f2lTables(await kpuzzle());
+    const out: Record<string, string[]> = {};
+    for (const c of F2L_CASES) {
+      const found = new Set<string>();
+      for (let k = 0; k < 4; k++)
+        for (const alg of searchF2l(t, f2lTurned(f2lState(c.key), k), {
+          extra: 2,
+          limit: 150,
+        }))
+          found.add(backAlg(alg));
+      out[c.key] = [...found];
+    }
+    writeFileSync(
+      new URL("./candidates/f2l-back-search.json", import.meta.url),
       `${JSON.stringify(out, null, 2)}\n`,
     );
   }, 1_200_000);

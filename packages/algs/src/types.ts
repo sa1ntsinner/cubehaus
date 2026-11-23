@@ -1,7 +1,16 @@
 import type { Metrics } from "./metrics";
 
 export type LastLayerSet = "pll" | "oll" | "coll";
-export type SetId = LastLayerSet | "f2l" | "f2l-left";
+export type SetId =
+  | LastLayerSet
+  | "f2l"
+  | "f2l-left"
+  | "f2l-back"
+  | "f2l-back-left"
+  | TwoSetId;
+
+/** The 2×2 sets: orient the top (OLL), both layers' places (PBL), the top in one (CLL). */
+export type TwoSetId = "two-oll" | "two-pbl" | "two-cll";
 
 /** A case as shipped: built by build.ts from verified candidates. */
 export type TrainerCaseData = {
@@ -18,4 +27,6 @@ export type TrainerCaseData = {
   algs: readonly { moves: string; auf: number; metrics: Metrics }[];
   recognise: { en: string; ru: string } | null;
   subsets: readonly string[];
+  /** 2×2 only: drill scrambles from our own search, each leading to the case. */
+  scrambles?: readonly string[];
 };

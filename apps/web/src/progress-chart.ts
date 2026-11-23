@@ -265,6 +265,18 @@ const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
 export const CALENDAR_HEADER = 16;
 const MONTH_LABEL_WIDTH = 40;
+// Three letters of the 12 px mono and a clear gap: a month narrower than this names every
+// other month, so no two names touch.
+const MONTH_NAME_PITCH = 28;
+
+/** A month's name in three letters (`Jun`, `июн`): one letter would make June and July
+ * the same `J` or `И`. */
+export function monthAbbreviation(locale: string, month: number): string {
+  return new Intl.DateTimeFormat(locale, { month: "short" })
+    .format(new Date(2000, month, 1))
+    .replace(/\./g, "")
+    .slice(0, 3);
+}
 
 function monday(at: number) {
   return at - ((new Date(at).getUTCDay() + 6) % 7) * DAY_MS;
@@ -347,7 +359,8 @@ export function monthLayout(
   const pitch = Math.min(28, Math.floor((width - MONTH_LABEL_WIDTH) / 12));
   const first = firstDay(days, today);
   if (!first || pitch <= 2) return { cells, years, months, cell: 0, height: 0 };
-  for (let month = 0; month < 12; month++)
+  const every = pitch >= MONTH_NAME_PITCH ? 1 : 2;
+  for (let month = 0; month < 12; month += every)
     months.push({ month, x: MONTH_LABEL_WIDTH + (month + 0.5) * pitch });
 
   const firstYear = Number(first.slice(0, 4));

@@ -601,6 +601,21 @@ main > [data-part="stats"] {
 [data-part="stats-now"] [data-record] {
   color: var(--pb);
 }
+/* With Solves today on, a slot is one line, its name beside its value: a third slot under the
+   time, and the time keeps its place with it: the line stays one line high, and where
+   the middle column is too narrow for three the third goes under the other two without
+   adding height. On a phone, where the file is right below, the line gets smaller
+   instead until all three fit (three slots are about 14 em of figures and names). */
+[data-part="stats-now"]:has(> [data-slot="today"]) > [data-slot] {
+  white-space: nowrap;
+}
+main:not([data-layout="times"], [data-layout="focus"])
+  [data-part="stats-now"]:has(> [data-slot="today"]) {
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: var(--s2);
+  height: max(32px, 1lh - 12px);
+}
 main:is([data-layout="times"], [data-layout="focus"]) [data-part="stats-now"] {
   --slot-block-margin: 0;
   justify-content: center;
@@ -1184,9 +1199,36 @@ main:is([data-phase="holding"], [data-phase="ready"]) > [data-part="scramble"] {
   [data-part="stats-now"] {
     font-size: calc(20px * var(--size-averages, 1));
   }
+  main:not([data-layout="times"], [data-layout="focus"])
+    [data-part="stats-now"]:has(> [data-slot="today"])
+    [data-part="slot-name"] {
+    /* Names stay readable on a touch screen as the line gets smaller. */
+    font-size: max(12px, 0.68em);
+  }
+  main:not([data-layout="times"], [data-layout="focus"])
+    [data-part="stats-now"]:has(> [data-slot="today"]) {
+    height: auto;
+    font-size: min(
+      20px *
+      var(--size-averages, 1),
+      (100vw - 36px - 2 * var(--s5)) /
+      14
+    );
+  }
   main > [data-part="focus-history"] {
     align-self: start;
     justify-self: center;
+  }
+  /* Focus has no file: its row holds the history chevrons whole, so on a short screen
+     their targets stay clear of the actions under them (the room comes from above the
+     time). */
+  main[data-layout="focus"]:is(
+    [data-timer-surface],
+    :has(> [data-part="scramble"])
+  ) {
+    grid-template-rows:
+      auto auto minmax(0, 1fr) auto auto auto minmax(min-content, 3fr)
+      auto auto;
   }
   main > [data-part="file"] {
     justify-self: center;
@@ -1417,6 +1459,13 @@ main > [data-part="stats"] {
   margin-block: var(--slot-block-margin, -6px);
   overflow-wrap: anywhere;
 }
+/* Solves today is no button, but stands as tall as one, so it adds no height. */
+[data-part="stats-now"] > span[data-slot="today"] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: var(--slot-block-margin, -6px);
+}
 [data-part="stats-now"] > button[data-slot]:hover [data-part="slot-name"] {
   text-decoration: underline;
 }
@@ -1497,7 +1546,7 @@ main[data-stat-picker-open]
 }
 @media (max-width: 699px) {
   /* The slots' targets reach into the row gap, never past it into the file. */
-  [data-part="stats-now"] > button[data-slot] {
+  [data-part="stats-now"] > :is(button[data-slot], span[data-slot="today"]) {
     margin-block: var(--slot-block-margin, calc(-1 * var(--s2)));
   }
   main[data-stat-picker-open] > [data-part="file"] {

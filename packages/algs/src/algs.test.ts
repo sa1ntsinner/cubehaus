@@ -5,11 +5,15 @@ import {
   f2lSolved,
   mirrorPattern,
   placePair,
+  slotPattern,
+  unslotPattern,
 } from "@cubehaus/scramble/f2l";
 import {
+  type F2lSlot,
   f2lLeftStickers,
   f2lState,
   f2lStickers,
+  slotStickers,
 } from "@cubehaus/scramble/f2l-state";
 import { classifyLL, stickersOf } from "@cubehaus/scramble/last-layer";
 import { fromKey } from "@cubehaus/scramble/last-layer-state";
@@ -18,11 +22,13 @@ import { describe, expect, it } from "vitest";
 import {
   type BuiltSet,
   buildF2l,
+  buildF2lBack,
   buildF2lLeft,
   buildSet,
   render,
   turned,
 } from "./build";
+import F2L_BACK_SEARCHED from "./candidates/f2l-back-search.json";
 import F2L_SEARCHED from "./candidates/f2l-search.json";
 import { collWords, sameColour } from "./collwords";
 import { lights, upExactly } from "./diagram";
@@ -37,14 +43,22 @@ const dataFile = (set: SetId) => new URL(`./data/${set}.ts`, import.meta.url);
  * written; otherwise the committed file must equal it, so nothing unverified or stale
  * ships.
  */
-async function rebuilt(set: SetId): Promise<BuiltSet> {
+async function rebuilt(
+  set: Exclude<SetId, `two-${string}`>,
+): Promise<BuiltSet> {
   const f2l = () => buildF2l(F2L_SEARCHED as Record<string, string[]>);
+  const back = () =>
+    buildF2lBack(F2L_BACK_SEARCHED as Record<string, string[]>);
   const built =
     set === "f2l"
       ? await f2l()
       : set === "f2l-left"
         ? await buildF2lLeft(await f2l())
-        : await buildSet(set);
+        : set === "f2l-back"
+          ? await back()
+          : set === "f2l-back-left"
+            ? await buildF2lLeft(await back())
+            : await buildSet(set as "pll" | "oll" | "coll");
   const text = render(built);
   if (process.env.ALGS_WRITE === "1") writeFileSync(dataFile(set), text);
   expect(readFileSync(dataFile(set), "utf8")).toBe(text);
@@ -266,4 +280,55 @@ describe("trainer sets", () => {
     );
     expect(built.rejected).toEqual([]);
   }, 120_000);
+  for (const [set, slot, letters, insert, solves] of [
+    ["f2l-back", "br", "RUB", "R' U R", "R' U' R"],
+    ["f2l-back-left", "bl", "LUB", "L U' L'", "L U L'"],
+  ] as const)
+    it(`the ${slot.toUpperCase()} slot has the same 41 cases, each algorithm in ${[...letters].join(", ")} and verified there`, async () => {
+      const built = await rebuilt(set);
+      const right = trainerSet("f2l");
+      const cases = trainerSet(set);
+      expect(cases.map((c) => c.label)).toEqual(right.map((c) => c.label));
+      const puzzle = await kpuzzle();
+      const turn = new RegExp(`^[${letters}]['2]?( [${letters}]['2]?)*$`);
+      for (const [i, c] of cases.entries()) {
+        const key = (right[i] as (typeof right)[number]).id.slice(4);
+        expect(c.id).toBe(`${set}-${key}`);
+        expect(c.algs, c.label).toHaveLength(3);
+        expect(c.algs[0]?.auf).toBe(0);
+        // From the cube the picture shows, U turned as many times as the algorithm
+        // says, then the algorithm: the first two layers whole.
+        const cube = slotPattern(
+          placePair(puzzle.defaultPattern(), f2lState(c.state)),
+          slot as F2lSlot,
+        );
+        for (const alg of c.algs) {
+          expect(alg.moves, c.label).toMatch(turn);
+          const verdict = await verifyF2l(key, alg.moves, slot as F2lSlot);
+          expect(verdict.ok, `${c.label}: ${alg.moves}`).toBe(true);
+          const before = ["", "U", "U2", "U'"][alg.auf] as string;
+          const after = (before ? cube.applyAlg(before) : cube).applyAlg(
+            alg.moves,
+          );
+          expect(f2lSolved(after), `${c.id}: ${alg.moves}`).toBe(true);
+        }
+        expect(pictureOf(c)).toBe(
+          slotStickers(f2lState(c.state), slot as F2lSlot),
+        );
+        expect(f2lKey(f2lState(c.state))).toBe(key);
+      }
+      // The plainest insert into the slot with the side beside it, no B turn.
+      const made = f2lKey(
+        f2lOf(
+          unslotPattern(
+            puzzle.defaultPattern().applyAlg(insert),
+            slot as F2lSlot,
+          ),
+        ),
+      );
+      expect(cases.find((c) => c.id === `${set}-${made}`)?.algs[0]?.moves).toBe(
+        solves,
+      );
+      expect(built.rejected).toEqual([]);
+    }, 300_000);
 });

@@ -7,7 +7,9 @@ import { DefaultScheduler, Rating } from "ts-fsrs";
  * - A grade comes from the attempt: `again` when the person marked it missed (M);
  *   otherwise the execution time against their own median for that case over its last
  *   12 clean attempts (from 3 of them; before that `good`): above 1.5 times `hard`,
- *   below 0.8 times `easy`, else `good`.
+ *   below 0.8 times `easy`, else `good`. Where the attempt's recognition was timed and
+ *   the case has a recognition median (3 timed attempts), recognition is graded the same
+ *   way and the attempt takes the lower of the two grades.
  * - Each case being learnt has one FSRS card (ts-fsrs `DefaultScheduler`, FSRS-7,
  *   desired retention 0.9, no fuzz, so the same history always gives the same days).
  * - What comes next: the cases due now, earliest first; then the rest, least likely to
@@ -20,6 +22,8 @@ export type Grade = "again" | "hard" | "good" | "easy";
 export type AttemptLike = {
   caseId: string;
   execMs: number;
+  /** Recognition, where it was timed (a picture, or a split drill). */
+  recogMs?: number | null;
   missed: boolean;
   at: number;
 };
@@ -50,18 +54,39 @@ export function caseMedian(
   return clean.length < 3 ? null : median(clean);
 }
 
+/** The median recognition of a case's last 12 clean timed attempts, or null under 3. */
+export function recogMedian(
+  attempts: readonly AttemptLike[],
+  caseId: string,
+): number | null {
+  const timed = attempts
+    .filter((a) => a.caseId === caseId && !a.missed && a.recogMs != null)
+    .slice(-WINDOW)
+    .map((a) => a.recogMs as number);
+  return timed.length < 3 ? null : median(timed);
+}
+
+const ORDER: readonly Grade[] = ["again", "hard", "good", "easy"];
+const against = (ms: number, typical: number | null): Grade => {
+  if (typical === null) return "good";
+  const ratio = ms / typical;
+  return ratio > SLOW ? "hard" : ratio < FAST ? "easy" : "good";
+};
+
 /** The grade of an attempt, against the attempts of its case that came before it. */
 export function gradeOf(
   execMs: number,
   missed: boolean,
   before: readonly AttemptLike[],
   caseId: string,
+  recogMs: number | null = null,
 ): Grade {
   if (missed) return "again";
-  const typical = caseMedian(before, caseId);
-  if (typical === null) return "good";
-  const ratio = execMs / typical;
-  return ratio > SLOW ? "hard" : ratio < FAST ? "easy" : "good";
+  const exec = against(execMs, caseMedian(before, caseId));
+  const typical = recogMs === null ? null : recogMedian(before, caseId);
+  if (recogMs === null || typical === null) return exec;
+  const recog = against(recogMs, typical);
+  return ORDER[Math.min(ORDER.indexOf(exec), ORDER.indexOf(recog))] as Grade;
 }
 
 type Scheduler = Awaited<ReturnType<typeof DefaultScheduler>>;

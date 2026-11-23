@@ -6,8 +6,6 @@ import {
   myAlg,
   otherAlgs,
   parseChoices,
-  reviewCase,
-  reviewPool,
   showCase,
 } from "./train-state";
 
@@ -26,7 +24,7 @@ test("a picture drill records recognition and execution from input timestamps", 
   expect(s.phase).toBe("running");
   s = drillStep(s, { type: "down", at: 2300 + 1830 });
   expect(s.phase).toBe("stopped");
-  expect(s.result).toEqual({ recogMs: 640, execMs: 1830 });
+  expect(s.result).toEqual({ recogMs: 640, execMs: 1830, split: false });
   // Further presses change nothing.
   expect(drillStep(s, { type: "down", at: 9000 })).toBe(s);
 
@@ -36,7 +34,41 @@ test("a picture drill records recognition and execution from input timestamps", 
   m = drillStep(m, { type: "down", at: 10_000 });
   m = drillStep(m, { type: "up", at: 10_400 });
   m = drillStep(m, { type: "down", at: 12_400 });
-  expect(m.result).toEqual({ recogMs: null, execMs: 2000 });
+  expect(m.result).toEqual({ recogMs: null, execMs: 2000, split: false });
+});
+
+test("a split drill marks recognition with the first press and runs on to the stop", () => {
+  // A picture: the clock starts with the frame that shows the case.
+  let s = showCase(true, true);
+  // A press before that frame is not a recognition.
+  expect(drillStep(s, { type: "down", at: 990 })).toBe(s);
+  s = drillStep(s, { type: "shown", at: 1000 });
+  expect(s.phase).toBe("recognising");
+  // A key let go (from an earlier press) changes nothing.
+  expect(drillStep(s, { type: "up", at: 1100 })).toBe(s);
+  s = drillStep(s, { type: "down", at: 1620 });
+  expect(s.phase).toBe("running");
+  s = drillStep(s, { type: "up", at: 1700 });
+  expect(s.phase).toBe("running");
+  s = drillStep(s, { type: "down", at: 3420 });
+  expect(s.phase).toBe("stopped");
+  expect(s.result).toEqual({ recogMs: 620, execMs: 1800, split: true });
+
+  // A scramble: hold and let go as usual (the case is on the cube), then the first press
+  // is the recognition.
+  let m = showCase(false, true);
+  m = drillStep(m, { type: "shown", at: 0 });
+  m = drillStep(m, { type: "down", at: 10_000 });
+  m = drillStep(m, { type: "up", at: 10_400 });
+  expect(m.phase).toBe("recognising");
+  m = drillStep(m, { type: "down", at: 10_900 });
+  m = drillStep(m, { type: "down", at: 12_900 });
+  expect(m.result).toEqual({ recogMs: 500, execMs: 2000, split: true });
+  // A short hold still does not start.
+  let n = showCase(false, true);
+  n = drillStep(n, { type: "down", at: 0 });
+  n = drillStep(n, { type: "up", at: 100 });
+  expect(n.phase).toBe("shown");
 });
 
 test("a press before the picture's first frame still gets its recognition", () => {
@@ -46,35 +78,7 @@ test("a press before the picture's first frame still gets its recognition", () =
   s = drillStep(s, { type: "shown", at: 1004 });
   s = drillStep(s, { type: "up", at: 1010 + HOLD_MS });
   s = drillStep(s, { type: "down", at: 1010 + HOLD_MS + 900 });
-  expect(s.result).toEqual({ recogMs: 6, execMs: 900 });
-});
-
-test("review drills only the slow and the often missed", () => {
-  // Y is slow against the others, Jb missed twice in its last five, T and Ua fine.
-  const attempts = [
-    ...["T", "Ua", "Jb", "Y"].flatMap((caseId) =>
-      [0, 1, 2, 3].map((i) => ({
-        caseId,
-        execMs: caseId === "Y" ? 4000 : 1500,
-        missed: caseId === "Jb" && i >= 2,
-        at: i,
-      })),
-    ),
-  ];
-  const weak = reviewPool(attempts, ["T", "Ua", "Jb", "Y"]);
-  expect(weak).toEqual(["Jb", "Y"]);
-  const seen = new Set<string>();
-  let last: string | null = null;
-  for (const draw of [0, 0.3, 0.6, 0.9, 0.99]) {
-    const id = reviewCase(weak, last, draw);
-    expect(id).not.toBe(last);
-    seen.add(id as string);
-    last = id;
-  }
-  expect([...seen].sort()).toEqual(["Jb", "Y"]);
-  // One weak case repeats; none gives nothing.
-  expect(reviewCase(["Y"], "Y", 0.5)).toBe("Y");
-  expect(reviewCase([], null, 0.5)).toBeNull();
+  expect(s.result).toEqual({ recogMs: 6, execMs: 900, split: false });
 });
 
 test("the algorithm chosen as mine is the one shown, the others are one tap away", () => {

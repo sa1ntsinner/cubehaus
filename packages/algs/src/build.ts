@@ -1,4 +1,9 @@
-import { F2L_CASES, f2lState, f2lTurned } from "@cubehaus/scramble/f2l-state";
+import {
+  F2L_CASES,
+  f2lState,
+  f2lTurned,
+  mirrorAlg,
+} from "@cubehaus/scramble/f2l-state";
 import { lastLayerCases, stickersOf } from "@cubehaus/scramble/last-layer";
 import {
   fromKey,
@@ -14,6 +19,7 @@ import type { CaseSource } from "./candidates/types";
 import { collCases } from "./coll";
 import { collWords } from "./collwords";
 import { type Metrics, metricsOf, tidy } from "./metrics";
+import { noteFor } from "./notes";
 import { caseOf, memberState, type SetId, verify, verifyF2l } from "./verify";
 
 /**
@@ -33,7 +39,7 @@ export type BuiltCase = {
   subsets: string[];
 };
 export type BuiltSet = {
-  set: SetId | "f2l";
+  set: SetId | "f2l" | "f2l-left";
   candidates: number;
   rejected: { label: string; alg: string; reason: string }[];
   cases: BuiltCase[];
@@ -233,6 +239,26 @@ export async function buildSet(
         );
     }
   }
+  // PLL and OLL: one line of facts from the sticker model that tells the case from every
+  // other case of the set met from any side (notes.ts).
+  if (set === "pll" || set === "oll") {
+    const pictures = new Map(
+      cases.map((c) => {
+        const state = fromKey(c.state);
+        return [
+          c,
+          [0, 1, 2, 3].map((k) => stickersOf(turned(state, k))),
+        ] as const;
+      }),
+    );
+    for (const c of cases) {
+      const others = cases
+        .filter((o) => o !== c)
+        .flatMap((o) => pictures.get(o) ?? []);
+      const note = noteFor(set, pictures.get(c)?.[0] as string, others);
+      c.recognise = note ? { en: note.en, ru: note.ru } : null;
+    }
+  }
   if (failing.length > 0)
     throw new Error(
       `${set}: explanations whose checks fail: ${failing.join(", ")}`,
@@ -248,7 +274,7 @@ export function render(built: BuiltSet): string {
     ...built.rejected.map((r) => `//   ${r.label}: ${r.alg} (${r.reason})`),
     'import type { TrainerCaseData } from "../types";',
     "",
-    `export const ${built.set.toUpperCase()}: readonly TrainerCaseData[] = ${JSON.stringify(
+    `export const ${built.set.replace("-", "_").toUpperCase()}: readonly TrainerCaseData[] = ${JSON.stringify(
       built.cases,
       null,
       2,
@@ -297,4 +323,32 @@ export async function buildF2l(
     });
   }
   return { set: "f2l", candidates, rejected, cases };
+}
+
+/**
+ * The front left slot's data: each right case's algorithms in the mirror (mirrorAlg),
+ * each verified on the left slot (verifyF2l), in the same order and with the same picture
+ * turn, so case n there is case n here. A left case keeps the state of the right case it
+ * mirrors; a U turn in the mirror is U', so an algorithm's turn before it becomes 4 - auf.
+ * Its metrics are the right one's: the same work for the other hand.
+ */
+export async function buildF2lLeft(right: BuiltSet): Promise<BuiltSet> {
+  const rejected: BuiltSet["rejected"] = [];
+  let candidates = 0;
+  const cases: BuiltCase[] = [];
+  for (const c of right.cases) {
+    const key = c.id.slice("f2l-".length);
+    const algs: BuiltAlg[] = [];
+    for (const alg of c.algs) {
+      candidates++;
+      const moves = mirrorAlg(alg.moves);
+      const verdict = await verifyF2l(key, moves, "left");
+      if (verdict.ok)
+        algs.push({ moves, auf: (4 - alg.auf) % 4, metrics: alg.metrics });
+      else
+        rejected.push({ label: c.label, alg: moves, reason: verdict.reason });
+    }
+    cases.push({ ...c, id: `f2l-left-${key}`, algs });
+  }
+  return { set: "f2l-left", candidates, rejected, cases };
 }

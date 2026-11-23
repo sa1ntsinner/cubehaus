@@ -193,6 +193,13 @@ manifest[7] = [
   ],
 ];
 
+// 8 marks how a trainer attempt's recognition was timed (split).
+manifest[8] = (manifest[7] ?? []).map(([name, table]) =>
+  name === "trainer_attempt"
+    ? [name, { ...table, columns: [...table.columns, "split"] }]
+    : [name, table],
+);
+
 export function backupTables(
   schema = SCHEMA_VERSION,
 ): readonly [string, Table][] {

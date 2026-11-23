@@ -167,7 +167,7 @@ test("a newer schema reports failed and releases the worker and lock", async () 
   const { openDatabase } = await import("./open");
   expect(await openDatabase().initial).toMatchObject({
     kind: "failed",
-    reason: "Database schema 999 is newer than 7",
+    reason: "Database schema 999 is newer than 8",
   });
   await vi.waitFor(() => expect(released).toHaveBeenCalledTimes(1));
   expect(workers[0]?.terminated).toBe(true);

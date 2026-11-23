@@ -41,6 +41,8 @@ describe("text", () => {
         "progress.dnf",
         "settings.languages.en",
         "settings.languages.ru",
+        "train.slots.left",
+        "train.slots.right",
       ].sort(),
     );
   });

@@ -10,6 +10,7 @@ import { parseStat, type StatId } from "@cubehaus/stats";
 import {
   lazy,
   Suspense,
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -73,9 +74,8 @@ import "./input/behavior.css";
 const Training = lazy(() =>
   import("./scramble/Training").then(({ Training }) => ({ default: Training })),
 );
-const Train = lazy(() =>
-  import("./screens/Train").then(({ Train }) => ({ default: Train })),
-);
+const loadTrain = () => import("./screens/Train");
+const Train = lazy(() => loadTrain().then(({ Train }) => ({ default: Train })));
 const Progress = lazy(() =>
   import("./screens/Progress").then(({ Progress }) => ({ default: Progress })),
 );
@@ -211,7 +211,17 @@ export function App({
 
   const [route, setRoute] = useState(() => location.hash);
   useEffect(() => {
-    const update = () => setRoute(location.hash);
+    // Onto another screen, a transition: the one in view stays until the next is ready
+    // (its code may still be loading), so no blank frame stands between them. Within a
+    // screen the change is at once, so a key that follows it lands on what it shows.
+    let shown = location.hash;
+    const update = () => {
+      const next = location.hash;
+      const same = screenOf(shown) === screenOf(next);
+      shown = next;
+      if (same) setRoute(next);
+      else startTransition(() => setRoute(next));
+    };
     window.addEventListener("hashchange", update);
     update();
     return () => window.removeEventListener("hashchange", update);
@@ -231,31 +241,34 @@ export function App({
             ? words.dbFailed
             : null;
 
-  if (route === "#/progress")
+  // One boundary for every screen, so a transition keeps the shown one in place.
+  return <Suspense fallback={null}>{screen()}</Suspense>;
+  function screen() {
+    if (route === "#/progress")
+      return <Progress view={view} dbMessage={dbMessage} words={words} />;
+    if (route === "#/train" || route.startsWith("#/train/"))
+      return <Train app={app} view={view} words={words} route={route} />;
+    if (route === "#/settings")
+      return <Settings app={app} view={view} words={words} />;
     return (
-      <Suspense fallback={null}>
-        <Progress view={view} dbMessage={dbMessage} words={words} />
-      </Suspense>
+      <TimerPage
+        app={app}
+        view={view}
+        dbMessage={dbMessage}
+        seed={seed}
+        openCommands={route === "#/commands"}
+        openDrills={route === "#/drills"}
+        applyUpdate={applyUpdate}
+      />
     );
-  if (route === "#/train" || route.startsWith("#/train/"))
-    return (
-      <Suspense fallback={null}>
-        <Train app={app} view={view} words={words} route={route} />
-      </Suspense>
-    );
-  if (route === "#/settings")
-    return <Settings app={app} view={view} words={words} />;
-  return (
-    <TimerPage
-      app={app}
-      view={view}
-      dbMessage={dbMessage}
-      seed={seed}
-      openCommands={route === "#/commands"}
-      openDrills={route === "#/drills"}
-      applyUpdate={applyUpdate}
-    />
-  );
+  }
+}
+
+/** Which screen a route shows. */
+function screenOf(route: string) {
+  if (route === "#/train" || route.startsWith("#/train/")) return "train";
+  if (route === "#/progress" || route === "#/settings") return route;
+  return "timer";
 }
 
 /** An xcross slot by the faces it sits between, as cubers write it: FR, BL, UF. */
@@ -1653,7 +1666,15 @@ function TimerPage({
           </p>
         )}
         <nav data-no-timer>
-          <a href="#/train" data-action="train" aria-label={words.train.title}>
+          <a
+            href="#/train"
+            data-action="train"
+            aria-label={words.train.title}
+            // Its code starts loading at the first sign of intent.
+            onPointerEnter={() => void loadTrain()}
+            onPointerDown={() => void loadTrain()}
+            onFocus={() => void loadTrain()}
+          >
             <span data-word="long">{words.train.title}</span>
             <span data-word="short">{words.train.short}</span>
           </a>{" "}

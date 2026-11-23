@@ -1,5 +1,3 @@
-import { type AttemptLike, weakCases } from "@cubehaus/algs";
-
 /**
  * One drill attempt, from input event timestamps only (a result is the
  * difference of two input events). The case is shown, a key or the screen is held, let
@@ -11,19 +9,34 @@ import { type AttemptLike, weakCases } from "@cubehaus/algs";
  *   after it (the frame's timestamp is on the same clock as the events). Only when the
  *   case is shown as a picture: with a scramble the person sees the case on the cube
  *   while scrambling, which nothing here can see.
+ *
+ * Split (a choice, off by default): the clock starts when the case is there to be seen,
+ * the first press marks it recognised and the clock runs on to the stop, so recognition
+ * and execution are two parts of one run. With a picture the clock starts at the frame
+ * that shows it and there is no hold; with a scramble the hold and release start it as
+ * usual (the case is on the cube by then).
  */
 export const HOLD_MS = 300;
 
-export type DrillPhase = "shown" | "holding" | "running" | "stopped";
+export type DrillPhase =
+  | "shown"
+  | "holding"
+  /** Split: the clock runs, waiting for the press that says the case is recognised. */
+  | "recognising"
+  | "running"
+  | "stopped";
 
 export type Drill = {
   phase: DrillPhase;
   picture: boolean;
+  split: boolean;
   shownAt: number | null;
   firstDownAt: number | null;
   downAt: number | null;
   startAt: number | null;
-  result: { recogMs: number | null; execMs: number } | null;
+  /** Split: the press that marked the case recognised. */
+  recognisedAt: number | null;
+  result: { recogMs: number | null; execMs: number; split: boolean } | null;
 };
 
 export type DrillEvent =
@@ -31,44 +44,68 @@ export type DrillEvent =
   | { type: "down"; at: number }
   | { type: "up"; at: number };
 
-export const showCase = (picture: boolean): Drill => ({
+export const showCase = (picture: boolean, split = false): Drill => ({
   phase: "shown",
   picture,
+  split,
   shownAt: null,
   firstDownAt: null,
   downAt: null,
   startAt: null,
+  recognisedAt: null,
   result: null,
 });
+
+const ms = (from: number, to: number) => Math.max(0, Math.round(to - from));
 
 export function drillStep(state: Drill, event: DrillEvent): Drill {
   switch (event.type) {
     // The frame may come after a quick first press; it still marks when the case showed.
     case "shown":
-      return state.shownAt === null && state.phase !== "stopped"
-        ? { ...state, shownAt: event.at }
-        : state;
+      if (state.shownAt !== null || state.phase === "stopped") return state;
+      if (state.split && state.picture && state.phase === "shown")
+        return {
+          ...state,
+          shownAt: event.at,
+          phase: "recognising",
+          startAt: event.at,
+        };
+      return { ...state, shownAt: event.at };
     case "down":
-      if (state.phase === "shown")
+      if (state.phase === "recognising")
+        return { ...state, phase: "running", recognisedAt: event.at };
+      if (state.phase === "shown") {
+        // Split with a picture: nothing to recognise before the frame shows it.
+        if (state.split && state.picture) return state;
         return {
           ...state,
           phase: "holding",
           downAt: event.at,
           firstDownAt: state.firstDownAt ?? event.at,
         };
+      }
       if (state.phase === "running") {
         const startAt = state.startAt as number;
+        if (state.split) {
+          const recognisedAt = state.recognisedAt as number;
+          return {
+            ...state,
+            phase: "stopped",
+            result: {
+              recogMs: ms(startAt, recognisedAt),
+              execMs: ms(recognisedAt, event.at),
+              split: true,
+            },
+          };
+        }
         const recogMs =
           state.picture && state.shownAt !== null && state.firstDownAt !== null
-            ? Math.max(0, Math.round(state.firstDownAt - state.shownAt))
+            ? ms(state.shownAt, state.firstDownAt)
             : null;
         return {
           ...state,
           phase: "stopped",
-          result: {
-            recogMs,
-            execMs: Math.max(0, Math.round(event.at - startAt)),
-          },
+          result: { recogMs, execMs: ms(startAt, event.at), split: false },
         };
       }
       return state;
@@ -76,30 +113,12 @@ export function drillStep(state: Drill, event: DrillEvent): Drill {
       if (state.phase !== "holding") return state;
       if (event.at - (state.downAt as number) < HOLD_MS)
         return { ...state, phase: "shown", downAt: null };
-      return { ...state, phase: "running", startAt: event.at };
+      return {
+        ...state,
+        phase: state.split ? "recognising" : "running",
+        startAt: event.at,
+      };
   }
-}
-
-/**
- * Review: only the weak cases, the slow against the set and the often missed
- * (`weakCases`), slowest first.
- */
-export const reviewPool = (
-  attempts: readonly AttemptLike[],
-  caseIds: readonly string[],
-): string[] => weakCases(attempts, caseIds);
-
-/** The next weak case, drawn by `draw` (0 to 1), never the same twice running. */
-export function reviewCase(
-  pool: readonly string[],
-  last: string | null,
-  draw: number,
-): string | null {
-  const others = pool.filter((id) => id !== last);
-  const from = others.length > 0 ? others : pool;
-  return (
-    from[Math.min(from.length - 1, Math.floor(draw * from.length))] ?? null
-  );
 }
 
 /**

@@ -119,6 +119,9 @@ const en = {
     all: "All",
     none: "None",
     twoLook: "2-look",
+    // F2L's slot, as cubers write it.
+    slots: { right: "FR", left: "FL" },
+    slotNames: { right: "Front right slot", left: "Front left slot" },
     add: "Add to drills",
     remove: "Take out of drills",
     moves: (n: number) => `${n} ${n === 1 ? "move" : "moves"}`,
@@ -129,7 +132,24 @@ const en = {
     mine: "Mine",
     everyCase: "All",
     noWeak:
-      "No weak cases yet. A case comes here once it is slow against the others or missed twice in five.",
+      "Nothing to review now. A case comes here when it is due, slow against your others, or missed twice in five.",
+    // What Review holds today, said once before its first case.
+    today: ({
+      due,
+      slow,
+      missed,
+    }: {
+      due: number;
+      slow: number;
+      missed: number;
+    }) =>
+      [
+        due > 0 && `${due} due`,
+        slow > 0 && `${slow} slow`,
+        missed > 0 && `${missed} missed`,
+      ]
+        .filter(Boolean)
+        .join(", "),
     noAlg: "No algorithm yet.",
     more: (n: number) => `${n} more`,
     use: "Use",
@@ -140,6 +160,24 @@ const en = {
     missed: "Missed",
     afterKeys: "Space next · M missed",
     back: "Cases",
+    // A quiet choice at the drill's foot: the first press marks the case recognised.
+    split: "Split",
+    execution: "execution",
+    splitHint: {
+      pictureKey: "Space when you know the case, again to stop",
+      pictureTouch: "Tap when you know the case, again to stop",
+      scrambleKey: "Hold Space, let go, Space once you know the case",
+      scrambleTouch: "Hold, let go, tap once you know the case",
+    },
+    keys: [
+      ["Space", "Hold, let go: start"],
+      ["Space", "Split: the case is recognised"],
+      ["Space", "Stop"],
+      ["Space Enter", "Next case"],
+      ["KeyM", "Missed"],
+      ["Escape", "Back"],
+      ["Shift+Slash", "Keys"],
+    ] as readonly (readonly [string, string])[],
   },
   progress: {
     // DESIGN.md section 14, the calm view: names, numbers and the trend, no sentences.
@@ -810,6 +848,8 @@ const ru: Text = {
     all: "Все",
     none: "Ни одного",
     twoLook: "В два этапа",
+    slots: { right: "FR", left: "FL" },
+    slotNames: { right: "Передний правый слот", left: "Передний левый слот" },
     add: "В отработку",
     remove: "Убрать из отработки",
     moves: (n: number) => `${n} ${plural(n, "ход", "хода", "ходов")}`,
@@ -820,7 +860,24 @@ const ru: Text = {
     mine: "Мои",
     everyCase: "Все",
     noWeak:
-      "Слабых случаев пока нет. Случай попадает сюда, когда он медленнее остальных или в пяти попытках дважды с ошибкой.",
+      "Повторять сейчас нечего. Случай попадает сюда, когда подошёл его срок, когда он медленнее остальных или в пяти попытках дважды с ошибкой.",
+    today: ({
+      due,
+      slow,
+      missed,
+    }: {
+      due: number;
+      slow: number;
+      missed: number;
+    }) =>
+      [
+        due > 0 && `${due} к повтору`,
+        slow > 0 &&
+          `${slow} ${plural(slow, "медленный", "медленных", "медленных")}`,
+        missed > 0 && `${missed} с ошибками`,
+      ]
+        .filter(Boolean)
+        .join(", "),
     noAlg: "Алгоритма пока нет.",
     more: (n: number) => `Ещё ${n}`,
     use: "Выбрать",
@@ -831,6 +888,23 @@ const ru: Text = {
     missed: "Ошибка",
     afterKeys: "Пробел — дальше · M — ошибка",
     back: "Случаи",
+    split: "Отсечка",
+    execution: "исполнение",
+    splitHint: {
+      pictureKey: "Пробел, когда узнали случай, ещё раз — стоп",
+      pictureTouch: "Коснитесь, когда узнали случай, ещё раз — стоп",
+      scrambleKey: "Зажмите пробел, отпустите; пробел, когда узнали случай",
+      scrambleTouch: "Зажмите, отпустите; коснитесь, когда узнали случай",
+    },
+    keys: [
+      ["Space", "Зажать и отпустить: старт"],
+      ["Space", "Отсечка: случай узнан"],
+      ["Space", "Стоп"],
+      ["Space Enter", "Следующий случай"],
+      ["KeyM", "Ошибка"],
+      ["Escape", "Назад"],
+      ["Shift+Slash", "Клавиши"],
+    ],
   },
   progress: {
     title: "Прогресс",

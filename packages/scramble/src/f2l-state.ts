@@ -136,3 +136,50 @@ export function f2lStickers(state: F2lState): string {
   }
   return out.join("");
 }
+
+/*
+ * The front left slot: the same cases in a mirror through the M slice, so case n there is
+ * case n here seen in the mirror, turn for turn. A left case is kept as the right case it
+ * mirrors.
+ */
+
+/** Sides seen in the mirror: R and L trade places, the others stay. */
+const MIRRORED: Record<string, string> = { R: "L", L: "R", r: "l", l: "r" };
+
+/**
+ * An algorithm seen in the mirror through the M slice. The mirror turns every turn the
+ * other way, except those about the x axis: R and L trade places and turn the other way,
+ * M and x keep their face and direction (R is L' there, M is M, U is U').
+ */
+export function mirrorAlg(alg: string): string {
+  return alg
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((turn) => {
+      const m = /^([RLUDFBrludfbMESxyz])(w?)(\d*)('?)$/.exec(turn);
+      if (!m) throw new RangeError(`No turn ${turn}`);
+      const [, face, wide, times, prime] = m as unknown as [
+        string,
+        string,
+        string,
+        string,
+        string,
+      ];
+      const keeps = face === "M" || face === "x";
+      const named = MIRRORED[face] ?? face;
+      const double = times === "2";
+      const back = keeps ? prime : prime ? "" : "'";
+      return `${named}${wide}${times}${double ? "" : back}`;
+    })
+    .join(" ");
+}
+
+/**
+ * A left case's picture: the right case's 27 letters with its R stickers now L. It is
+ * drawn mirrored (seen from above the front left corner), so the third face is L and every
+ * row reads the other way: place 18 + i shows L's sticker at row i / 3, column 2 - i % 3
+ * as L is seen from outside, and the same column flip holds on U and F.
+ */
+export const f2lLeftStickers = (state: F2lState) =>
+  f2lStickers(state).replaceAll("R", "L");

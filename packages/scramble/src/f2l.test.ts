@@ -5,11 +5,14 @@ import {
   F2L_CASES,
   type F2lState,
   f2lKey,
+  f2lLeftStickers,
   f2lOf,
   f2lReady,
   f2lState,
   f2lStickers,
   f2lTurned,
+  mirrorAlg,
+  mirrorPattern,
   placePair,
 } from "./f2l";
 import { generateTraining } from "./training";
@@ -171,4 +174,68 @@ describe("F2L cases of the front right slot", () => {
       expect(off.length).toBeGreaterThan(1);
     }
   }, 60_000);
+});
+
+describe("the front left slot, in the mirror", () => {
+  const TURNS = [..."RLUDFBMESxyzrludfb".split(""), "Rw", "Lw", "Uw", "Fw"];
+  const randomAlg = (rng: () => number, n: number) =>
+    Array.from({ length: n }, () => {
+      const face = TURNS[Math.floor(rng() * TURNS.length)] as string;
+      return face + (["", "'", "2"][Math.floor(rng() * 3)] as string);
+    }).join(" ");
+
+  it("the mirror of a cube after any turns is the cube after the mirrored turns", async () => {
+    const puzzle = await kpuzzle();
+    const rng = seeded(5);
+    for (let i = 0; i < 500; i++) {
+      const alg = randomAlg(rng, 1 + Math.floor(rng() * 12));
+      const mirrored = mirrorPattern(puzzle.defaultPattern().applyAlg(alg));
+      const turned = puzzle.defaultPattern().applyAlg(mirrorAlg(alg));
+      expect(`${alg} ${mirrored.isIdentical(turned)}`).toBe(`${alg} true`);
+    }
+  });
+
+  it("turns in the mirror: R is L', M and x keep, U is U', and twice is the same", () => {
+    expect(mirrorAlg("R U R' U'")).toBe("L' U' L U");
+    expect(mirrorAlg("M x2 Rw' F2 y")).toBe("M x2 Lw F2 y'");
+    const rng = seeded(9);
+    for (let i = 0; i < 200; i++) {
+      const alg = randomAlg(rng, 8);
+      expect(mirrorAlg(mirrorAlg(alg))).toBe(
+        mirrorAlg(mirrorAlg(mirrorAlg(mirrorAlg(alg)))),
+      );
+      expect(mirrorAlg(mirrorAlg(alg)).replace(/2'/g, "2")).toBe(
+        alg.replace(/2'/g, "2"),
+      );
+    }
+  });
+
+  it("a left case's picture is what our sticker model shows, seen from the front left", async () => {
+    const puzzle = await kpuzzle();
+    const rng = seeded(7);
+    const reached = new Set<string>();
+    for (let i = 0; i < 4000; i++) {
+      const right = inserts(rng);
+      const alg = mirrorAlg(right);
+      const pattern = puzzle.defaultPattern().applyAlg(alg);
+      // The front right slot and the cross stay; the left pair is the mirrored case.
+      const seen = mirrorPattern(pattern);
+      expect(f2lReady(seen)).toBe(true);
+      const state = f2lOf(seen);
+      const key = f2lKey(state);
+      expect(key).toBe(f2lKey(f2lOf(puzzle.defaultPattern().applyAlg(right))));
+      if (key !== null) reached.add(key);
+      const ours = cubeState(3, alg);
+      const faces = [ours.U, ours.F, ours.L];
+      const picture = f2lLeftStickers(state);
+      for (let at = 0; at < 27; at++) {
+        if (picture[at] === "x") continue;
+        const i = at % 9;
+        const face = faces[Math.floor(at / 9)] as readonly string[];
+        const sticker = face[Math.floor(i / 3) * 3 + (2 - (i % 3))];
+        expect(`${alg} @${at} ${picture[at]}`).toBe(`${alg} @${at} ${sticker}`);
+      }
+    }
+    expect(reached.size).toBe(41);
+  });
 });

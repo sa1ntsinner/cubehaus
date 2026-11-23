@@ -126,9 +126,12 @@ export function CaseDiagram({
 export function SlotDiagram({
   stickers,
   faces,
+  mirrored = false,
 }: {
   stickers: string;
   faces?: Record<string, string> | undefined;
+  /** The front left slot: drawn in the mirror, seen from above the front left corner. */
+  mirrored?: boolean;
 }) {
   // x to the right, y up, z towards the front; the cube spans 0–3 on each.
   const cos = Math.cos(Math.PI / 6);
@@ -193,40 +196,47 @@ export function SlotDiagram({
     <svg
       data-part="case-diagram"
       data-shape="slot"
+      data-mirrored={mirrored ? "" : undefined}
       viewBox={`${left - pad} ${top - pad} ${right - left + 2 * pad} ${bottom - top + 2 * pad}`}
       aria-hidden="true"
     >
-      <polygon
-        points={(
-          [
-            [0, 3, 0],
-            [3, 3, 0],
-            [3, 0, 0],
-            [3, 0, 3],
-            [0, 0, 3],
-            [0, 3, 3],
-          ] as const
-        )
-          .map(([x, y, z]) => project(x, y, z).join(","))
-          .join(" ")}
-        fill="var(--pz-body)"
-        stroke="var(--pz-body)"
-        strokeWidth={0.16}
-        strokeLinejoin="round"
-      />
-      {cells.map((cell) => {
-        const colour = fill(stickers[cell.at] as string);
-        return (
-          <polygon
-            key={cell.at}
-            points={points(cell.corners)}
-            fill={colour}
-            stroke={colour}
-            strokeWidth={0.1}
-            strokeLinejoin="round"
-          />
-        );
-      })}
+      <g
+        transform={
+          mirrored ? `translate(${left + right} 0) scale(-1 1)` : undefined
+        }
+      >
+        <polygon
+          points={(
+            [
+              [0, 3, 0],
+              [3, 3, 0],
+              [3, 0, 0],
+              [3, 0, 3],
+              [0, 0, 3],
+              [0, 3, 3],
+            ] as const
+          )
+            .map(([x, y, z]) => project(x, y, z).join(","))
+            .join(" ")}
+          fill="var(--pz-body)"
+          stroke="var(--pz-body)"
+          strokeWidth={0.16}
+          strokeLinejoin="round"
+        />
+        {cells.map((cell) => {
+          const colour = fill(stickers[cell.at] as string);
+          return (
+            <polygon
+              key={cell.at}
+              points={points(cell.corners)}
+              fill={colour}
+              stroke={colour}
+              strokeWidth={0.1}
+              strokeLinejoin="round"
+            />
+          );
+        })}
+      </g>
     </svg>
   );
 }

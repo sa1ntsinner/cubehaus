@@ -21,20 +21,20 @@ afterEach(async () => {
 });
 
 test("migrates once, preserves existing data, and refuses a newer schema", async () => {
-  expect(SCHEMA_VERSION).toBe(7);
-  expect(await migrate(db)).toBe(7);
+  expect(SCHEMA_VERSION).toBe(8);
+  expect(await migrate(db)).toBe(8);
   await db.batch([{ sql: "INSERT INTO setting VALUES ('test', 'kept', 1)" }]);
   const schema = await db.all("SELECT * FROM sqlite_schema ORDER BY name");
-  expect(await migrate(db)).toBe(7);
+  expect(await migrate(db)).toBe(8);
   expect(await db.all("SELECT * FROM sqlite_schema ORDER BY name")).toEqual(
     schema,
   );
   expect(await db.all("SELECT value FROM setting")).toEqual([
     { value: "kept" },
   ]);
-  await db.batch([{ sql: "PRAGMA user_version = 8" }]);
+  await db.batch([{ sql: "PRAGMA user_version = 9" }]);
   await expect(migrate(db)).rejects.toBeInstanceOf(NewerSchemaError);
-  expect(await db.all("PRAGMA user_version")).toEqual([{ user_version: 8 }]);
+  expect(await db.all("PRAGMA user_version")).toEqual([{ user_version: 9 }]);
   expect(await db.all("SELECT * FROM sqlite_schema ORDER BY name")).toEqual(
     schema,
   );
@@ -62,8 +62,8 @@ test("version 1 upgrades in place and gives existing solves null result fields",
   const before = await db.all("SELECT * FROM solve ORDER BY id");
   const sessions = await db.all("SELECT * FROM session ORDER BY id");
 
-  expect(await migrate(db)).toBe(7);
-  expect(await db.all("PRAGMA user_version")).toEqual([{ user_version: 7 }]);
+  expect(await migrate(db)).toBe(8);
+  expect(await db.all("PRAGMA user_version")).toEqual([{ user_version: 8 }]);
   expect(await db.all("SELECT * FROM session ORDER BY id")).toEqual(
     sessions.map((row) => ({ ...row, folder_id: null })),
   );
@@ -181,9 +181,9 @@ test("v2 preserves ties and hidden imports on upgrade", async () => {
 
     for (let open = 0; open < 2; open++) {
       file = createNodeDb(path);
-      expect(await migrate(file)).toBe(7);
+      expect(await migrate(file)).toBe(8);
       expect(await file.all("PRAGMA user_version")).toEqual([
-        { user_version: 7 },
+        { user_version: 8 },
       ]);
       expect(await file.all("PRAGMA foreign_key_check")).toEqual([]);
       expect(await file.all("PRAGMA integrity_check")).toEqual([
@@ -261,12 +261,12 @@ test("interrupted v3 DDL rolls back the schema and version before retry", async 
   expect(await db.all("SELECT * FROM sqlite_schema ORDER BY name")).toEqual(
     schema,
   );
-  expect(await migrate(db)).toBe(7);
+  expect(await migrate(db)).toBe(8);
   expect(await db.all("PRAGMA foreign_key_check")).toEqual([]);
 });
 
 test("fresh v3 has a strict flat folder table and indexed nullable membership", async () => {
-  expect(await migrate(db)).toBe(7);
+  expect(await migrate(db)).toBe(8);
   const columns = await db.all("PRAGMA table_info(folder)");
   expect(
     columns.map(({ name, type, notnull, dflt_value, pk }) => [
@@ -301,7 +301,7 @@ test("fresh v3 has a strict flat folder table and indexed nullable membership", 
 });
 
 test("fresh v4 maps source sessions by source, scope and key", async () => {
-  expect(await migrate(db)).toBe(7);
+  expect(await migrate(db)).toBe(8);
   expect(
     (await db.all("PRAGMA table_info(import_session)")).map(
       ({ name, type, notnull, pk }) => [name, type, notnull, pk],
@@ -373,7 +373,7 @@ test("v4 upgrades to an empty purge ledger, keeping tombstones and bindings", as
     await db.all("SELECT * FROM import_session"),
   ];
   const before = await rows();
-  expect(await migrate(db)).toBe(7);
+  expect(await migrate(db)).toBe(8);
   expect(await rows()).toEqual(before);
   expect(await db.all("SELECT count(*) AS n FROM import_seen")).toEqual([
     { n: 0 },
@@ -392,7 +392,7 @@ test("v4 upgrades to an empty purge ledger, keeping tombstones and bindings", as
     ),
   ).toEqual([{ name: "session_deleted" }, { name: "solve_deleted" }]);
   const schema = await db.all("SELECT * FROM sqlite_schema ORDER BY name");
-  expect(await migrate(db)).toBe(7);
+  expect(await migrate(db)).toBe(8);
   expect(await db.all("SELECT * FROM sqlite_schema ORDER BY name")).toEqual(
     schema,
   );
@@ -434,7 +434,7 @@ test("a version 5 file on disk gains repeats and keeps every row", async () => {
 
     for (let open = 0; open < 2; open++) {
       file = createNodeDb(path);
-      expect(await migrate(file)).toBe(7);
+      expect(await migrate(file)).toBe(8);
       expect(await tables(file)).toEqual(before);
       expect(await file.all("PRAGMA foreign_key_check")).toEqual([]);
       expect(await file.all("PRAGMA integrity_check")).toEqual([
@@ -469,4 +469,29 @@ test("a version 5 file on disk gains repeats and keeps every row", async () => {
     await file?.close();
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("a version 7 file gains the split mark, its attempts read as not split", async () => {
+  await migrate(db, 7);
+  await db.batch([
+    {
+      sql: `INSERT INTO trainer_attempt (id, set_id, case_id, mode, auf, scramble, recog_ms,
+        exec_ms, missed, grade, at, updated_at)
+        VALUES ('a', 'pll', 'pll-T', 'picture', 1, NULL, 640, 1830, 0, 'good', 5, 5)`,
+    },
+  ]);
+  expect(await migrate(db)).toBe(8);
+  expect(
+    await db.all(
+      "SELECT id, recog_ms, exec_ms, split FROM trainer_attempt ORDER BY id",
+    ),
+  ).toEqual([{ id: "a", recog_ms: 640, exec_ms: 1830, split: 0 }]);
+  await expect(
+    db.batch([{ sql: "UPDATE trainer_attempt SET split = 2 WHERE id = 'a'" }]),
+  ).rejects.toThrow();
+  const schema = await db.all("SELECT * FROM sqlite_schema ORDER BY name");
+  expect(await migrate(db)).toBe(8);
+  expect(await db.all("SELECT * FROM sqlite_schema ORDER BY name")).toEqual(
+    schema,
+  );
 });

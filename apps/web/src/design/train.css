@@ -64,6 +64,12 @@ main[data-part="train"] h1 {
   gap: 0 var(--s2);
   margin: 0;
 }
+/* F2L's slot, FR or FL: its own pair at the row's far end, apart from what goes in drills. */
+[data-part="train-slot"] {
+  display: flex;
+  gap: 0 var(--s2);
+  margin-inline-start: auto;
+}
 :is(
     [data-part="train-sets"],
     [data-part="train-modes"],
@@ -277,16 +283,20 @@ main[data-part="train"]
   color: var(--gutter);
 }
 /* Moves sit close; between two groups (a trigger, or the moves between triggers) there is
-   a clear gap, about two spaces. A trigger never breaks across lines; the moves between
-   triggers may. The text keeps one real space between moves, so a copied algorithm reads
-   as one. */
+   a clear gap, about two spaces. A line breaks only between units (a trigger, a short run
+   of moves, never one move alone), and the lines are balanced so the last is not a stub.
+   The text keeps one real space between moves, so a copied algorithm reads as one. */
 [data-part="train-moves"] {
   word-spacing: -0.25ch;
+  text-wrap: balance;
+}
+[data-part="train-alg"] {
+  text-wrap: balance;
 }
 [data-part="train-gap"] {
   padding-inline-end: 1.1ch;
 }
-[data-part="train-group"][data-trigger] {
+[data-part="train-unit"] {
   white-space: nowrap;
 }
 [data-part="train-count"] {
@@ -490,6 +500,16 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   ) {
   opacity: 0;
 }
+/* Split, waiting for the press that says the case is recognised: a picture stays in view
+   (it is what is being recognised), a scramble and its choices go as the clock starts. */
+[data-phase="recognising"][data-show="scramble"]
+  :is(
+    [data-part="train-show"],
+    [data-part="train-scramble"],
+    [data-part="train-hint"]
+  ) {
+  opacity: 0;
+}
 [data-part="train-hint"],
 [data-part="train-numbers"] {
   margin: 0;
@@ -520,6 +540,16 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   flex-wrap: wrap;
   justify-content: center;
   gap: 0 var(--s5);
+}
+/* What Review holds today, under the hint, once; beside it where height is short. */
+[data-part="train-today"] {
+  display: block;
+  margin-top: var(--s2);
+}
+/* The case's own medians in Learn, under its picture and name. */
+[data-part="train-numbers"][data-case-numbers] {
+  justify-content: flex-start;
+  margin-top: var(--s4);
 }
 [data-part="train-numbers"] b {
   font-weight: 500;
@@ -634,6 +664,12 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
   [data-part="train-time"] {
     font-size: 56px;
   }
+  [data-part="train-today"] {
+    display: inline;
+  }
+  [data-part="train-today"]::before {
+    content: " · ";
+  }
   [data-part="train-show"] {
     margin-top: calc(-1 * var(--s2));
   }
@@ -694,5 +730,53 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
     [data-part="train-stage"]
     > [data-part="train-show"] {
     margin-top: auto;
+  }
+}
+/* A phone: three choices do not fit one line in Russian, so they take two on purpose,
+   which cases on top, then how a case is shown and timed. */
+@media (max-width: 699px) {
+  [data-part="train-drill"]
+    [data-part="train-show"]
+    > [data-part="train-pool"] {
+    flex-basis: 100%;
+    justify-content: center;
+  }
+}
+
+/* ---- Motion (C5, 2026-11-23) ----
+   The answer lands as the timer's result does (240 ms): it rises 6 px into place while it
+   fades in. The case itself arrives at once: its recognition is timed from its first
+   frame, so it must be whole in that frame. On a desktop the stage is set from the top, so
+   the case and the time stay where they stood when the answer appears below them. */
+[data-part="train-result"] {
+  animation: train-land 240ms var(--ease) both;
+}
+@keyframes train-land {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (min-width: 700px) and (min-height: 521px) {
+  [data-part="train-stage"] {
+    justify-content: flex-start;
+    padding-top: clamp(var(--s6), 9vh, var(--s8));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-part="train-result"] {
+    animation: none;
+  }
+  [data-part="train-drill"]
+    :is(
+      [data-part="train-show"],
+      [data-part="train-picture"],
+      [data-part="train-scramble"],
+      [data-part="train-hint"]
+    ) {
+    transition: none;
+  }
+  main[data-part="train"] button:active:not(:disabled) {
+    transform: none;
   }
 }

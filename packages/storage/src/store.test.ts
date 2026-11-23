@@ -1362,6 +1362,21 @@ test("trainer attempts stay apart from solves and survive a backup", async () =>
     grade: "good",
     at: 4000,
   });
+  // A split attempt: recognition marked by a press, execution from it to the stop.
+  await store.trainer.addAttempt({
+    id: "t3",
+    setId: "pll",
+    caseId: "pll-T",
+    mode: "scramble",
+    auf: 1,
+    scramble: "R U R' U'",
+    recogMs: 520,
+    execMs: 1700,
+    split: true,
+    missed: false,
+    grade: "good",
+    at: 5000,
+  });
   await store.trainer.markAttempt("t2", { missed: true, grade: "again" });
   // A saved schedule replaces the old one; a case taken out keeps its attempts.
   await store.trainer.putCase({
@@ -1383,10 +1398,18 @@ test("trainer attempts stay apart from solves and survive a backup", async () =>
   ]);
   const attempts = await store.trainer.attempts("pll");
   expect(
-    attempts.map((a) => [a.id, a.recogMs, a.execMs, a.missed, a.grade]),
+    attempts.map((a) => [
+      a.id,
+      a.recogMs,
+      a.execMs,
+      a.split,
+      a.missed,
+      a.grade,
+    ]),
   ).toEqual([
-    ["t1", 640, 1830, false, "good"],
-    ["t2", null, 2400, true, "again"],
+    ["t1", 640, 1830, false, false, "good"],
+    ["t2", null, 2400, false, true, "again"],
+    ["t3", 520, 1700, true, false, "good"],
   ]);
   expect(await store.trainer.attempts("oll")).toEqual([]);
 

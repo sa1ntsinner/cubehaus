@@ -55,6 +55,67 @@ export function algGroups(
   }));
 }
 
+export type AlgPiece = {
+  moves: string[];
+  trigger: boolean;
+  /** Goes on from the piece before it, in the same run of moves: no group gap. */
+  cont?: boolean;
+};
+
+/** The longest run of loose moves kept on one line before it is cut. */
+const LONGEST = 4;
+
+/**
+ * Where an algorithm may break across lines: units that each stay on one line. Every
+ * trigger is a unit; a run of moves between triggers longer than four is cut into even
+ * pieces; and a unit of a single move joins its shorter neighbour (the one after it on a
+ * tie), so no line ever starts or ends with one move standing alone.
+ */
+export function algUnits(alg: string): AlgPiece[][] {
+  const units: AlgPiece[][] = [];
+  for (const group of algGroups(alg)) {
+    const n = group.moves.length;
+    if (group.trigger || n <= LONGEST) {
+      units.push([group]);
+      continue;
+    }
+    const parts = Math.ceil(n / LONGEST);
+    let at = 0;
+    for (let k = 0; k < parts; k++) {
+      const size = Math.ceil((n - at) / (parts - k));
+      units.push([
+        {
+          moves: group.moves.slice(at, at + size),
+          trigger: false,
+          ...(k > 0 ? { cont: true } : {}),
+        },
+      ]);
+      at += size;
+    }
+  }
+  const size = (u: AlgPiece[]) => u.reduce((sum, g) => sum + g.moves.length, 0);
+  for (let i = 0; i < units.length && units.length > 1; ) {
+    if (size(units[i] as AlgPiece[]) > 1) {
+      i++;
+      continue;
+    }
+    const before = units[i - 1];
+    const after = units[i + 1];
+    const intoBefore =
+      before !== undefined &&
+      (after === undefined || size(before) < size(after));
+    if (intoBefore) {
+      before.push(...(units[i] as AlgPiece[]));
+      units.splice(i, 1);
+    } else {
+      (after as AlgPiece[]).unshift(...(units[i] as AlgPiece[]));
+      units.splice(i, 1);
+    }
+    i = Math.max(0, i - 1);
+  }
+  return units;
+}
+
 /** The side faces in the order a y turn carries them. */
 const RING = ["F", "L", "B", "R"];
 

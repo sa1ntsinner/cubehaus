@@ -1,7 +1,7 @@
 import type { Metrics } from "./metrics";
 
 export type LastLayerSet = "pll" | "oll" | "coll";
-export type SetId = LastLayerSet | "f2l";
+export type SetId = LastLayerSet | "f2l" | "f2l-left";
 
 /** A case as shipped: built by build.ts from verified candidates. */
 export type TrainerCaseData = {

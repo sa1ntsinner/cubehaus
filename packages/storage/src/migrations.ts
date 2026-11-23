@@ -1,6 +1,6 @@
 import type { Db } from "./db";
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 export class NewerSchemaError extends Error {}
 
 const schemaV1 = [
@@ -102,6 +102,11 @@ const migrations: readonly (readonly string[])[] = [
       at INTEGER NOT NULL, updated_at INTEGER NOT NULL
     ) STRICT`,
     "CREATE INDEX trainer_attempt_by_case ON trainer_attempt (set_id, case_id, at, id)",
+  ],
+  [
+    // How a trainer attempt's recognition was marked: 0 from the picture showing to the
+    // hold (or none, for a scramble), 1 split, by a press while the clock ran.
+    "ALTER TABLE trainer_attempt ADD COLUMN split INTEGER NOT NULL DEFAULT 0 CHECK (split IN (0, 1))",
   ],
 ];
 

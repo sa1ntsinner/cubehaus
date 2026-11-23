@@ -53,8 +53,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights at the back. Around the front left corner both sides show a pair.",
-      "ru": "Фары сзади. У переднего левого угла с обеих сторон по паре."
+      "en": "Headlights at the back; a block at the front left corner.",
+      "ru": "Фары сзади; блок у переднего левого угла."
     },
     "subsets": []
   },
@@ -105,8 +105,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on the right. Around the front left corner both sides show a pair.",
-      "ru": "Фары справа. У переднего левого угла с обеих сторон по паре."
+      "en": "Headlights on the right; a block at the front left corner.",
+      "ru": "Фары справа; блок у переднего левого угла."
     },
     "subsets": []
   },
@@ -157,8 +157,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "No headlights and no bars: every side shows three different colours.",
-      "ru": "Ни фар, ни полос: на каждой стороне три разных цвета."
+      "en": "No headlights and no bar, three colours on every side.",
+      "ru": "Ни фар, ни полос, на каждой стороне три цвета."
     },
     "subsets": []
   },
@@ -196,8 +196,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "A bar in front; every other side shows three different colours.",
-      "ru": "Полоса спереди, на остальных сторонах по три разных цвета."
+      "en": "A bar in front; three colours on the right.",
+      "ru": "Полоса спереди; справа три цвета."
     },
     "subsets": []
   },
@@ -248,8 +248,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on the left; the front has a pair at its right end.",
-      "ru": "Фары слева, спереди пара у правого края."
+      "en": "Headlights on the left; a pair in front next to the right side; three colours on the right.",
+      "ru": "Фары слева; пара спереди у правой стороны; справа три цвета."
     },
     "subsets": []
   },
@@ -300,8 +300,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights at the back; the front has a pair at its right end.",
-      "ru": "Фары сзади, спереди пара у правого края."
+      "en": "A pair in front next to the right side; headlights at the back round the opposite colour.",
+      "ru": "Пара спереди у правой стороны; фары сзади, между ними противоположный цвет."
     },
     "subsets": []
   },
@@ -352,8 +352,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on the left; the back has a pair next to the right side.",
-      "ru": "Фары слева, сзади пара у правой стороны."
+      "en": "Headlights on the left; a pair at the back next to the right side; three colours on the right.",
+      "ru": "Фары слева; пара сзади у правой стороны; справа три цвета."
     },
     "subsets": []
   },
@@ -404,8 +404,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on the left; the right side has a pair next to the front.",
-      "ru": "Фары слева, справа пара у передней стороны."
+      "en": "A pair on the right next to the front; headlights on the left round the opposite colour.",
+      "ru": "Пара справа у передней стороны; фары слева, между ними противоположный цвет."
     },
     "subsets": []
   },
@@ -456,8 +456,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on all four sides, each edge the opposite colour of its corners.",
-      "ru": "Фары на всех четырёх сторонах, ребро между ними противоположного цвета."
+      "en": "Headlights on every side, each round the opposite colour.",
+      "ru": "Фары на каждой стороне, между ними противоположный цвет."
     },
     "subsets": [
       "2-look"
@@ -510,8 +510,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "A bar in front. The right side's pair touches the bar.",
-      "ru": "Полоса спереди. Пара справа примыкает к полосе."
+      "en": "A bar in front; a pair on the right next to the front.",
+      "ru": "Полоса спереди; пара справа у передней стороны."
     },
     "subsets": []
   },
@@ -562,8 +562,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "A bar on the left. The front's pair is at its far end from the bar.",
-      "ru": "Полоса слева. Пара спереди у дальнего от полосы края."
+      "en": "A bar on the left; a pair in front next to the right side.",
+      "ru": "Полоса слева; пара спереди у правой стороны."
     },
     "subsets": []
   },
@@ -615,7 +615,7 @@ export const PLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A pair on every side, each at its right end.",
-      "ru": "Пара на каждой стороне, везде у правого края."
+      "ru": "Пара на каждой стороне, у правого края."
     },
     "subsets": []
   },
@@ -667,7 +667,7 @@ export const PLL: readonly TrainerCaseData[] = [
     ],
     "recognise": {
       "en": "A pair on every side, each at its left end.",
-      "ru": "Пара на каждой стороне, везде у левого края."
+      "ru": "Пара на каждой стороне, у левого края."
     },
     "subsets": []
   },
@@ -718,8 +718,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on the left; the front has a pair next to them.",
-      "ru": "Фары слева, спереди пара рядом с ними."
+      "en": "Headlights on the left; a pair in front next to the left side; three colours at the back.",
+      "ru": "Фары слева; пара спереди у левой стороны; сзади три цвета."
     },
     "subsets": []
   },
@@ -757,8 +757,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights in front; the left side has a pair next to them.",
-      "ru": "Фары спереди, слева пара рядом с ними."
+      "en": "Headlights in front; a pair on the left next to the front; three colours on the right.",
+      "ru": "Фары спереди; пара слева у передней стороны; справа три цвета."
     },
     "subsets": []
   },
@@ -783,8 +783,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on the left; the front and the back each have a pair next to them.",
-      "ru": "Фары слева, спереди и сзади по паре рядом с ними."
+      "en": "A pair in front next to the left side; headlights on the left round the opposite colour.",
+      "ru": "Пара спереди у левой стороны; фары слева, между ними противоположный цвет."
     },
     "subsets": [
       "2-look"
@@ -837,8 +837,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "A bar at the back, headlights on the other sides. The front edge has the colour of the right side's corners.",
-      "ru": "Полоса сзади, на остальных сторонах фары. Переднее ребро цвета углов справа."
+      "en": "A bar at the back; headlights on the right round the opposite colour.",
+      "ru": "Полоса сзади; фары справа, между ними противоположный цвет."
     },
     "subsets": [
       "2-look"
@@ -891,8 +891,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "A bar at the back, headlights on the other sides. The front edge has the colour of the left side's corners.",
-      "ru": "Полоса сзади, на остальных сторонах фары. Переднее ребро цвета углов слева."
+      "en": "A bar at the back; headlights on the left round the opposite colour.",
+      "ru": "Полоса сзади; фары слева, между ними противоположный цвет."
     },
     "subsets": [
       "2-look"
@@ -945,8 +945,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Around the front left corner both sides show a pair; no side has headlights.",
-      "ru": "У переднего левого угла с обеих сторон по паре, фар нет."
+      "en": "No headlights; a block at the front left corner.",
+      "ru": "Фар нет; блок у переднего левого угла."
     },
     "subsets": []
   },
@@ -997,8 +997,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Two pairs that do not meet: the front's at the left, the right side's at the back. No headlights.",
-      "ru": "Две пары, которые не сходятся: спереди у левого края, справа у задней стороны. Фар нет."
+      "en": "A pair in front next to the left side; a pair on the right next to the back.",
+      "ru": "Пара спереди у левой стороны; пара справа у задней стороны."
     },
     "subsets": [
       "2-look"
@@ -1051,8 +1051,8 @@ export const PLL: readonly TrainerCaseData[] = [
       }
     ],
     "recognise": {
-      "en": "Headlights on all four sides, each edge the colour of a neighbouring side.",
-      "ru": "Фары на всех четырёх сторонах, ребро между ними цвета соседней стороны."
+      "en": "Headlights on every side, each round a neighbouring colour.",
+      "ru": "Фары на каждой стороне, между ними соседний цвет."
     },
     "subsets": [
       "2-look"

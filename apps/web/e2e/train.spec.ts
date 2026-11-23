@@ -130,13 +130,16 @@ test("a scramble drill records execution only", async ({ page }) => {
   ).toHaveAttribute("aria-pressed", "true");
 });
 
-test("review drills only the cases missed twice", async ({ page }) => {
+test("review takes what is due, then the missed, each with its look-alike", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(sessionButton(page)).toBeEnabled();
   await page.goto("/#/train/pll/learn");
   for (const label of ["T", "Y", "Ua"]) await addCase(page, label);
+  // A case just added is due: Review says so before its first case.
   await page.goto("/#/train/pll/review");
-  await expect(part(page, "train-empty")).toBeVisible();
+  await expect(part(page, "train-today")).toHaveText("3 due");
 
   // Drill until Y has been missed twice; the others are done right.
   await page.goto("/#/train/pll/drill");
@@ -158,11 +161,17 @@ test("review drills only the cases missed twice", async ({ page }) => {
     "data-mode",
     "review",
   );
-  for (let i = 0; i < 3; i++) {
-    await attempt(page);
-    await expect(part(page, "train-label")).toHaveText("Y");
-    await page.keyboard.press("Space");
-  }
+  // Y (due again, or missed twice in five), then T, its look-alike among the cases
+  // being learnt, back to back; then nothing more today.
+  await expect(part(page, "train-today")).toHaveText(/^1 (due|missed)$/);
+  await attempt(page);
+  await expect(part(page, "train-label")).toHaveText("Y");
+  await page.keyboard.press("Space");
+  await expect(part(page, "train-today")).toHaveCount(0);
+  await attempt(page);
+  await expect(part(page, "train-label")).toHaveText("T");
+  await page.keyboard.press("Space");
+  await expect(part(page, "train-empty")).toBeVisible();
 });
 
 test("every case of a set can be drilled without adding any", async ({
@@ -250,6 +259,27 @@ test("cases go into the drills and out in one tap each", async ({ page }) => {
   await expect(picked).toHaveCount(6);
 });
 
+test("on a phone, back from a case lands on its tile where the list was", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(sessionButton(page)).toBeEnabled();
+  await page.goto("/#/train/oll/learn");
+  const tile = page.locator(
+    '[data-part="train-case-list"] li[data-case-id] button[aria-label="OLL 40"]',
+  );
+  await tile.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before).toBeGreaterThan(0);
+  await tile.click();
+  await expect(part(page, "train-case")).toBeVisible();
+  await action(page, "train-case-close").click();
+  await expect(part(page, "train-case")).toHaveCount(0);
+  await expect(tile).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+});
+
 test("an algorithm chosen as mine is the one Learn and the drill show", async ({
   page,
 }) => {
@@ -319,4 +349,130 @@ test("the 41 F2L cases are learnt and drilled like the other sets", async ({
     "true",
     { timeout: 20_000 },
   );
+});
+
+test("F2L's front left slot: the same cases in the mirror, learnt and drilled on their own", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(sessionButton(page)).toBeEnabled();
+  await page.goto("/#/train/f2l/learn");
+  await expect(
+    action(page, "train-slot").filter({ hasText: "FR" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await action(page, "train-slot").filter({ hasText: "FL" }).click();
+  await expect(page).toHaveURL(/#\/train\/f2l-left\/learn$/);
+  await expect(
+    action(page, "train-set").filter({ hasText: "F2L" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  // The same 41, numbered the same; the slot drawn from the front left, its algorithm in L, U, F.
+  await expect(part(page, "train-case-list").locator("li")).toHaveCount(41);
+  await addCase(page, "F2L 13");
+  await expect(
+    part(page, "train-case").locator('svg[data-shape="slot"][data-mirrored]'),
+  ).toBeVisible();
+  await expect(
+    part(page, "train-alg").first().locator('[data-part="train-moves"]'),
+  ).toHaveText(/^[LUF'2\s]+$/);
+  // Its drills are its own: the right slot has none of its cases.
+  await action(page, "train-mode").filter({ hasText: "Drill" }).click();
+  await expect(page).toHaveURL(/#\/train\/f2l-left\/drill$/);
+  await expect(
+    part(page, "train-picture").locator("svg[data-mirrored]"),
+  ).toBeVisible();
+  await attempt(page);
+  await expect(part(page, "train-label")).toHaveText("F2L 13");
+  await page.keyboard.press("Space");
+  await part(page, "train-show")
+    .locator("button", { hasText: "Scramble" })
+    .click();
+  await expect(part(page, "train-scramble")).toHaveAttribute(
+    "data-ready",
+    "true",
+    { timeout: 20_000 },
+  );
+  // The tab remembers the slot.
+  await action(page, "train-set").filter({ hasText: "PLL" }).click();
+  await action(page, "train-set").filter({ hasText: "F2L" }).click();
+  await expect(page).toHaveURL(/#\/train\/f2l-left\/drill$/);
+  await page.goto("/#/train/f2l/drill");
+  await expect(part(page, "train-empty")).toBeVisible();
+});
+
+test("a split drill times recognition and execution in one run, and Learn shows their medians", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(sessionButton(page)).toBeEnabled();
+  await page.goto("/#/train/pll/learn");
+  await addCase(page, "T");
+  await action(page, "train-mode").filter({ hasText: "Drill" }).click();
+  const drill = part(page, "train-drill");
+  // Off by default; one quiet word turns it on, and it is remembered.
+  await expect(action(page, "train-split")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await action(page, "train-split").click();
+  await expect(action(page, "train-split")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // A picture: the clock runs from the moment the case shows, no hold.
+  for (let i = 0; i < 3; i++) {
+    await expect(drill).toHaveAttribute("data-phase", "recognising");
+    await expect(part(page, "train-picture").locator("svg")).toBeVisible();
+    await page.waitForTimeout(200);
+    await page.keyboard.press("Space");
+    await expect(drill).toHaveAttribute("data-phase", "running");
+    await page.waitForTimeout(300);
+    await page.keyboard.press("Space");
+    await expect(drill).toHaveAttribute("data-phase", "stopped");
+    await expect(part(page, "train-numbers")).toContainText("recognition");
+    const time = Number(await part(page, "train-time").textContent());
+    expect(time).toBeGreaterThanOrEqual(0.25);
+    expect(time).toBeLessThan(2);
+    await page.keyboard.press("Space");
+  }
+  await page.reload();
+  await expect(action(page, "train-split")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // A scramble: hold and let go as usual, then a press for the recognition.
+  await part(page, "train-show")
+    .locator("button", { hasText: "Scramble" })
+    .click();
+  await expect(part(page, "train-scramble")).toHaveAttribute(
+    "data-ready",
+    "true",
+    { timeout: 20_000 },
+  );
+  await page.keyboard.down("Space");
+  await page.waitForTimeout(400);
+  await page.keyboard.up("Space");
+  await expect(drill).toHaveAttribute("data-phase", "recognising");
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Space");
+  await expect(drill).toHaveAttribute("data-phase", "running");
+  await page.waitForTimeout(200);
+  await page.keyboard.press("Space");
+  await expect(part(page, "train-numbers")).toContainText("recognition");
+
+  // Learn: the case's own medians, recognition and execution.
+  await action(page, "train-mode").filter({ hasText: "Learn" }).click();
+  await part(page, "train-case-list")
+    .locator('li button[aria-label="T"]')
+    .click();
+  const numbers = part(page, "train-case").locator("[data-case-numbers]");
+  await expect(numbers).toContainText("recognition");
+  await expect(numbers).toContainText("execution");
+
+  // ? lists the trainer's keys; Esc closes the list, not the trainer.
+  await page.keyboard.press("Shift+Slash");
+  const keys = page.locator('[data-part="keys-help"]');
+  await expect(keys).toContainText("Split: the case is recognised");
+  await page.keyboard.press("Escape");
+  await expect(keys).toHaveCount(0);
+  await expect(page).toHaveURL(/#\/train\/pll\/learn$/);
 });

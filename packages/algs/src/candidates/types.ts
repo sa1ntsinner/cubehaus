@@ -4,9 +4,9 @@ export type CaseSource = {
   label: string;
   algs: readonly string[];
   /**
-   * One or two plain sentences on how to recognise the case, as the main algorithm's
-   * picture shows it, and a check of every claim they make on that picture (diagram.ts).
-   * Left out where it could not be said plainly and checked.
+   * Hand-written words on how to recognise the case with a check of every claim on its
+   * picture (diagram.ts). PLL and OLL no longer use it: their notes are made from the
+   * sticker model (notes.ts).
    */
   recognise?: {
     en: string;

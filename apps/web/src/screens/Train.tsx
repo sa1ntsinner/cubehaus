@@ -1,15 +1,20 @@
 import {
-  algGroups,
+  type AlgPiece,
+  algUnits,
   caseMedian,
   type Grade,
   gradeOf,
+  lookalikes,
+  mirrorAlg,
   newCard,
   nextCase,
   pictureOf,
   pllArrows,
   recall,
+  recogMedian,
   recolour,
   review,
+  reviewQueue,
   roundOf,
   type SetId,
   type TrainerCaseData,
@@ -34,6 +39,8 @@ import {
   useState,
 } from "react";
 import type { AppView, createAppState } from "../app-state";
+import type { Action } from "../keys/engine";
+import { Help } from "../keys/Help";
 import { CaseDiagram, SlotDiagram } from "../scramble/Training";
 import {
   createTrainingClient,
@@ -50,8 +57,6 @@ import {
   myAlg,
   otherAlgs,
   parseChoices,
-  reviewCase,
-  reviewPool,
   showCase,
 } from "../train-state";
 import "../design/train.css";
@@ -65,9 +70,14 @@ import "../input/train-behavior.css";
  * and often missed ones. Attempts are stored apart from solves.
  */
 const SETS: readonly SetId[] = ["pll", "oll", "coll", "f2l"];
+/** F2L's front left slot: the same cases in the mirror, a set of its own under F2L's tab. */
+const ROUTE_SETS: readonly SetId[] = [...SETS, "f2l-left"];
+const isF2l = (set: SetId) => set === "f2l" || set === "f2l-left";
 const showKey = "trainer.show";
+const slotKey = "trainer.slot";
 const poolKey = (set: SetId) => `trainer.pool.${set}`;
 const algsKey = "trainer.algs";
+const splitKey = "trainer.split";
 type Mode = "learn" | "drill" | "review";
 const MODES: readonly Mode[] = ["learn", "drill", "review"];
 type App = ReturnType<typeof createAppState>;
@@ -75,7 +85,7 @@ type App = ReturnType<typeof createAppState>;
 export function parseTrainRoute(hash: string): { set: SetId; mode: Mode } {
   const [, , set, mode] = hash.split("/");
   return {
-    set: SETS.includes(set as SetId) ? (set as SetId) : "pll",
+    set: ROUTE_SETS.includes(set as SetId) ? (set as SetId) : "pll",
     mode: MODES.includes(mode as Mode) ? (mode as Mode) : "learn",
   };
 }
@@ -92,25 +102,37 @@ const kindOf = (move: string) =>
           : "plain";
 
 /**
- * An algorithm as code: its triggers grouped, each move in its hue. Real spaces sit
- * between the moves, so a copied algorithm reads as one.
+ * An algorithm as code: its triggers grouped, each move in its hue. It breaks only
+ * between units (`algUnits`), so a trigger is never cut and no move stands alone on a
+ * line. Real spaces sit between the moves, so a copied algorithm reads as one.
  */
 function Alg({ moves }: { moves: string }) {
+  const units = algUnits(moves);
+  const gap = (piece: AlgPiece) =>
+    piece.cont ? " " : <span data-part="train-gap"> </span>;
   return (
     <span data-part="train-moves">
-      {algGroups(moves).map((group, g) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: groups are positional.
-        <Fragment key={g}>
-          {g > 0 && <span data-part="train-gap"> </span>}
-          <span
-            data-part="train-group"
-            data-trigger={group.trigger ? "" : undefined}
-          >
-            {group.moves.map((move, m) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: moves are positional.
-              <Fragment key={m}>
-                {m > 0 && " "}
-                <span data-move={kindOf(move)}>{move}</span>
+      {units.map((unit, u) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: units are positional.
+        <Fragment key={u}>
+          {u > 0 && gap(unit[0] as AlgPiece)}
+          <span data-part="train-unit">
+            {unit.map((piece, g) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional.
+              <Fragment key={g}>
+                {g > 0 && gap(piece)}
+                <span
+                  data-part="train-group"
+                  data-trigger={piece.trigger ? "" : undefined}
+                >
+                  {piece.moves.map((move, m) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: moves are positional.
+                    <Fragment key={m}>
+                      {m > 0 && " "}
+                      <span data-move={kindOf(move)}>{move}</span>
+                    </Fragment>
+                  ))}
+                </span>
               </Fragment>
             ))}
           </span>
@@ -162,7 +184,14 @@ function Picture({
   arrows?: boolean;
 }) {
   const faces = useContext(Held);
-  if (set === "f2l") return <SlotDiagram stickers={stickers} faces={faces} />;
+  if (isF2l(set))
+    return (
+      <SlotDiagram
+        stickers={stickers}
+        faces={faces}
+        mirrored={set === "f2l-left"}
+      />
+    );
   return (
     <CaseDiagram
       stickers={stickers}
@@ -198,6 +227,12 @@ export function Train({
   const [choices, setChoices] = useState<AlgChoices>({});
   // Drill the person's own cases, or the whole set: remembered per set.
   const [whole, setWhole] = useState<boolean | null>(null);
+  // Split: the first press marks the case recognised (off unless chosen; remembered).
+  const [split, setSplit] = useState(false);
+  // The trainer's keys, listed on `?`.
+  const [keysOpen, setKeysOpen] = useState(false);
+  // F2L's slot, front right or front left: the tab opens the one last chosen.
+  const [slot, setSlot] = useState<"right" | "left">("right");
   const ru = view.settings.language === "ru";
   const holding = view.settings.holding;
   const faces = useMemo(() => holdingFaces(holding), [holding]);
@@ -217,13 +252,17 @@ export function Train({
       stored?.get(showKey) ?? null,
       stored?.get(poolKey(set)) ?? null,
       stored?.get(algsKey) ?? null,
-    ]).then(([c, a, show, pool, algs]) => {
+      stored?.get(splitKey) ?? null,
+      stored?.get(slotKey) ?? null,
+    ]).then(([c, a, show, pool, algs, splitOn, slotWas]) => {
       if (stale) return;
       setRows(c);
       setAttempts(a);
       setByPicture(show !== "scramble");
       setWhole(pool === "all");
       setChoices(parseChoices(algs));
+      setSplit(splitOn === "on");
+      setSlot(slotWas === "left" ? "left" : "right");
     });
     return () => {
       stale = true;
@@ -232,7 +271,13 @@ export function Train({
 
   useEffect(() => {
     function close(event: KeyboardEvent) {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (event.defaultPrevented) return;
+      if (event.key === "?" && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        setKeysOpen((open) => !open);
+        return;
+      }
+      if (event.key !== "Escape") return;
       location.hash = "#/";
     }
     window.addEventListener("keydown", close);
@@ -261,8 +306,12 @@ export function Train({
                 type="button"
                 data-action="train-set"
                 data-set={id}
-                aria-pressed={id === set}
-                onClick={() => go({ set: id })}
+                aria-pressed={id === set || (id === "f2l" && isF2l(set))}
+                onClick={() =>
+                  go({
+                    set: id === "f2l" && slot === "left" ? "f2l-left" : id,
+                  })
+                }
               >
                 {id.toUpperCase()}
               </button>
@@ -290,12 +339,19 @@ export function Train({
             set={set}
             cases={cases}
             learning={learning}
+            attempts={attempts}
             words={words}
             ru={ru}
+            precision={view.settings.precision}
             choices={choices}
             onChoose={(next) => {
               setChoices(next);
               void stored?.set(algsKey, JSON.stringify(next));
+            }}
+            onSlot={(next) => {
+              setSlot(next);
+              void stored?.set(slotKey, next);
+              go({ set: next === "left" ? "f2l-left" : "f2l" });
             }}
             onDrill={async (ids, on) => {
               if (!store) return;
@@ -323,12 +379,17 @@ export function Train({
             rows={rows}
             attempts={attempts}
             words={words}
-            ru={ru}
             precision={view.settings.precision}
             byPicture={byPicture}
             choices={choices}
             holding={holding}
             whole={whole}
+            split={split}
+            paused={keysOpen}
+            onSplit={(next) => {
+              setSplit(next);
+              void stored?.set(splitKey, next ? "on" : "off");
+            }}
             onWhole={(next) => {
               setWhole(next);
               void stored?.set(poolKey(set), next ? "all" : "mine");
@@ -345,7 +406,55 @@ export function Train({
           />
         )}
       </main>
+      {keysOpen && (
+        <TrainKeys words={words} ru={ru} onClose={() => setKeysOpen(false)} />
+      )}
     </Held.Provider>
+  );
+}
+
+/**
+ * The trainer's keys, as the timer's Keys sheet lists its own. They are fixed (Space, M),
+ * so they are listed as they are rather than taken from the keymap.
+ */
+function TrainKeys({
+  words,
+  ru,
+  onClose,
+}: {
+  words: Text;
+  ru: boolean;
+  onClose(): void;
+}) {
+  useEffect(() => {
+    // Esc and ? close the list first, before the trainer hears them.
+    function key(event: KeyboardEvent) {
+      if (event.key !== "Escape" && event.key !== "?") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onClose();
+    }
+    window.addEventListener("keydown", key, { capture: true });
+    return () => window.removeEventListener("keydown", key, { capture: true });
+  }, [onClose]);
+  const bindings = words.train.keys.map(([keys, title], i) => ({
+    action: {
+      id: `train.${i}`,
+      title: { en: title, ru: title },
+      keys: keys.split(" "),
+      when: [],
+      run() {},
+    } satisfies Action,
+    keys: keys.split(" "),
+  }));
+  return (
+    <Help
+      bindings={bindings}
+      language={ru ? "ru" : "en"}
+      title={words.keysTitle}
+      closeLabel={words.train.title}
+      onClose={onClose}
+    />
   );
 }
 
@@ -353,21 +462,28 @@ function Learn({
   set,
   cases,
   learning,
+  attempts,
   words,
   ru,
+  precision,
   onDrill,
   choices,
   onChoose,
+  onSlot,
 }: {
   set: SetId;
   cases: readonly TrainerCaseData[];
   learning: ReadonlySet<string>;
+  attempts: readonly TrainerAttempt[];
   words: Text;
   ru: boolean;
+  precision: 2 | 3;
   /** Puts the cases into the drills, or takes them out. */
   onDrill(ids: readonly string[], on: boolean): Promise<void>;
   choices: AlgChoices;
   onChoose(next: AlgChoices): void;
+  /** F2L only: the slot, front right or front left. */
+  onSlot(next: "right" | "left"): void;
 }) {
   const t = words.train;
   const [open, setOpen] = useState<string | null>(null);
@@ -396,10 +512,18 @@ function Learn({
     if (id && !open) listScroll.current = window.scrollY;
     setOpen(id);
     setMore(false);
+    const was = open;
     if (narrow)
-      requestAnimationFrame(() =>
-        window.scrollTo({ top: id ? 0 : listScroll.current }),
-      );
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: id ? 0 : listScroll.current });
+        // Back on the list, the keyboard is on the case it came from.
+        if (!id && was)
+          document
+            .querySelector<HTMLElement>(
+              `[data-part="train-case-list"] [data-case-id="${was}"] button`,
+            )
+            ?.focus({ preventScroll: true });
+      });
   };
 
   const chooseRef = useRef(choose);
@@ -454,6 +578,23 @@ function Learn({
               {t.twoLook}
             </button>
           )}
+          {isF2l(set) && (
+            <span data-part="train-slot">
+              {(["right", "left"] as const).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  data-action="train-slot"
+                  data-slot={id}
+                  aria-label={t.slotNames[id]}
+                  aria-pressed={(set === "f2l-left") === (id === "left")}
+                  onClick={() => onSlot(id)}
+                >
+                  {t.slots[id]}
+                </button>
+              ))}
+            </span>
+          )}
         </p>
         <ul data-part="train-case-list">
           {cases.map((c) => (
@@ -501,6 +642,12 @@ function Learn({
             <Picture set={set} stickers={pictureOf(current)} arrows />
             <h2>{current.label}</h2>
           </div>
+          <CaseNumbers
+            attempts={attempts}
+            caseId={current.id}
+            words={words}
+            precision={precision}
+          />
           {current.recognise && (
             <p data-part="train-recognise">
               {ru ? current.recognise.ru : current.recognise.en}
@@ -571,6 +718,41 @@ function Learn({
   );
 }
 
+/**
+ * The case's own medians where they help: recognition and execution over its last
+ * attempts, each once it has three. Nothing before that.
+ */
+function CaseNumbers({
+  attempts,
+  caseId,
+  words,
+  precision,
+}: {
+  attempts: readonly TrainerAttempt[];
+  caseId: string;
+  words: Text;
+  precision: 2 | 3;
+}) {
+  const recog = recogMedian(attempts, caseId);
+  const exec = caseMedian(attempts, caseId);
+  if (recog === null && exec === null) return null;
+  const format = (ms: number) => formatTime(ms, { precision });
+  return (
+    <p data-part="train-numbers" data-case-numbers="">
+      {recog !== null && (
+        <span>
+          {words.train.recognition} <b>{format(recog)}</b>
+        </span>
+      )}
+      {exec !== null && (
+        <span>
+          {words.train.execution} <b>{format(exec)}</b>
+        </span>
+      )}
+    </p>
+  );
+}
+
 type Shown = {
   caseId: string;
   /** U turns before the picture or the scramble, and the colour turn (y). */
@@ -620,7 +802,6 @@ function Practice({
   rows,
   attempts,
   words,
-  ru,
   precision,
   byPicture,
   choices,
@@ -628,6 +809,9 @@ function Practice({
   onShow,
   whole,
   onWhole,
+  split,
+  onSplit,
+  paused,
   onSaved,
 }: {
   app: App;
@@ -637,7 +821,6 @@ function Practice({
   rows: readonly TrainerCase[];
   attempts: readonly TrainerAttempt[];
   words: Text;
-  ru: boolean;
   precision: 2 | 3;
   byPicture: boolean;
   choices: AlgChoices;
@@ -645,12 +828,16 @@ function Practice({
   onShow(picture: boolean): void;
   whole: boolean;
   onWhole(whole: boolean): void;
+  split: boolean;
+  onSplit(split: boolean): void;
+  /** The key list is open: the drill hears no keys. */
+  paused: boolean;
   onSaved(rows: TrainerCase[], attempts: TrainerAttempt[]): void;
 }) {
   const t = words.train;
   const store = app.trainer();
   const [shown, setShown] = useState<Shown | null>(null);
-  const [drill, setDrill] = useState<Drill>(() => showCase(true));
+  const [drill, setDrill] = useState<Drill>(() => showCase(true, split));
   // The attempt as the input sees it, ahead of the next render: two events can arrive
   // before React draws the first.
   const drillNow = useRef(drill);
@@ -669,11 +856,40 @@ function Practice({
     () => (whole ? cases.map((c) => c.id) : rows.map((r) => r.caseId)),
     [whole, cases, rows],
   );
-  const pool = useMemo(
-    () => (onlyWeak ? reviewPool(attempts, ids) : ids),
-    // Review follows the attempts: a case leaves once it is no longer weak.
-    [onlyWeak, ids, attempts],
+  // Review: what today holds (due, slow, missed, each with its look-alike), worked
+  // through in order and drawn again once done; the counts are said before the first case.
+  const todayQueue = useCallback(() => {
+    const now = Date.now();
+    return reviewQueue({
+      caseIds: whole
+        ? cases.map((c) => c.id)
+        : live.current.rows.map((r) => r.caseId),
+      cards: live.current.rows,
+      attempts: live.current.attempts,
+      now,
+      lookalikes: lookalikes(set),
+      // One order per local day.
+      seed: Math.floor(
+        (now - new Date(now).getTimezoneOffset() * 60_000) / 86_400_000,
+      ),
+    });
+  }, [whole, cases, set]);
+  const queue = useRef<string[]>([]);
+  const reviewed = useRef(new Set<string>());
+  // Review worked through all it held and nothing new came due.
+  const [done, setDone] = useState(false);
+  const [started, setStarted] = useState(false);
+  // Follows the stored cases until the first attempt (a case added a moment ago may
+  // still be on its way), then holds.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again when they change.
+  const fresh = useMemo(
+    () => (onlyWeak ? todayQueue() : null),
+    [onlyWeak, todayQueue, rows, attempts],
   );
+  const held = useRef(fresh);
+  if (!started) held.current = fresh;
+  const today = held.current;
+  const pool = onlyWeak ? (done ? [] : (today?.order ?? [])) : ids;
   // The whole set is drilled in rounds: due and weak cases first, then the rest shuffled.
   const round = useRef<string[]>([]);
 
@@ -690,7 +906,22 @@ function Practice({
       const now = Date.now();
       let id: string | null;
       if (onlyWeak) {
-        id = reviewCase(pool, last, Math.random());
+        if (queue.current.length === 0) {
+          // Drawn again: what came due since (a miss comes back within minutes), and
+          // what this sitting has not shown yet; a slow case shown once waits for tomorrow.
+          const dueNow = new Set(
+            current.filter((r) => r.dueAt <= now).map((r) => r.caseId),
+          );
+          queue.current = todayQueue().order.filter(
+            (id) => dueNow.has(id) || !reviewed.current.has(id),
+          );
+          // Never the same case twice running.
+          if (queue.current.length > 1 && queue.current[0] === last)
+            queue.current.push(queue.current.shift() as string);
+        }
+        id = queue.current.shift() ?? null;
+        if (!id) setDone(true);
+        else reviewed.current.add(id);
       } else if (whole) {
         if (round.current.length === 0) {
           const queued = await Promise.all(
@@ -731,14 +962,14 @@ function Practice({
       const auf = random4();
       // A last-layer case comes up with any side in front; an F2L case is the front
       // right slot's, so its colours stay.
-      const colour = set === "f2l" ? 0 : random4();
+      const colour = isF2l(set) ? 0 : random4();
       if (byPicture) {
         setShown({ caseId: id, auf, colour, scramble: null });
-        moveDrill(showCase(true));
+        moveDrill(showCase(true, split));
         return;
       }
       setShown({ caseId: id, auf, colour, scramble: null });
-      moveDrill(showCase(false));
+      moveDrill(showCase(false, split));
       client.current ??= createTrainingClient(
         () =>
           new Worker(
@@ -749,23 +980,39 @@ function Practice({
           ) as unknown as WorkerLike,
       );
       const ask = ++sequence.current;
-      const result = await client.current.requestTraining(
-        { request: { kind: set, caseIds: [id] } },
-        ask,
-      );
+      // The left slot's scramble is its right case's, seen in the mirror.
+      const left = set === "f2l-left";
+      const request = {
+        kind: left ? ("f2l" as const) : set,
+        caseIds: [left ? id.replace("f2l-left-", "f2l-") : id],
+      };
+      const result = await client.current.requestTraining({ request }, ask);
       if (!result || ask !== sequence.current) return;
       setShown({
         caseId: id,
         auf,
         colour,
         scramble: heldScramble(
-          { kind: set, caseIds: [id] },
-          turnScramble(result.scramble, colour),
+          request,
+          turnScramble(
+            left ? mirrorAlg(result.scramble) : result.scramble,
+            colour,
+          ),
           holding,
         ),
       });
     },
-    [byPicture, onlyWeak, whole, pool, set, holding, moveDrill],
+    [
+      byPicture,
+      split,
+      onlyWeak,
+      whole,
+      pool,
+      set,
+      holding,
+      moveDrill,
+      todayQueue,
+    ],
   );
 
   // A new sitting, or the way of showing changed: the first case.
@@ -776,7 +1023,7 @@ function Practice({
   useEffect(() => {
     if (empty) setShown(null);
     else void nextRef.current(null);
-  }, [empty, byPicture]);
+  }, [empty, byPicture, split]);
 
   // The picture's first frame starts recognition. Keyed on the case shown only: a key
   // pressed before that frame must not cancel it.
@@ -803,7 +1050,13 @@ function Practice({
       // A case not added is drilled with the whole set: its attempt is kept, no card.
       if (!row && !whole) return;
       const before = [...live.current.attempts];
-      const grade = gradeOf(result.execMs, false, before, shown.caseId);
+      const grade = gradeOf(
+        result.execMs,
+        false,
+        before,
+        shown.caseId,
+        result.recogMs,
+      );
       const attempt: TrainerAttempt = {
         id: newId(),
         setId: set,
@@ -813,6 +1066,7 @@ function Practice({
         scramble: shown.scramble,
         recogMs: result.recogMs,
         execMs: result.execMs,
+        split: result.split,
         missed: false,
         grade,
         at,
@@ -823,10 +1077,11 @@ function Practice({
           const scheduled = await review(row.card, grade, at);
           await store.putCase({ setId: set, caseId: row.caseId, ...scheduled });
         }
-        const done = { attempt, before, card: row?.card ?? null };
-        setSaved(done);
+        const saved = { attempt, before, card: row?.card ?? null };
+        setSaved(saved);
+        setStarted(true);
         onSaved(await store.cases(set), [...before, attempt]);
-        return done;
+        return saved;
       })();
     },
     [shown, store, set, byPicture, whole, onSaved],
@@ -841,7 +1096,13 @@ function Practice({
       if (!done) return done;
       const grade: Grade = now
         ? "again"
-        : gradeOf(done.attempt.execMs, false, done.before, done.attempt.caseId);
+        : gradeOf(
+            done.attempt.execMs,
+            false,
+            done.before,
+            done.attempt.caseId,
+            done.attempt.recogMs,
+          );
       await store.markAttempt(done.attempt.id, { missed: now, grade });
       if (done.card !== null) {
         const scheduled = await review(done.card, grade, done.attempt.at);
@@ -860,9 +1121,19 @@ function Practice({
   const resultRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (drill.phase !== "stopped") return;
-    const box = resultRef.current?.getBoundingClientRect();
-    if (box && box.bottom > window.innerHeight)
-      resultRef.current?.scrollIntoView({ block: "end" });
+    const el = resultRef.current;
+    if (!el) return;
+    // Where it rests, from layout: its landing shift is a transform and must not count.
+    let top = 0;
+    for (
+      let e: HTMLElement | null = el;
+      e;
+      e = e.offsetParent as HTMLElement | null
+    )
+      top += e.offsetTop;
+    const bottom = top + el.offsetHeight;
+    if (bottom > window.scrollY + window.innerHeight)
+      window.scrollTo({ top: bottom - window.innerHeight });
   }, [drill.phase]);
 
   const ready = shown !== null && (byPicture || shown.scramble !== null);
@@ -881,9 +1152,15 @@ function Practice({
 
   useEffect(() => {
     function down(event: KeyboardEvent) {
+      if (paused || event.defaultPrevented) return;
       if (event.repeat || event.metaKey || event.ctrlKey || event.altKey)
         return;
-      if (drill.phase === "running") {
+      // Any fresh key marks the case recognised or stops the clock, as on the timer.
+      if (
+        (drill.phase === "running" || drill.phase === "recognising") &&
+        event.key !== "?" &&
+        event.key !== "Shift"
+      ) {
         event.preventDefault();
         step({ type: "down", at: event.timeStamp });
         return;
@@ -904,7 +1181,7 @@ function Practice({
       }
     }
     function up(event: KeyboardEvent) {
-      if (event.code !== "Space") return;
+      if (paused || event.code !== "Space") return;
       event.preventDefault();
       step({ type: "up", at: event.timeStamp });
     }
@@ -914,7 +1191,7 @@ function Practice({
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, [drill.phase, step, next, toggleMissed, shown]);
+  }, [drill.phase, step, next, toggleMissed, shown, paused]);
 
   const pointer = (type: "down" | "up") => (event: ReactPointerEvent) => {
     if (drill.phase === "stopped") return;
@@ -923,6 +1200,12 @@ function Practice({
     step({ type, at: event.timeStamp });
   };
 
+  // The choices at the foot change nothing once an attempt is under way; a split picture
+  // runs from the moment it shows, so there they stay open until the first press.
+  const choosable =
+    drill.phase === "shown" ||
+    (drill.phase === "recognising" && byPicture && drill.recognisedAt === null);
+
   const poolChoice = (
     <span data-part="train-pool">
       <button
@@ -930,7 +1213,7 @@ function Practice({
         data-action="train-pool"
         data-pool="mine"
         aria-pressed={!whole}
-        disabled={drill.phase !== "shown"}
+        disabled={!choosable}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => onWhole(false)}
       >
@@ -941,7 +1224,7 @@ function Practice({
         data-action="train-pool"
         data-pool="all"
         aria-pressed={whole}
-        disabled={drill.phase !== "shown"}
+        disabled={!choosable}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => onWhole(true)}
       >
@@ -1032,11 +1315,6 @@ function Practice({
               <span data-part="train-label">{c.label}</span>
               {c.algs[0] && <Alg moves={myAlg(c, choices, set).moves} />}
             </p>
-            {c.recognise && (
-              <p data-part="train-recognise">
-                {ru ? c.recognise.ru : c.recognise.en}
-              </p>
-            )}
             <p data-part="train-after">
               <button
                 type="button"
@@ -1060,8 +1338,23 @@ function Practice({
           </div>
         ) : (
           <p data-part="train-hint">
-            <span data-input="keys">{words.emptyHintKey}</span>
-            <span data-input="touch">{words.emptyHintTouch}</span>
+            <span data-input="keys">
+              {!split
+                ? words.emptyHintKey
+                : byPicture
+                  ? t.splitHint.pictureKey
+                  : t.splitHint.scrambleKey}
+            </span>
+            <span data-input="touch">
+              {!split
+                ? words.emptyHintTouch
+                : byPicture
+                  ? t.splitHint.pictureTouch
+                  : t.splitHint.scrambleTouch}
+            </span>
+            {today && !started && (
+              <span data-part="train-today">{t.today(today.counts)}</span>
+            )}
           </p>
         )}
         {drill.phase !== "stopped" && (
@@ -1071,7 +1364,7 @@ function Practice({
               <button
                 type="button"
                 aria-pressed={byPicture}
-                disabled={drill.phase !== "shown"}
+                disabled={!choosable}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => onShow(true)}
               >
@@ -1080,13 +1373,23 @@ function Practice({
               <button
                 type="button"
                 aria-pressed={!byPicture}
-                disabled={drill.phase !== "shown"}
+                disabled={!choosable}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => onShow(false)}
               >
                 {t.scramble}
               </button>
             </span>
+            <button
+              type="button"
+              data-action="train-split"
+              aria-pressed={split}
+              disabled={!choosable}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onSplit(!split)}
+            >
+              {t.split}
+            </button>
           </p>
         )}
       </div>

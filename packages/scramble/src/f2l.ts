@@ -9,6 +9,43 @@ type Data = { CORNERS: Orbit; EDGES: Orbit };
 
 const dataOf = (pattern: KPattern) => pattern.patternData as unknown as Data;
 
+/* Places in the mirror through the M slice: corners UFR URB UBL ULF DRF DFL DLB DBR, edges
+ * UF UR UB UL DF DR DB DL FR FL BR BL, centres U L F R B D. */
+const CORNER_MIRROR = [3, 2, 1, 0, 5, 4, 7, 6];
+const EDGE_MIRROR = [0, 3, 2, 1, 4, 7, 6, 5, 9, 8, 11, 10];
+const CENTRE_MIRROR = [0, 3, 2, 1, 4, 5];
+
+/**
+ * The cube seen in the mirror through the M slice: each piece goes to its mirror place as
+ * its mirror piece; a corner's twist turns the other way, an edge keeps its flip. For any
+ * turns A, the mirror of a solved cube after A is a solved cube after mirrorAlg(A).
+ */
+export function mirrorPattern(pattern: KPattern): KPattern {
+  const data = pattern.patternData as unknown as Data & { CENTERS: Orbit };
+  const orbit = (
+    from: Orbit & { orientationMod?: number[] },
+    map: readonly number[],
+    turn: (o: number) => number,
+  ) => {
+    const pieces = new Array<number>(map.length);
+    const orientation = new Array<number>(map.length);
+    from.pieces.forEach((piece, place) => {
+      const to = map[place] as number;
+      pieces[to] = map[piece] as number;
+      orientation[to] = turn(from.orientation[place] as number);
+    });
+    return from.orientationMod
+      ? { pieces, orientation, orientationMod: [...from.orientationMod] }
+      : { pieces, orientation };
+  };
+  return new KPattern(pattern.kpuzzle, {
+    ...pattern.patternData,
+    CORNERS: orbit(data.CORNERS, CORNER_MIRROR, (o) => (3 - o) % 3),
+    EDGES: orbit(data.EDGES, EDGE_MIRROR, (o) => o),
+    CENTERS: orbit(data.CENTERS, CENTRE_MIRROR, () => 0),
+  });
+}
+
 /** Where the pair stands on a cube. */
 export function f2lOf(pattern: KPattern): F2lState {
   const { CORNERS, EDGES } = dataOf(pattern);

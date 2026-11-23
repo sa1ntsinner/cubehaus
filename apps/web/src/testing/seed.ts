@@ -714,12 +714,14 @@ async function seedTrainer(store: Store): Promise<void> {
       });
     }
   }
-  // Three F2L cases, for the slot's own shots.
-  const f2l = trainerSet("f2l");
-  for (const label of ["F2L 7", "F2L 13", "F2L 26"]) {
-    const caseId = f2l.find((c) => c.label === label)?.id ?? label;
-    const { card } = await newCard(caseId, now);
-    await store.trainer.putCase({ setId: "f2l", caseId, card, dueAt: now });
+  // Three F2L cases in each slot, for the slots' own shots.
+  for (const setId of ["f2l", "f2l-left"] as const) {
+    const f2l = trainerSet(setId);
+    for (const label of ["F2L 7", "F2L 13", "F2L 26"]) {
+      const caseId = f2l.find((c) => c.label === label)?.id ?? label;
+      const { card } = await newCard(caseId, now);
+      await store.trainer.putCase({ setId, caseId, card, dueAt: now });
+    }
   }
 }
 

@@ -396,3 +396,49 @@ test("a backup from schema 5 restores, and a repeat of a dangling solve is refus
     { n: 0 },
   ]);
 });
+
+test("a backup from schema 7 restores its trainer attempts as not split", async () => {
+  const source = await fresh();
+  await source.batch([
+    {
+      sql: `INSERT INTO trainer_attempt (id, set_id, case_id, mode, auf, scramble, recog_ms,
+        exec_ms, missed, grade, at, updated_at, split)
+        VALUES ('a', 'pll', 'pll-T', 'picture', 1, NULL, 640, 1830, 0, 'good', 5, 5, 0),
+          ('b', 'pll', 'pll-T', 'scramble', 0, 'R U', 500, 1700, 0, 'good', 6, 6, 1)`,
+    },
+  ]);
+  const current = await snapshot(source);
+  // The current backup carries the mark.
+  expect(current.tables.trainer_attempt?.map((r) => r.split)).toEqual([0, 1]);
+  const v7 = {
+    ...current,
+    schema: 7,
+    tables: Object.fromEntries(
+      backupTables(7).map(([name, { columns }]) => [
+        name,
+        (current.tables[name] ?? []).map((row) =>
+          Object.fromEntries(columns.map((column) => [column, row[column]])),
+        ),
+      ]),
+    ),
+  };
+  expect(v7.tables.trainer_attempt?.[0]).not.toHaveProperty("split");
+  const target = await fresh();
+  await restore(target, v7);
+  expect(
+    await target.all(
+      "SELECT id, recog_ms, split FROM trainer_attempt ORDER BY id",
+    ),
+  ).toEqual([
+    { id: "a", recog_ms: 640, split: 0 },
+    { id: "b", recog_ms: 500, split: 0 },
+  ]);
+  const again = await fresh();
+  await restore(again, current);
+  expect(
+    await again.all("SELECT id, split FROM trainer_attempt ORDER BY id"),
+  ).toEqual([
+    { id: "a", split: 0 },
+    { id: "b", split: 1 },
+  ]);
+});

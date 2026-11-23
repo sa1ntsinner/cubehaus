@@ -1,11 +1,28 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { f2lKey, f2lOf } from "@cubehaus/scramble/f2l";
-import { f2lState, f2lStickers } from "@cubehaus/scramble/f2l-state";
+import {
+  f2lKey,
+  f2lOf,
+  f2lSolved,
+  mirrorPattern,
+  placePair,
+} from "@cubehaus/scramble/f2l";
+import {
+  f2lLeftStickers,
+  f2lState,
+  f2lStickers,
+} from "@cubehaus/scramble/f2l-state";
 import { classifyLL, stickersOf } from "@cubehaus/scramble/last-layer";
 import { fromKey } from "@cubehaus/scramble/last-layer-state";
 import { generateTraining } from "@cubehaus/scramble/training";
 import { describe, expect, it } from "vitest";
-import { type BuiltSet, buildF2l, buildSet, render, turned } from "./build";
+import {
+  type BuiltSet,
+  buildF2l,
+  buildF2lLeft,
+  buildSet,
+  render,
+  turned,
+} from "./build";
 import F2L_SEARCHED from "./candidates/f2l-search.json";
 import { collWords, sameColour } from "./collwords";
 import { lights, upExactly } from "./diagram";
@@ -21,10 +38,13 @@ const dataFile = (set: SetId) => new URL(`./data/${set}.ts`, import.meta.url);
  * ships.
  */
 async function rebuilt(set: SetId): Promise<BuiltSet> {
+  const f2l = () => buildF2l(F2L_SEARCHED as Record<string, string[]>);
   const built =
     set === "f2l"
-      ? await buildF2l(F2L_SEARCHED as Record<string, string[]>)
-      : await buildSet(set);
+      ? await f2l()
+      : set === "f2l-left"
+        ? await buildF2lLeft(await f2l())
+        : await buildSet(set);
   const text = render(built);
   if (process.env.ALGS_WRITE === "1") writeFileSync(dataFile(set), text);
   expect(readFileSync(dataFile(set), "utf8")).toBe(text);
@@ -197,6 +217,52 @@ describe("trainer sets", () => {
     const made = f2lKey(f2lOf(puzzle.defaultPattern().applyAlg("R U' R'")));
     expect(cases.find((c) => c.id === `f2l-${made}`)?.algs[0]?.moves).toBe(
       "R U R'",
+    );
+    expect(built.rejected).toEqual([]);
+  }, 120_000);
+  it("the front left slot has the same 41 cases in the mirror, each algorithm verified there", async () => {
+    const built = await rebuilt("f2l-left");
+    const right = trainerSet("f2l");
+    const left = trainerSet("f2l-left");
+    expect(left.map((c) => c.label)).toEqual(right.map((c) => c.label));
+    const puzzle = await kpuzzle();
+    for (const [i, c] of left.entries()) {
+      const r = right[i] as (typeof right)[number];
+      const key = r.id.slice(4);
+      expect(c.id).toBe(`f2l-left-${key}`);
+      expect(c.algs, c.label).toHaveLength(3);
+      for (const alg of c.algs) {
+        expect(alg.moves, c.label).toMatch(/^[LUF]['2]?( [LUF]['2]?)*$/);
+        const verdict = await verifyF2l(key, alg.moves, "left");
+        expect(verdict.ok, `${c.label}: ${alg.moves}`).toBe(true);
+      }
+      // From the cube the picture shows, U turned as many times as the algorithm says,
+      // then the algorithm: the first two layers whole. The right slot the same way.
+      for (const [set, cube] of [
+        [
+          c,
+          mirrorPattern(placePair(puzzle.defaultPattern(), f2lState(c.state))),
+        ],
+        [r, placePair(puzzle.defaultPattern(), f2lState(r.state))],
+      ] as const)
+        for (const alg of set.algs) {
+          const before = ["", "U", "U2", "U'"][alg.auf] as string;
+          const after = (before ? cube.applyAlg(before) : cube).applyAlg(
+            alg.moves,
+          );
+          expect(f2lSolved(after), `${set.id}: ${alg.moves}`).toBe(true);
+        }
+      // Its picture is the right one's in the mirror, a U turn there being U' here.
+      expect(pictureOf(c)).toBe(f2lLeftStickers(f2lState(c.state)));
+      for (const k of [1, 2, 3])
+        expect(pictureOf(c, k)).toBe(pictureOf(r, 4 - k).replaceAll("R", "L"));
+    }
+    // The plainest insert on the left: L' U L makes the case L' U' L solves.
+    const made = f2lKey(
+      f2lOf(mirrorPattern(puzzle.defaultPattern().applyAlg("L' U L"))),
+    );
+    expect(left.find((c) => c.id === `f2l-left-${made}`)?.algs[0]?.moves).toBe(
+      "L' U' L",
     );
     expect(built.rejected).toEqual([]);
   }, 120_000);

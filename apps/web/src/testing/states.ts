@@ -153,6 +153,11 @@ export const namedStates = [
   "train-white",
   "train-f2l",
   "train-f2l-drill",
+  "train-f2l-left",
+  "train-f2l-left-drill",
+  "train-split",
+  "train-medians",
+  "train-keys",
 ] as const;
 
 export const eventStates = EVENTS.map(({ id }) => `event-${id}` as const);

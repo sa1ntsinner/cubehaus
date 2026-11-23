@@ -1,11 +1,13 @@
 import { cubeState } from "@cubehaus/cube";
 import {
   f2lKey,
+  f2lLeftStickers,
   f2lOf,
   f2lReady,
   f2lSolved,
   f2lState,
   f2lStickers,
+  mirrorPattern,
   placePair,
 } from "@cubehaus/scramble/f2l";
 import {
@@ -193,20 +195,29 @@ export async function verify(
 }
 
 /**
- * Checks a front-right-slot algorithm against an F2L case, the same three ways: forward
- * from the case with U 0 to 3 times before, the cross and four slots whole after; backward,
- * the inverse on a solved cube keeps the cross and the other three slots and makes this
- * very case; and our own sticker model shows the picture's stickers after the inverse.
+ * Checks an F2L algorithm against a case, the same three ways: forward from the case with U
+ * 0 to 3 times before, the cross and four slots whole after; backward, the inverse on a
+ * solved cube keeps the cross and the other three slots and makes this very case; and our
+ * own sticker model shows the picture's stickers after the inverse. The left slot's case is
+ * the right one's in the mirror (f2l-state.ts): its cube is the mirrored cube, and what an
+ * inverse makes there is read in the mirror; the picture is checked against U, F and L as
+ * our model turns them, each row read the other way.
  */
-export async function verifyF2l(key: string, alg: string): Promise<Verdict> {
+export async function verifyF2l(
+  key: string,
+  alg: string,
+  slot: "right" | "left" = "right",
+): Promise<Verdict> {
   const puzzle = await kpuzzle();
+  const left = slot === "left";
   let parsed: Alg;
   try {
     parsed = new Alg(alg);
   } catch {
     return { ok: false, reason: "does not parse" };
   }
-  const start = placePair(puzzle.defaultPattern(), f2lState(key));
+  const right = placePair(puzzle.defaultPattern(), f2lState(key));
+  const start = left ? mirrorPattern(right) : right;
   let auf = -1;
   for (let k = 0; k < 4 && auf < 0; k++) {
     const pre = ["", "U", "U2", "U'"][k] as string;
@@ -221,16 +232,22 @@ export async function verifyF2l(key: string, alg: string): Promise<Verdict> {
   const { pattern, rotation } = upright(
     puzzle.defaultPattern().applyAlg(inverse),
   );
-  if (!f2lReady(pattern))
+  const seen = left ? mirrorPattern(pattern) : pattern;
+  if (!f2lReady(seen))
     return { ok: false, reason: "its inverse breaks the cross or a slot" };
-  const made = f2lOf(pattern);
+  const made = f2lOf(seen);
   const got = f2lKey(made);
   if (got !== key) return { ok: false, reason: `its inverse makes f2l ${got}` };
   const s = cubeState(3, `${inverse} ${rotation}`.trim());
-  const faces = [...s.U, ...s.F, ...s.R].join("");
-  const picture = f2lStickers(made);
-  for (let at = 0; at < 27; at++)
-    if (picture[at] !== "x" && picture[at] !== faces[at])
+  const picture = left ? f2lLeftStickers(made) : f2lStickers(made);
+  const faces = [s.U, s.F, left ? s.L : s.R];
+  for (let at = 0; at < 27; at++) {
+    if (picture[at] === "x") continue;
+    const i = at % 9;
+    const face = faces[Math.floor(at / 9)] as readonly string[];
+    const sticker = face[left ? Math.floor(i / 3) * 3 + (2 - (i % 3)) : i];
+    if (picture[at] !== sticker)
       return { ok: false, reason: "the two cube models disagree" };
+  }
   return { ok: true, auf };
 }

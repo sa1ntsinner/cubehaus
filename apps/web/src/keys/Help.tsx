@@ -15,8 +15,9 @@ export function Help({
   language: "en" | "ru";
   title: string;
   closeLabel: string;
-  commandsLabel: string;
-  onCommands(): void;
+  /** Where the key list has a command palette beside it. */
+  commandsLabel?: string;
+  onCommands?(): void;
   onClose(): void;
 }) {
   const mac = isMacPlatform();
@@ -25,9 +26,11 @@ export function Help({
       <button type="button" data-action="dialog-close" onClick={onClose}>
         {closeLabel}
       </button>
-      <button type="button" data-action="commands-open" onClick={onCommands}>
-        {commandsLabel}
-      </button>
+      {commandsLabel && onCommands && (
+        <button type="button" data-action="commands-open" onClick={onCommands}>
+          {commandsLabel}
+        </button>
+      )}
       <dl>
         {bindings.map(({ action, keys }) => (
           <div key={action.id} data-action-id={action.id}>

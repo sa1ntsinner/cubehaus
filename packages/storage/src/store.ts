@@ -299,10 +299,15 @@ export interface TrainerAttempt {
   /** The U turns the case was shown turned by. */
   auf: number;
   scramble: string | null;
-  /** From the picture appearing to the key going down; only for a picture. */
+  /**
+   * From the picture appearing to the key going down (a picture only); or, split, from
+   * the clock starting to the press that marked the case recognised.
+   */
   recogMs: number | null;
-  /** From the release that started the clock to the stop. */
+  /** From the release that started the clock to the stop; split, from the mark. */
   execMs: number;
+  /** Recognition marked by a press while the clock ran (schema 8); absent is false. */
+  split?: boolean;
   missed: boolean;
   grade: TrainerGrade;
   at: number;
@@ -1763,8 +1768,8 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
           db.batch([
             {
               sql: `INSERT INTO trainer_attempt (id, set_id, case_id, mode, auf, scramble,
-                recog_ms, exec_ms, missed, grade, at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                recog_ms, exec_ms, missed, grade, at, updated_at, split)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               params: [
                 a.id,
                 a.setId,
@@ -1778,6 +1783,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
                 a.grade,
                 a.at,
                 now(),
+                Number(a.split ?? false),
               ],
             },
           ]),
@@ -1795,14 +1801,15 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
         run(async () =>
           (
             await db.all<
-              Omit<TrainerAttempt, "missed" | "mode" | "grade"> & {
+              Omit<TrainerAttempt, "missed" | "mode" | "grade" | "split"> & {
                 missed: number;
+                split: number;
                 mode: string;
                 grade: string;
               }
             >(
               `SELECT id, set_id AS setId, case_id AS caseId, mode, auf, scramble,
-                recog_ms AS recogMs, exec_ms AS execMs, missed, grade, at
+                recog_ms AS recogMs, exec_ms AS execMs, missed, grade, at, split
               FROM trainer_attempt WHERE set_id = ? ORDER BY at, id`,
               [setId],
             )
@@ -1811,6 +1818,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
             mode: row.mode as TrainerAttempt["mode"],
             grade: row.grade as TrainerGrade,
             missed: row.missed !== 0,
+            split: row.split !== 0,
           })),
         ),
     },

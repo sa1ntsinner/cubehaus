@@ -5,6 +5,7 @@ import {
   newCard,
   nextCase,
   recall,
+  recogMedian,
   review,
   roundOf,
   weakCases,
@@ -51,6 +52,32 @@ describe("schedule", () => {
     const later = await recall(good.card, now + 30 * 86_400_000);
     expect(soon).toBeGreaterThan(later);
     expect(await recall(fresh.card, now)).toBe(1);
+  });
+
+  it("a slow recognition makes an attempt Hard where recognition was timed", () => {
+    const timed = (execMs: number, recogMs: number | null, at: number) => ({
+      ...attempt("T", execMs, at),
+      recogMs,
+    });
+    const before = [
+      timed(2000, 600, 1),
+      timed(2000, 500, 2),
+      timed(2000, 700, 3),
+      // Without recognition (a scramble drill), it counts for execution only.
+      timed(2000, null, 4),
+    ];
+    expect(recogMedian(before, "T")).toBe(600);
+    expect(recogMedian(before.slice(0, 2), "T")).toBeNull();
+    // Execution as usual, recognition far slower than its median: Hard.
+    expect(gradeOf(2000, false, before, "T", 1000)).toBe("hard");
+    // Fast execution only earns Easy when the recognition was fast too.
+    expect(gradeOf(1500, false, before, "T", 600)).toBe("good");
+    expect(gradeOf(1500, false, before, "T", 400)).toBe("easy");
+    // No recognition on this attempt, or none timed before: execution alone.
+    expect(gradeOf(1500, false, before, "T", null)).toBe("easy");
+    const untimed = before.map((a) => ({ ...a, recogMs: null }));
+    expect(gradeOf(1500, false, untimed, "T", 5000)).toBe("easy");
+    expect(gradeOf(2000, true, before, "T", 100)).toBe("again");
   });
 
   it("due cases come first, never the same twice running", () => {

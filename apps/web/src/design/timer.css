@@ -1614,3 +1614,19 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button:hover {
   font-weight: 400;
   color: var(--gutter);
 }
+
+/* The big cubes' scrambles on a phone sit at about 12 px, at the text floor. Dark letters on
+   white read thinner than light ones on black at that size, so the light theme sets them a
+   step heavier; Geist Mono keeps its widths at every weight, so no column moves. */
+@media (max-width: 699px) {
+  :root[data-theme="light"]
+    main
+    > [data-part="scramble"]:is(
+      [data-event="555"],
+      [data-event="555bf"],
+      [data-event="666"],
+      [data-event="777"]
+    ) {
+    font-weight: 600;
+  }
+}

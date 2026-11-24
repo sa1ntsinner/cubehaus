@@ -194,6 +194,8 @@ export function useSwipe(
     };
 
     const down = (event: PointerEvent) => {
+      // A new press owns its click, even within the previous swipe's grace period.
+      swallowUntil = Number.NEGATIVE_INFINITY;
       if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
       // A finger already on it counts, so a second one ends a swipe under way.
       if (state.phase === "idle") {

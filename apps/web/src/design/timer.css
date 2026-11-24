@@ -554,7 +554,7 @@ main > [data-part="time-under"] {
   width: min(36ch, 80vw);
   padding: var(--s1) 0;
   border: 0;
-  border-bottom: 1px solid var(--dim);
+  border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: none;
   font-size: 16px;
@@ -562,6 +562,9 @@ main > [data-part="time-under"] {
   text-align: center;
   caret-color: var(--prime);
   outline: none;
+}
+[data-part="time-comment-input"]:focus {
+  border-bottom-color: var(--dim);
 }
 [data-part="time-comment-input"]::placeholder {
   color: var(--gutter);
@@ -856,6 +859,9 @@ li[data-penalty="dnf"] [data-part="solve-time"] {
   font-size: max(var(--text-floor), calc(13px * var(--size-times, 1)));
   color: var(--gutter);
   opacity: 0;
+}
+[data-part="solves"] > :where(li[data-selected]) [data-action="comment-edit"] {
+  color: var(--dim);
 }
 @media (hover: hover) {
   [data-part="solves"] > li:hover [data-action="comment-edit"] {
@@ -1564,6 +1570,59 @@ main[data-inspecting]:is([data-phase="holding"], [data-phase="ready"])
   }
 }
 
+/* A small phone on its side (an SE: 667 × 375): too narrow for the wide layout, too short
+   for the phone's column. The picture and empty file hint go, the scramble takes more
+   moves per line at a fifth of the height, and the rows close up so the actions and
+   status line stay on screen (owner's delegate, 2026-11-24). */
+@media (max-width: 699px) and (max-height: 430px) and (orientation: landscape) {
+  main[data-timer-surface],
+  main:has(> [data-part="scramble"]) {
+    padding-top: calc(var(--s3) + env(safe-area-inset-top));
+    row-gap: var(--s1);
+  }
+  main > [data-part="scramble"] {
+    --per: 14;
+    --cap: 20dvh;
+    /* The reserved lines are counted for the upright phone: here the box is as tall as
+       its scramble, and stands on the axis like the rows under it. */
+    min-height: auto;
+    justify-self: center;
+  }
+  main > [data-part="scramble"]:is([data-event="666"], [data-event="777"]) {
+    --per: 24;
+    --cap: 22dvh;
+  }
+  main:has(
+      > [data-part="scramble"]:is(
+          [data-event="666"],
+          [data-event="777"],
+          [data-event="minx"]
+        )
+    )
+    > output[data-part="time"] {
+    font-size: calc(min(14vw, 12dvh) * var(--size-time, 1));
+  }
+  /* 4×4 and 5×5 keep their own moves per line upright; here they take 14 too. */
+  main
+    > [data-part="scramble"][data-event]:is(
+      [data-event^="444"],
+      [data-event^="555"]
+    ) {
+    --per: 14;
+    --plines: 4;
+  }
+  main > [data-part="scramble"][data-event]:is([data-event^="555"]) {
+    --plines: 5;
+  }
+  main > [data-part="scramble-picture"],
+  main > [data-part="file"] [data-part="solves-empty"] {
+    display: none;
+  }
+  main > output[data-part="time"] {
+    font-size: calc(min(14vw, 20dvh) * var(--size-time, 1));
+  }
+}
+
 /* A short window (a phone on its side): tighter rows, so the status line stays on screen. */
 @media (min-width: 700px) and (max-height: 500px) {
   main[data-timer-surface],
@@ -1718,6 +1777,20 @@ main [data-part="stat-picker"] [data-part="custom-stat"] button {
 }
 [data-part="custom-stat"] [role="alert"] {
   color: var(--error);
+}
+/* The picker's two ways into an average's attempts. They stand here, with the picker,
+   and not with the attempts sheet, whose stylesheet loads only when it opens. */
+[data-part="average-picker-actions"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  grid-column: 1 / -1;
+}
+[data-part="average-picker-actions"] button {
+  min-height: 44px;
+}
+[data-part="average-picker-actions"] button:disabled {
+  color: var(--gutter);
 }
 /* The list covers nothing half-way: what it would overlap steps out of its way. */
 main[data-stat-picker-open]

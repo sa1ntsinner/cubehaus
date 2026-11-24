@@ -126,6 +126,17 @@ const screens: Screen[] = [
     },
   },
   {
+    name: "algorithms, an OLLCP group",
+    open: async (page) => {
+      await page.goto(
+        "/?state=train-ollcp-group&lang=en&theme=THEME&now=2026-11-22T12:00#/train/ollcp/learn/2",
+      );
+      await expect(
+        page.locator('[data-part="train-case-list"] li').first(),
+      ).toBeVisible();
+    },
+  },
+  {
     name: "algorithms, drill",
     open: async (page) => {
       await page.goto(
@@ -138,18 +149,21 @@ const screens: Screen[] = [
   },
 ];
 
+// The keyboard and axe are the same code in every engine: Chromium runs them.
+test.skip(
+  ({ browserName }) => browserName !== "chromium",
+  "one engine is enough",
+);
+
 for (const theme of ["dark", "light"] as const)
-  for (const screen of screens)
-    test(`${screen.name} passes axe in the ${theme} theme`, async ({
-      page,
-      browserName,
-    }) => {
-      test.skip(browserName !== "chromium", "one engine is enough for axe");
-      const goto = page.goto.bind(page);
-      page.goto = (url, options) => goto(url.replace("THEME", theme), options);
+  test(`every screen passes axe in the ${theme} theme`, async ({ page }) => {
+    const goto = page.goto.bind(page);
+    page.goto = (url, options) => goto(url.replace("THEME", theme), options);
+    for (const screen of screens) {
       await screen.open(page);
-      expect(await audit(page)).toEqual([]);
-    });
+      expect(await audit(page), screen.name).toEqual([]);
+    }
+  });
 
 /** The focused element, and whether a ring or outline is drawn for it. */
 const focusState = (page: Page) =>
@@ -176,9 +190,7 @@ const focusState = (page: Page) =>
 
 test("Tab walks the timer's controls with a visible ring on each", async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName !== "chromium", "one engine is enough");
   await page.goto("/?state=session&lang=en&theme=dark");
   await ready(page);
   const seen: string[] = [];
@@ -201,9 +213,7 @@ test("Tab walks the timer's controls with a visible ring on each", async ({
 
 test("inside the file the arrows walk the lines and each line's comment word", async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName !== "chromium", "one engine is enough");
   await page.goto("/?state=session&lang=en&theme=dark");
   await ready(page);
   const rows = page.locator('[data-part="solves"] [data-solve-id]');
@@ -245,22 +255,18 @@ test("inside the file the arrows walk the lines and each line's comment word", a
   await expect(time(1)).toBeFocused();
 });
 
-for (const [name, opener, sheet] of [
-  [
-    "session switch",
-    '[data-action="session-switch"]',
-    'dialog[data-part="switch"]',
-  ],
-  ["key list", '[data-action="keys"]', '[data-part="keys-help"]'],
-] as const)
-  test(`Escape closes the ${name} and focus returns to what opened it`, async ({
-    page,
-    browserName,
-  }) => {
-    test.skip(browserName !== "chromium", "one engine is enough");
-    await page.goto("/?state=session&lang=en&theme=dark");
-    await ready(page);
-    await page.locator(opener).focus();
+test("Escape closes each sheet and gives focus back to what opened it", async ({
+  page,
+}) => {
+  await page.goto("/?state=session&lang=en&theme=dark");
+  await ready(page);
+  for (const [opener, sheet] of [
+    ['[data-action="session-switch"]', 'dialog[data-part="switch"]'],
+    ['[data-action="keys"]', '[data-part="keys-help"]'],
+    ['[data-part="stats-now"] button', '[data-part="stat-picker"]'],
+  ] as const) {
+    const control = page.locator(opener).first();
+    await control.focus();
     await page.keyboard.press("Enter");
     await expect(page.locator(sheet)).toBeVisible();
     // Focus is inside the sheet while it is open.
@@ -269,38 +275,29 @@ for (const [name, opener, sheet] of [
         (s) => document.querySelector(s)?.contains(document.activeElement),
         sheet,
       ),
+      sheet,
     ).toBe(true);
+    // The key list covers the page: Tab stays in it, never on the controls under it.
+    if (sheet.includes("keys-help"))
+      for (const key of ["Tab", "Tab", "Tab", "Shift+Tab", "Shift+Tab"]) {
+        await page.keyboard.press(key);
+        expect(
+          await page.evaluate(
+            (s) => document.querySelector(s)?.contains(document.activeElement),
+            sheet,
+          ),
+          key,
+        ).toBe(true);
+      }
     await page.keyboard.press("Escape");
     await expect(page.locator(sheet)).toHaveCount(0);
-    const focused = await page.evaluate(
-      () =>
-        document.activeElement?.getAttribute("data-action") ??
-        document.activeElement?.tagName,
-    );
-    expect(focused).toBe(opener.match(/"(.+)"/)?.[1]);
-  });
-
-test("the stat picker closes on Escape and gives focus back to its slot", async ({
-  page,
-  browserName,
-}) => {
-  test.skip(browserName !== "chromium", "one engine is enough");
-  await page.goto("/?state=session&lang=en&theme=dark");
-  await ready(page);
-  const slot = page.locator('[data-part="stats-now"] button').first();
-  await slot.focus();
-  await page.keyboard.press("Enter");
-  await expect(page.locator('[data-part="stat-picker"]')).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.locator('[data-part="stat-picker"]')).toHaveCount(0);
-  await expect(slot).toBeFocused();
+    await expect(control).toBeFocused();
+  }
 });
 
 test("a finished solve and a penalty are heard once each, the running time never", async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName !== "chromium", "one engine is enough");
   await page.goto("/?state=session&lang=en&theme=dark");
   await ready(page);
   const time = page.locator('[data-part="time"]');
@@ -320,8 +317,9 @@ test("a finished solve and a penalty are heard once each, the running time never
   await page.waitForTimeout(1200);
   await expect(said).toHaveText("");
   await page.keyboard.press("Space");
-  await expect(said).toHaveText(/^\d+\.\d\d$/);
-  const result = await said.textContent();
+  // A second and a bit beats the session's best: the hue on screen is said in words.
+  await expect(said).toHaveText(/^\d+\.\d\d, new record$/);
+  const result = (await said.textContent())?.split(",")[0];
   // Keys rest for 200 ms after a stop, so a bounce cannot act.
   await page.waitForTimeout(250);
   await page.keyboard.press("2");
@@ -332,9 +330,7 @@ test("a finished solve and a penalty are heard once each, the running time never
 
 test("with reduced motion nothing animates longer than a frame", async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName !== "chromium", "one engine is enough");
   await page.emulateMedia({ reducedMotion: "reduce" });
   const long = () =>
     page.evaluate(() =>
@@ -385,35 +381,32 @@ test("with reduced motion nothing animates longer than a frame", async ({
   expect(found).toEqual([]);
 });
 
-for (const [name, link, heading] of [
-  ["Progress", "progress", "Progress"],
-  ["Settings", "settings", "Settings"],
-  ["Algorithms", "train", "Algorithms"],
-] as const)
-  test(`Escape leaves ${name} and the timer takes the keyboard back`, async ({
-    page,
-    browserName,
-  }) => {
-    test.skip(browserName !== "chromium", "one engine is enough");
-    await page.goto("/?state=session&lang=en&theme=dark");
-    await ready(page);
+test("Escape leaves Progress, Settings and Algorithms and the timer takes the keyboard back", async ({
+  page,
+}) => {
+  await page.goto("/?state=session&lang=en&theme=dark");
+  await ready(page);
+  for (const [link, heading] of [
+    ["progress", "Progress"],
+    ["settings", "Settings"],
+    ["train", "Algorithms"],
+  ] as const) {
     await page.locator(`[data-action="${link}"]`).focus();
     await page.keyboard.press("Enter");
     await expect(page.locator("h1")).toHaveText(heading);
     // The keyboard is on the new screen, not left on the page's body.
     await page.keyboard.press("Tab");
-    expect((await focusState(page)).tag).not.toBe("body");
+    expect((await focusState(page)).tag, heading).not.toBe("body");
     await page.keyboard.press("Escape");
     await ready(page);
     // On the timer itself, so Space times the next solve at once.
     await expect(page.locator("[data-timer-surface]")).toBeFocused();
-  });
+  }
+});
 
 test("a case opened from the keyboard closes on Escape onto its tile", async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName !== "chromium", "one engine is enough");
   await page.goto("/#/train/pll/learn");
   // The list is drawn again once the stored cases arrive: wait for them.
   await expect(page.locator('[data-part="train-case-list"] li')).toHaveCount(
@@ -433,7 +426,43 @@ test("a case opened from the keyboard closes on Escape onto its tile", async ({
   await page.keyboard.press("Escape");
   await expect(page.locator('[data-part="train-case"]')).toHaveCount(0);
   await expect(tile).toBeFocused();
+  // Narrow, the case takes the list's place and the tile goes with it: the keyboard
+  // goes into the case, and comes back to the tile.
+  await page.setViewportSize({ width: 800, height: 900 });
+  await page.keyboard.press("Enter");
+  await expect(page.locator('[data-part="train-case"] h2')).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(tile).toBeFocused();
   // A second Escape leaves Algorithms.
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/#\/$/);
+});
+
+test("the page title follows the screen and language", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle("cubehaus");
+  await page.locator('[data-action="progress"]').click();
+  await expect(page).toHaveTitle("Progress · cubehaus");
+  await page.evaluate(() => {
+    location.hash = "#/train/pll/learn";
+  });
+  await expect(page).toHaveTitle("Algorithms · cubehaus");
+  await page.evaluate(() => {
+    location.hash = "#/settings/look";
+  });
+  await expect(page).toHaveTitle("Settings · cubehaus");
+  await page.locator('[data-setting="language"] select').selectOption("ru");
+  await expect(page).toHaveTitle("Настройки · cubehaus");
+  await page.evaluate(() => {
+    location.hash = "#/progress";
+  });
+  await expect(page).toHaveTitle("Прогресс · cubehaus");
+  await page.evaluate(() => {
+    location.hash = "#/train/pll/learn";
+  });
+  await expect(page).toHaveTitle("Алгоритмы · cubehaus");
+  await page.evaluate(() => {
+    location.hash = "#/";
+  });
+  await expect(page).toHaveTitle("cubehaus");
 });

@@ -15,6 +15,7 @@ import {
   type ThemeImage,
   type ThemeToken,
 } from "../theme-editor";
+import "../design/theme-editor.css";
 
 /**
  * The custom theme (Settings, when the theme is Custom): its base, each colour, a picture
@@ -35,6 +36,9 @@ export function ThemeEditor({
   const t = words.themeEditor;
   const [draft, setDraft] = useState(saved);
   const [problem, setProblem] = useState<string | null>(null);
+  const [fileStatus, setFileStatus] = useState<
+    "savedToDownloads" | "backupFailed" | null
+  >(null);
   const savedRef = useRef(saved);
   // A theme saved elsewhere (an import, a restore) replaces the draft.
   useEffect(() => {
@@ -49,6 +53,7 @@ export function ThemeEditor({
   const change = (next: ThemeDocument) => {
     setDraft(next);
     setProblem(null);
+    setFileStatus(null);
     if (contrastIssues(next).length > 0) return;
     void app.setCustomTheme(next).then((ok) => {
       if (!ok) setProblem(t.saveFailed);
@@ -58,6 +63,7 @@ export function ThemeEditor({
     change({ ...draft, tokens: { ...draft.tokens, [token]: value } });
 
   async function choosePicture(file: File) {
+    setFileStatus(null);
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const mime = checkImage(bytes, file.type || undefined);
@@ -87,6 +93,7 @@ export function ThemeEditor({
   }
 
   async function importFile(file: File) {
+    setFileStatus(null);
     try {
       const doc = importTheme(await file.text());
       // The tones are measured here again: a file cannot vouch for its own picture.
@@ -207,9 +214,19 @@ export function ThemeEditor({
             <button
               type="button"
               data-action="theme-export"
-              onClick={() =>
-                download("cubehaus-theme.json", exportTheme(savedRef.current))
-              }
+              onClick={() => {
+                const writing = download(
+                  "cubehaus-theme.json",
+                  exportTheme(savedRef.current),
+                );
+                if (writing) {
+                  setFileStatus(null);
+                  void writing.then(
+                    () => setFileStatus("savedToDownloads"),
+                    () => setFileStatus("backupFailed"),
+                  );
+                }
+              }}
             >
               {t.export}
             </button>
@@ -240,14 +257,20 @@ export function ThemeEditor({
           {t.resetColours}
         </button>
       )}
-      <p data-part="theme-status" role="status">
-        {issues.length > 0
-          ? t.unreadable(
-              issues
-                .map((issue) => `${t.token[issue.token]} ${issue.ratio}:1`)
-                .join(", "),
-            )
-          : problem}
+      <p
+        data-part="theme-status"
+        role="status"
+        data-tone={fileStatus === "savedToDownloads" ? "ok" : undefined}
+      >
+        {fileStatus
+          ? words.settings[fileStatus]
+          : issues.length > 0
+            ? t.unreadable(
+                issues
+                  .map((issue) => `${t.token[issue.token]} ${issue.ratio}:1`)
+                  .join(", "),
+              )
+            : problem}
       </p>
     </>
   );

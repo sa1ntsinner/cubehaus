@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options for App Store Connect. scripts/archive.sh fills the placeholders from
+  the environment into a copy outside the repository; this file never holds a value.
+    __APPLE_TEAM_ID__     APPLE_TEAM_ID
+    __DESTINATION__       "export" (an .ipa on disk, the default) or "upload" (--upload)
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>__DESTINATION__</string>
+	<key>teamID</key>
+	<string>__APPLE_TEAM_ID__</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+</dict>
+</plist>

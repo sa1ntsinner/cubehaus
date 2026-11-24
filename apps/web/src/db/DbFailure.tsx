@@ -5,7 +5,10 @@ import type { DbState } from "./open";
 import type { RecoveryResult } from "./recovery";
 import "./DbFailure.css";
 
-type Feedback = "newer" | "format" | "reference" | "restore" | "save";
+type Feedback =
+  | keyof Text["dbRecoveryFeedback"]
+  | "savedToDownloads"
+  | "backupFailed";
 
 /**
  * The database that would not open (DESIGN.md section 17, *The database that would not
@@ -63,13 +66,15 @@ export function DbFailure({
   const message =
     doing === "restore"
       ? words.dbRestoring
-      : feedback
-        ? words.dbRecoveryFeedback[feedback]
-        : state.newer
-          ? words.dbNewer
-          : actions
-            ? words.dbOpenFailed
-            : words.dbFailed;
+      : feedback === "savedToDownloads" || feedback === "backupFailed"
+        ? words.settings[feedback]
+        : feedback
+          ? words.dbRecoveryFeedback[feedback]
+          : state.newer
+            ? words.dbNewer
+            : actions
+              ? words.dbOpenFailed
+              : words.dbFailed;
 
   return (
     <p
@@ -139,7 +144,7 @@ export function DbFailure({
                   async () => {
                     const saved = await saveReadable();
                     if (!saved) return "save";
-                    download(
+                    const writing = download(
                       backupFileName(
                         new Date(),
                         "recovered",
@@ -147,7 +152,13 @@ export function DbFailure({
                       ),
                       saved,
                     );
-                    return null;
+                    if (!writing) return null;
+                    try {
+                      await writing;
+                      return "savedToDownloads";
+                    } catch {
+                      return "backupFailed";
+                    }
                   },
                   "save",
                 );

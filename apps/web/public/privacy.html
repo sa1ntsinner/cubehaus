@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="What cubehaus keeps, where it keeps it, and what leaves your device: nothing about you or your solves." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>Privacy · cubehaus</title>
+    <style>
+      /* A static page: no script, nothing from another origin. Colours are the app's
+         tokens (src/design/tokens.css), the face is the app's own Roboto. */
+      @font-face {
+        font-family: "Roboto";
+        src: url("fonts/roboto.woff2") format("woff2");
+        font-weight: 400 600;
+        font-display: swap;
+      }
+      :root {
+        color-scheme: light dark;
+        --ground: #ffffff;
+        --ink: #000000;
+        --dim: #454545;
+        --gutter: #636363;
+        --line: #f2f2f2;
+        --double: #0349a0;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ground: #000000;
+          --ink: #ffffff;
+          --dim: #c8c8c8;
+          --gutter: #929292;
+          --line: #1a1a1a;
+          --double: #9ccbff;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        /* Inside the phone app the page fills the screen: keep clear of the status bar
+           and the home indicator. In a browser the insets are zero. */
+        padding: calc(32px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+          calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        background: var(--ground);
+        color: var(--ink);
+        font: 400 17px/1.55 "Roboto", Arial, sans-serif;
+        overflow-wrap: break-word;
+      }
+      main,
+      header {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 24px;
+        margin-bottom: 48px;
+      }
+      a {
+        color: inherit;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.2em;
+      }
+      a:focus-visible {
+        outline: 2px solid var(--double);
+        outline-offset: 3px;
+      }
+      header a {
+        display: inline-block;
+        padding: 10px 0;
+        color: var(--dim);
+        text-decoration: none;
+      }
+      header a:hover,
+      header a[aria-current] {
+        color: var(--ink);
+      }
+      header a[aria-current],
+      header .name {
+        font-weight: 600;
+      }
+      header .name {
+        color: var(--ink);
+        margin-right: auto;
+      }
+      h1 {
+        margin: 0 0 16px;
+        font-size: 32px;
+        line-height: 1.2;
+        font-weight: 600;
+      }
+      h2 {
+        margin: 48px 0 8px;
+        font-size: 20px;
+        line-height: 1.3;
+        font-weight: 600;
+      }
+      p,
+      ul {
+        margin: 0 0 16px;
+      }
+      ul {
+        padding-left: 20px;
+      }
+      li {
+        margin-bottom: 8px;
+      }
+      .lead {
+        font-size: 20px;
+        line-height: 1.45;
+      }
+      .note {
+        color: var(--dim);
+      }
+      code {
+        font: inherit;
+        color: var(--dim);
+        overflow-wrap: anywhere;
+      }
+      hr {
+        margin: 64px 0;
+        border: 0;
+        border-top: 1px solid var(--line);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="name" href="./">← cubehaus</a>
+      <a href="privacy.html" aria-current="page">Privacy</a>
+      <a href="support.html">Support</a>
+      <a href="#ru" lang="ru">По-русски</a>
+    </header>
+
+    <main>
+      <h1>Privacy</h1>
+      <p class="lead">
+        cubehaus has no account and no server of its own. Your solves stay on your device.
+        Nothing about you or your solving is sent anywhere.
+      </p>
+      <p class="note">This page covers the website, the iPhone and iPad app, and the Mac app, version 1.0. Last changed on 24 November 2026.</p>
+
+      <h2>What is kept, and where</h2>
+      <p>Your solves, sessions and settings. Nothing else is recorded: no name, no email, no location, no contacts.</p>
+      <ul>
+        <li><b>In the browser:</b> your browser keeps them on your device, in the storage it sets aside for this site (a database file in the site's private file storage, and a few settings in local storage).</li>
+        <li><b>iPhone and iPad:</b> in the app's own storage on the device. The app also keeps a copy, <code>cubehaus-backup.json</code>, in its Documents folder. Files shows it under On My iPhone › cubehaus.</li>
+        <li><b>Mac:</b> in the file <code>cubehaus.sqlite3</code> in <code>~/Library/Application Support/app.cubehaus.desktop</code>, with daily copies in the <code>Backups</code> folder beside it or in a folder you choose.</li>
+      </ul>
+
+      <h2>What is sent</h2>
+      <p>The app sends no solves, no settings and no usage data. There are no analytics, no ads, no trackers, no cookies, and no scripts or fonts from other sites. Scrambles are made on your device. A file you import is read on your device and is not uploaded.</p>
+      <p>These are all the network requests there are:</p>
+      <ul>
+        <li><b>The website.</b> Opening it downloads the app's files from its host, Cloudflare, and the page later asks the same host whether there is a new version. Like any web host, Cloudflare sees the usual details of a request: your IP address, the time, the file asked for and your browser's name. It also asks browsers to report failed connections to it. cubehaus adds no logging of its own, and your solves never reach the host.</li>
+        <li><b>The Mac app.</b> To find an update it asks GitHub for the latest release, and downloads the update from GitHub when there is one. GitHub sees that request as it sees any download. Nothing else is sent.</li>
+        <li><b>The iPhone and iPad app.</b> It makes no network requests. Updates come through the App Store.</li>
+      </ul>
+
+      <h2>Backups and files you save</h2>
+      <ul>
+        <li>On iPhone and iPad, the copy in Documents is part of your own iCloud or computer backup, if you use one. That backup is yours, under your Apple account. cubehaus has no access to it.</li>
+        <li>A file you save or share from the app (a backup, an export) goes where you send it and nowhere else.</li>
+      </ul>
+
+      <h2>Deleting your data</h2>
+      <ul>
+        <li><b>In the app:</b> delete a solve or a session. It waits in the trash for 30 days, then it is gone.</li>
+        <li><b>Everything, in the browser:</b> remove this site's data in the browser's settings.</li>
+        <li><b>Everything, on iPhone or iPad:</b> delete the app. Its history and the copy in Documents go with it. A copy inside an older phone backup stays until that backup is replaced or deleted.</li>
+        <li><b>Everything, on the Mac:</b> delete the app, the folder <code>~/Library/Application Support/app.cubehaus.desktop</code>, and the backup folder if you chose another one.</li>
+      </ul>
+      <p>There is nothing to ask anyone to delete: no copy of your data exists outside your devices and your own backups.</p>
+
+      <h2>Questions</h2>
+      <p>
+        Write an issue at
+        <a href="https://github.com/sa1ntsinner/cubehaus/issues">github.com/sa1ntsinner/cubehaus/issues</a>.
+        Issues are public and GitHub's own privacy terms apply there, so leave out anything private.
+      </p>
+      <p>cubehaus is open source. The code that this page describes can be read at <a href="https://github.com/sa1ntsinner/cubehaus">github.com/sa1ntsinner/cubehaus</a>.</p>
+
+      <hr />
+
+      <div id="ru" lang="ru">
+        <p><a href="./">← cubehaus</a></p>
+        <h1>Приватность</h1>
+        <p class="lead">
+          У cubehaus нет аккаунтов и нет своего сервера. Ваши сборки остаются на вашем
+          устройстве. Никакие сведения о вас и ваших сборках никуда не отправляются.
+        </p>
+        <p class="note">Страница относится к сайту, приложению для iPhone и iPad и приложению для Mac, версия 1.0. Последнее изменение: 24 ноября 2026 года.</p>
+
+        <h2>Что хранится и где</h2>
+        <p>Ваши сборки, сессии и настройки. Больше ничего не записывается: ни имя, ни почта, ни местоположение, ни контакты.</p>
+        <ul>
+          <li><b>В браузере:</b> браузер хранит их на вашем устройстве, в месте, отведённом этому сайту (файл базы данных в закрытом файловом хранилище сайта и несколько настроек в локальном хранилище).</li>
+          <li><b>iPhone и iPad:</b> в собственном хранилище приложения на устройстве. Приложение также держит копию, <code>cubehaus-backup.json</code>, в своей папке «Документы». В «Файлах» она видна в разделе «На iPhone» › cubehaus.</li>
+          <li><b>Mac:</b> в файле <code>cubehaus.sqlite3</code> в папке <code>~/Library/Application Support/app.cubehaus.desktop</code>, с ежедневными копиями в папке <code>Backups</code> рядом или в папке, которую вы выбрали.</li>
+        </ul>
+
+        <h2>Что отправляется</h2>
+        <p>Приложение не отправляет ни сборки, ни настройки, ни данные об использовании. Нет аналитики, рекламы, трекеров, cookie, нет скриптов и шрифтов с других сайтов. Скрамблы создаются на вашем устройстве. Файл, который вы импортируете, читается на устройстве и никуда не загружается.</p>
+        <p>Вот все сетевые запросы, какие есть:</p>
+        <ul>
+          <li><b>Сайт.</b> Когда вы его открываете, файлы приложения загружаются с хостинга Cloudflare, а позже страница спрашивает у него же, не вышла ли новая версия. Как любой хостинг, Cloudflare видит обычные сведения о запросе: IP-адрес, время, запрошенный файл и название браузера. Он также просит браузеры сообщать ему о неудавшихся соединениях. cubehaus не ведёт собственных журналов, и ваши сборки до хостинга не доходят.</li>
+          <li><b>Приложение для Mac.</b> Чтобы найти обновление, оно спрашивает у GitHub последний выпуск и загружает обновление с GitHub, когда оно есть. GitHub видит этот запрос так же, как любую загрузку. Больше ничего не отправляется.</li>
+          <li><b>Приложение для iPhone и iPad.</b> Оно не делает сетевых запросов. Обновления приходят через App Store.</li>
+        </ul>
+
+        <h2>Резервные копии и сохранённые файлы</h2>
+        <ul>
+          <li>На iPhone и iPad копия в «Документах» входит в вашу резервную копию в iCloud или на компьютере, если вы ими пользуетесь. Эта копия ваша, под вашей учётной записью Apple. У cubehaus нет к ней доступа.</li>
+          <li>Файл, который вы сохраняете или отправляете из приложения (резервная копия, экспорт), попадает туда, куда вы его отправили, и больше никуда.</li>
+        </ul>
+
+        <h2>Как удалить данные</h2>
+        <ul>
+          <li><b>В приложении:</b> удалите сборку или сессию. Она 30 дней лежит в корзине, затем исчезает.</li>
+          <li><b>Всё, в браузере:</b> удалите данные этого сайта в настройках браузера.</li>
+          <li><b>Всё, на iPhone или iPad:</b> удалите приложение. История и копия в «Документах» удалятся вместе с ним. Копия внутри старой резервной копии телефона остаётся, пока ту не заменят или не удалят.</li>
+          <li><b>Всё, на Mac:</b> удалите приложение, папку <code>~/Library/Application Support/app.cubehaus.desktop</code> и папку с копиями, если вы выбрали другую.</li>
+        </ul>
+        <p>Просить кого-то об удалении не нужно: копий ваших данных нет нигде, кроме ваших устройств и ваших собственных резервных копий.</p>
+
+        <h2>Вопросы</h2>
+        <p>
+          Напишите на
+          <a href="https://github.com/sa1ntsinner/cubehaus/issues">github.com/sa1ntsinner/cubehaus/issues</a>.
+          Обращения там видны всем, и действуют правила конфиденциальности самого GitHub, поэтому не пишите ничего личного.
+        </p>
+        <p>cubehaus открыт. Код, который описывает эта страница, можно прочитать на <a href="https://github.com/sa1ntsinner/cubehaus">github.com/sa1ntsinner/cubehaus</a>.</p>
+      </div>
+    </main>
+  </body>
+</html>

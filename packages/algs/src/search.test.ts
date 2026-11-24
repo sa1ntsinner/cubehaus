@@ -1,4 +1,5 @@
 import { writeFileSync } from "node:fs";
+import { solve333 } from "@cubehaus/scramble/cubing";
 import {
   backAlg,
   F2L_CASES,
@@ -7,6 +8,7 @@ import {
 } from "@cubehaus/scramble/f2l-state";
 import { describe, expect, it } from "vitest";
 import { turned } from "./build";
+import { cmllCases, cmllScramble, cmllTables, searchCase } from "./cmll";
 import { collCases, collState } from "./coll";
 import { f2lTables, searchF2l } from "./f2l-search";
 import { searchLL, tables } from "./search";
@@ -118,4 +120,41 @@ describe.runIf(process.env.ALGS_SEARCH === "1")("F2L back right search", () => {
       `${JSON.stringify(out, null, 2)}\n`,
     );
   }, 1_200_000);
+});
+
+/**
+ * Writes `candidates/cmll-search.json` (for every CMLL case and each of its four angles,
+ * the shortest algorithms in R, U and F and those up to two turns longer, up to 60 an
+ * angle) and `candidates/cmll-scrambles.json` (eight drill scrambles a case from cubing's
+ * solver, a fixed seed a case). Run with ALGS_SEARCH=1 and `-t "CMLL search"`.
+ */
+describe.runIf(process.env.ALGS_SEARCH === "1")("CMLL search", () => {
+  it("writes the CMLL candidates our search finds and the drill scrambles", async () => {
+    const puzzle = await kpuzzle();
+    const t = cmllTables(puzzle);
+    const searched: Record<string, string[]> = {};
+    const scrambles: Record<string, string[]> = {};
+    const started = Date.now();
+    for (const [n, c] of cmllCases().entries()) {
+      searched[c.key] = searchCase(t, c.key);
+      let seed = 4200 + n;
+      const rng = () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 2 ** 32;
+      };
+      const list: string[] = [];
+      for (let i = 0; i < 8; i++)
+        list.push(await cmllScramble(puzzle, c.key, rng, solve333));
+      scrambles[c.key] = list;
+    }
+    process.stdout.write(`CMLL search: ${Date.now() - started} ms\n`);
+    writeFileSync(
+      new URL("./candidates/cmll-search.json", import.meta.url),
+      `${JSON.stringify(searched, null, 2)}\n`,
+    );
+    writeFileSync(
+      new URL("./candidates/cmll-scrambles.json", import.meta.url),
+      `${JSON.stringify(scrambles, null, 2)}\n`,
+    );
+  }, 3_600_000);
 });

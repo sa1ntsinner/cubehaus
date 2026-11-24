@@ -1,0 +1,131 @@
+/* What the chosen files will add, before anything is written: their sessions as a plain
+   table (name, puzzle, solves in mono), what stays out in `warn`, then go ahead or not. */
+[data-part="import-preview"] {
+  margin-top: var(--s4);
+  animation: preview-in 160ms var(--ease);
+}
+@keyframes preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+[data-part="settings"] [data-part="import-sessions"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--s5);
+}
+[data-part="settings"] [data-part="import-sessions"] li {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: baseline;
+  min-height: 32px;
+  padding-block: var(--s1);
+}
+[data-part="import-sessions"] li > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-part="import-sessions"] li > span:nth-child(2) {
+  color: var(--dim);
+}
+[data-part="import-sessions"] li > span:last-child {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  color: var(--dim);
+}
+/* A CubeTime file names no puzzle: its row is a name to edit, on the hairline every field
+   has, and the puzzle as a choice like the settings above. */
+[data-action="import-session-name"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: var(--s1) 0;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  caret-color: var(--prime);
+  text-overflow: ellipsis;
+  transition: border-color 120ms ease;
+}
+[data-action="import-session-name"]::placeholder {
+  color: var(--gutter);
+}
+@media (hover: hover) {
+  [data-action="import-session-name"]:hover:enabled {
+    border-bottom-color: var(--gutter);
+  }
+}
+[data-action="import-session-name"]:focus {
+  outline: none;
+  border-bottom-color: var(--dim);
+}
+[data-action="import-session-name"]:invalid {
+  border-bottom-color: var(--warn);
+}
+/* A phone zooms into a field set smaller than 16px. */
+@media (pointer: coarse) {
+  [data-action="import-session-name"] {
+    font-size: 16px;
+  }
+}
+:is(
+  [data-part="import-here"],
+  [data-part="import-penalized"],
+  [data-part="import-csv-penalties"],
+  [data-part="import-csv-zone"]
+) {
+  margin: var(--s3) 0 0;
+  color: var(--dim);
+}
+[data-part="import-issue"] {
+  margin: var(--s3) 0 0;
+  color: var(--warn);
+}
+/* The words line up with the list; the padding gives the focus ring room around them. */
+[data-part="import-actions"] {
+  display: flex;
+  gap: var(--s3);
+  margin: var(--s4) 0 0 calc(-1 * var(--s2));
+}
+[data-part="import-actions"] button {
+  min-height: 44px;
+  padding-inline: var(--s2);
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 140ms var(--ease);
+}
+[data-part="import-actions"] button:active:enabled {
+  transform: scale(0.96);
+}
+[data-part="import-actions"] [data-action="import-cancel"]:not(:only-child) {
+  font-weight: 500;
+  color: var(--dim);
+}
+@media (hover: hover) {
+  [data-part="import-actions"] button:hover:enabled {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+[data-part="import-actions"] button:focus-visible {
+  outline: 2px solid var(--double);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+[data-part="import-actions"] button:disabled {
+  color: var(--gutter);
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-part="import-preview"] {
+    animation: none;
+  }
+}

@@ -1,5 +1,5 @@
 import { F2L_CASES, f2lState, f2lStickers } from "@cubehaus/scramble/f2l-state";
-import { F2L } from "./data/f2l";
+import { F2L_RANKS } from "./data/f2l-ranks";
 
 /**
  * A learner's order for the 41 F2L cases, read from the model, with no published numbering
@@ -130,7 +130,6 @@ const sectionId = (f: F2lFacts) =>
 
 /** The front right keys in order: the order every slot shares. */
 const ORDER: readonly string[] = (() => {
-  const main = new Map(F2L.map((c) => [c.id.slice(4), c.algs[0]]));
   const rank = (key: string) => {
     const f = f2lFacts(key);
     return [WHERE.indexOf(f.where), f.twistRank, f.joined ? 0 : 1];
@@ -139,11 +138,11 @@ const ORDER: readonly string[] = (() => {
     const [ra, rb] = [rank(a), rank(b)];
     for (let i = 0; i < 3; i++)
       if (ra[i] !== rb[i]) return (ra[i] as number) - (rb[i] as number);
-    const ma = main.get(a)?.metrics;
-    const mb = main.get(b)?.metrics;
+    const ma = F2L_RANKS[a];
+    const mb = F2L_RANKS[b];
     return (
-      (ma?.moves ?? 0) - (mb?.moves ?? 0) ||
-      (ma?.score ?? 0) - (mb?.score ?? 0) ||
+      (ma?.[0] ?? 0) - (mb?.[0] ?? 0) ||
+      (ma?.[1] ?? 0) - (mb?.[1] ?? 0) ||
       a.localeCompare(b)
     );
   });

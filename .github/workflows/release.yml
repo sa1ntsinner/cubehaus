@@ -1,0 +1,371 @@
+name: Release
+# Builds the desktop app for a version tag (v1.0.0, v1.0.0-rc.1) and leaves it as a DRAFT
+# release: macOS signed and notarized, Linux and Windows unsigned, each with its signed
+# update file, latest.json for the updater and SHA256SUMS. Nothing is published: the
+# owner checks the draft, then publishes it by hand.
+#
+# Started by hand it is a dry run: everything is built and kept on the run for 7 days,
+# and no release is created.
+#
+# Without the signing secrets (a fork, or before they are set) the jobs still build, say
+# which secrets are missing, and no draft is created. A pull request never starts this
+# workflow. Actions are pinned to commit SHAs; the comment after each is its tag.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and keep the files on the run; create no release
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RUST_VERSION: "1.100.0"
+  NODE_VERSION: "26.13.0"
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      draft: ${{ steps.version.outputs.draft }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: version
+        name: Every place agrees on the version, and the tag names it
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          node scripts/set-version.mjs --check
+          version="$(node -p 'require("./apps/desktop/src-tauri/tauri.conf.json").version')"
+          draft=false
+          if [ "$REF_TYPE" = tag ]; then
+            if [ "$REF_NAME" != "v$version" ]; then
+              echo "::error::the tag is $REF_NAME, the version in the tree is $version (expected tag v$version)"
+              exit 1
+            fi
+            [ "$DRY_RUN" = true ] || draft=true
+          elif [ "$DRY_RUN" != true ]; then
+            echo "::error::a release is made from a tag: push v$version, or start this again with dry_run on"
+            exit 1
+          fi
+          {
+            echo "version=$version"
+            echo "tag=v$version"
+            echo "draft=$draft"
+          } >> "$GITHUB_OUTPUT"
+          echo "version $version, draft release: $draft"
+
+  macos:
+    needs: version
+    runs-on: macos-15
+    timeout-minutes: 90
+    outputs:
+      signed: ${{ steps.secrets.outputs.signed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: secrets
+        name: Are the signing secrets set?
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD != '' }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY != '' }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER != '' }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 != '' }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' }}
+        run: |
+          missing=""
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+            APPLE_TEAM_ID APPLE_API_KEY APPLE_API_ISSUER APPLE_API_KEY_P8 \
+            TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            [ "${!name}" = true ] || missing="$missing $name"
+          done
+          if [ -z "$missing" ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=macOS: not signed::These secrets are not set:$missing. The app is built without signing, notarization or an update signature, and no draft release will be created."
+          fi
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: rustup toolchain install "$RUST_VERSION" --profile minimal --target aarch64-apple-darwin,x86_64-apple-darwin && rustup default "$RUST_VERSION"
+      - run: pnpm install --frozen-lockfile
+      - name: Signing identity into a keychain of this job only
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          password="$(openssl rand -base64 24)"
+          echo "::add-mask::$password"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" >/dev/null
+          existing=()
+          while read -r line; do existing+=("$(printf '%s' "$line" | tr -d '"')"); done < <(security list-keychains -d user)
+          security list-keychains -d user -s "$keychain" "${existing[@]}"
+          rm "$RUNNER_TEMP/certificate.p12"
+      - name: Keys as files of this job only
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$TAURI_SIGNING_PRIVATE_KEY" > "$RUNNER_TEMP/updater.key"
+      - name: Build, sign, notarize, staple
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+          TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ runner.temp }}/updater.key
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          scripts/release-macos.sh "$RUNNER_TEMP/out"
+          mkdir -p "$RUNNER_TEMP/release"
+          cp "$RUNNER_TEMP"/out/*.dmg "$RUNNER_TEMP"/out/cubehaus.app.tar.gz "$RUNNER_TEMP"/out/cubehaus.app.tar.gz.sig "$RUNNER_TEMP/release/"
+      - name: Build without signing
+        if: steps.secrets.outputs.signed != 'true'
+        run: |
+          pnpm --filter @cubehaus/web build
+          (cd apps/desktop && pnpm exec tauri build --target universal-apple-darwin --bundles app,dmg)
+          mkdir -p "$RUNNER_TEMP/release"
+          cp apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg "$RUNNER_TEMP/release/"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-macos
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove the keychain and key files
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/release.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/certificate.p12" "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/updater.key"
+
+  linux:
+    needs: version
+    # The pinned container build of scripts/release-linux.sh, then its checks in clean
+    # containers. x86_64 only.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    outputs:
+      signed: ${{ steps.secrets.outputs.signed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: secrets
+        name: Is the updater key set?
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' }}
+        run: |
+          if [ "$TAURI_SIGNING_PRIVATE_KEY" = true ] && [ "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" = true ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Linux: no update signature::TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PASSWORD is not set. The packages are built, the AppImage gets no update signature, and no draft release will be created."
+          fi
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      # The host needs only the Tauri CLI, to sign the AppImage after the build.
+      - run: pnpm install --frozen-lockfile
+      - name: Updater key as a file of this job only
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$TAURI_SIGNING_PRIVATE_KEY" > "$RUNNER_TEMP/updater.key"
+      - name: Build in the container and check the packages
+        env:
+          ARCHES: amd64
+          JOBS: "4"
+          # Empty without the key: the script then signs nothing.
+          TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ steps.secrets.outputs.signed == 'true' && format('{0}/updater.key', runner.temp) || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          scripts/release-linux.sh all "$RUNNER_TEMP/linux"
+          mkdir -p "$RUNNER_TEMP/release"
+          cp "$RUNNER_TEMP"/linux/amd64/*.deb "$RUNNER_TEMP"/linux/amd64/*.AppImage "$RUNNER_TEMP/release/"
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY_PATH" ]; then
+            cp "$RUNNER_TEMP"/linux/amd64/*.AppImage.sig "$RUNNER_TEMP/release/"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-linux
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove the key file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/updater.key"
+
+  windows:
+    needs: version
+    # No Authenticode signature yet: SmartScreen warns on first start. The update
+    # signature below is the updater's own and does not change that.
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      signed: ${{ steps.secrets.outputs.signed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: secrets
+        name: Is the updater key set?
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' }}
+        run: |
+          if [ "$TAURI_SIGNING_PRIVATE_KEY" = true ] && [ "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" = true ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Windows: no update signature::TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PASSWORD is not set. The installer is built, gets no update signature, and no draft release will be created."
+          fi
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: rustup toolchain install "$RUST_VERSION" --profile minimal && rustup default "$RUST_VERSION"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cubehaus/web build
+      - name: Build the installer
+        working-directory: apps/desktop
+        run: pnpm exec tauri build --bundles nsis
+      - name: Sign the installer for the updater
+        if: steps.secrets.outputs.signed == 'true'
+        working-directory: apps/desktop
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          # --app-version binds the signature to the version (requireSignedVersion).
+          for file in src-tauri/target/release/bundle/nsis/*-setup.exe; do
+            pnpm exec tauri signer sign --app-version "$VERSION" "$file"
+          done
+      - name: Files for the release
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          cp apps/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe* "$RUNNER_TEMP/release/"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-windows
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 7
+
+  files:
+    needs: [version, macos, linux, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      complete: ${{ steps.manifest.outputs.complete }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/release
+      - id: manifest
+        name: latest.json and SHA256SUMS
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
+          SIGNED: ${{ needs.macos.outputs.signed == 'true' && needs.linux.outputs.signed == 'true' && needs.windows.outputs.signed == 'true' }}
+        run: |
+          if [ "$SIGNED" = true ]; then
+            node scripts/release-manifest.mjs "$RUNNER_TEMP/release" "$VERSION" \
+              "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+            cat "$RUNNER_TEMP/release/latest.json"
+            echo "complete=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "complete=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=No draft release::A build above is not signed (see its warning), so there is no latest.json and no draft release. The unsigned files are kept on this run."
+          fi
+          (cd "$RUNNER_TEMP/release" && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: all-files
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 7
+
+  draft:
+    needs: [version, files]
+    if: needs.version.outputs.draft == 'true' && needs.files.outputs.complete == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: all-files
+          path: ${{ runner.temp }}/release
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          sed -e "s/{{VERSION}}/$VERSION/g" -e "s/{{TAG}}/$TAG/g" \
+            -e "s#{{REPOSITORY}}#$GITHUB_REPOSITORY#g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
+          prerelease=()
+          case "$TAG" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft "${prerelease[@]}" \
+            --title "cubehaus $VERSION" --notes-file "$RUNNER_TEMP/notes.md" "$RUNNER_TEMP"/release/*

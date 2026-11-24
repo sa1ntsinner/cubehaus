@@ -1,0 +1,6 @@
+[data-part="case-diagram"] {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  background: var(--pz-body);
+}

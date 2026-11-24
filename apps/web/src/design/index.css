@@ -3,16 +3,15 @@
 @import "./timer.css";
 @import "./picture.css";
 @import "./entry.css";
-@import "./settings.css";
-@import "./palette.css";
-@import "./training.css";
-@import "./average-detail.css";
-@import "./switch.css";
-@import "./grid.css";
+@import "./drill.css";
 @import "./status.css";
-@import "./progress.css";
 @import "./gestures.css";
-@import "./safe-area.css";
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+  }
+}
 
 @font-face {
   font-family: "Roboto";

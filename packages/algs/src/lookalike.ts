@@ -1,5 +1,5 @@
 import { cornerPairs } from "./collwords";
-import { lastSlotTop, pictureOf, trainerSet } from "./index";
+import { lastSlotTop, pictureOf } from "./pictures";
 import { recolour } from "./show";
 import type { SetId, TrainerCaseData } from "./types";
 
@@ -24,16 +24,21 @@ import type { SetId, TrainerCaseData } from "./types";
  *
  * The relation is symmetric: B is among A's look-alikes exactly when A is among B's.
  */
-const cache = new Map<SetId, ReadonlyMap<string, readonly string[]>>();
+const cache = new WeakMap<
+  readonly TrainerCaseData[],
+  ReadonlyMap<string, readonly string[]>
+>();
 
-export function lookalikes(set: SetId): ReadonlyMap<string, readonly string[]> {
-  const known = cache.get(set);
+export function lookalikesFor(
+  set: SetId,
+  cases: readonly TrainerCaseData[],
+): ReadonlyMap<string, readonly string[]> {
+  const known = cache.get(cases);
   if (known) return known;
-  const cases = trainerSet(set);
   const near =
     set === "pll"
       ? pllNear(cases)
-      : set === "oll" || set === "coll"
+      : set === "oll" || set === "coll" || set === "cmll"
         ? sideNear(set)
         : set === "ls-right" || set === "ls-front"
           ? lastSlotNear
@@ -53,7 +58,7 @@ export function lookalikes(set: SetId): ReadonlyMap<string, readonly string[]> {
       found.sort((x, y) => x[0] - y[0] || x[1] - y[1]).map((x) => x[2]),
     );
   });
-  cache.set(set, map);
+  cache.set(cases, map);
   return map;
 }
 
@@ -91,11 +96,11 @@ function pllNear(cases: readonly TrainerCaseData[]) {
 }
 
 /** The side stickers that differ, for a case with the same top; null for another top. */
-function sideNear(set: "oll" | "coll") {
+function sideNear(set: "oll" | "coll" | "cmll") {
   const up = (p: string) => [...p].map((c) => (c === "U" ? "U" : "x")).join("");
   const shown = (p: string) => (set === "oll" ? up(p) : p);
   return (a: TrainerCaseData, b: TrainerCaseData) => {
-    if (set === "coll" && a.group !== b.group) return null;
+    if (set !== "oll" && a.group !== b.group) return null;
     const pa = shown(pictureOf(a));
     let best: number | null = null;
     for (const t of turns) {

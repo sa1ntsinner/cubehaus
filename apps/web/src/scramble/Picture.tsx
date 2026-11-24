@@ -163,6 +163,7 @@ export function Picture({
           type="button"
           data-action="picture-enlarge"
           aria-label={label}
+          aria-expanded={zoom === "open"}
           onClick={onOpen}
         >
           <Drawing drawing={drawing} scramble={scramble} svgRef={source} />
@@ -173,6 +174,7 @@ export function Picture({
           source={source}
           line={lineRef}
           aspect={width / height}
+          label={label}
           closing={zoom === "closing"}
           onClosed={onClosed}
         >

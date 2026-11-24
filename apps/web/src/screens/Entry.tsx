@@ -104,6 +104,8 @@ function FewestClock({ words }: { words: Text }) {
     <>
       <output
         data-part="fm-clock"
+        // The hour counts down in silence, as the timer's figures run.
+        aria-live="off"
         data-warn={clock.warn}
         data-over={clock.over}
       >
@@ -341,11 +343,10 @@ export function Entry({
           {error}
         </p>
       )}
-      {feedback && (
-        <p role="status" data-part="entry-feedback">
-          {feedback}
-        </p>
-      )}
+      <p data-heard role="status">
+        {feedback}
+      </p>
+      {feedback && <p data-part="entry-feedback">{feedback}</p>}
     </form>
   );
 }

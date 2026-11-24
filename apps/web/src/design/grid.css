@@ -335,7 +335,6 @@ dialog[data-part="switch"][data-layout="grid"]
 [data-layout="grid"] [data-part="switch-menu"] > button:focus-visible {
   background: var(--line);
   color: var(--ink);
-  outline: none;
 }
 @media (hover: hover) {
   [data-layout="grid"] [data-part="switch-menu"] > button:hover {

@@ -8,14 +8,16 @@
   box-sizing: border-box;
   width: min(640px, 100%);
   margin: 0 auto;
-  padding: var(--s7) var(--s5) var(--s8);
+  /* Its own margins, or the safe area where that is larger (DESIGN.md section 4). */
+  padding: calc(var(--s7) + env(safe-area-inset-top))
+    max(var(--s5), env(safe-area-inset-right))
+    calc(var(--s8) + env(safe-area-inset-bottom))
+    max(var(--s5), env(safe-area-inset-left));
   font-family: var(--font-ui);
   font-size: 15px;
   color: var(--ink);
 }
-/* Settings and Progress open as the sheets do (palette.css): one short fade. */
-[data-part="settings"],
-main[data-part="progress"] {
+[data-part="settings"] {
   animation: sheet-in 110ms var(--ease);
 }
 [data-part="settings"] h1 {
@@ -214,7 +216,12 @@ main[data-part="progress"] {
   color: var(--dim);
 }
 [data-part="data"]
-  :is(button, [data-action="backup-restore"], [data-action="import-file"]) {
+  :is(
+    button,
+    [data-action="backup-restore"],
+    [data-action="import-file"],
+    [data-action="page-open"]
+  ) {
   display: inline-flex;
   align-items: center;
   /* Every word ends on the column's right edge, short or long. */
@@ -230,7 +237,7 @@ main[data-part="progress"] {
   cursor: pointer;
 }
 @media (hover: hover) {
-  [data-part="data"] li:hover:has(:is(button, input):enabled) {
+  [data-part="data"] li:hover:has(:is(a, button:enabled, input:enabled)) {
     background: var(--line);
   }
 }
@@ -261,141 +268,12 @@ main[data-part="progress"] {
   color: var(--dim);
 }
 
-/* What the chosen files will add, before anything is written: their sessions as a plain
-   table (name, puzzle, solves in mono), what stays out in `warn`, then go ahead or not. */
-[data-part="import-preview"] {
-  margin-top: var(--s4);
-  animation: preview-in 160ms var(--ease);
-}
-@keyframes preview-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-[data-part="settings"] [data-part="import-sessions"] {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  column-gap: var(--s5);
-}
-[data-part="settings"] [data-part="import-sessions"] li {
-  display: grid;
-  grid-template-columns: subgrid;
-  grid-column: 1 / -1;
-  align-items: baseline;
-  min-height: 32px;
-  padding-block: var(--s1);
-}
-[data-part="import-sessions"] li > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-[data-part="import-sessions"] li > span:nth-child(2) {
-  color: var(--dim);
-}
-[data-part="import-sessions"] li > span:last-child {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  text-align: end;
-  color: var(--dim);
-}
-/* A CubeTime file names no puzzle: its row is a name to edit, on the hairline every field
-   has, and the puzzle as a choice like the settings above. */
-[data-action="import-session-name"] {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  padding: var(--s1) 0;
-  color: var(--ink);
-  background: none;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  caret-color: var(--prime);
-  text-overflow: ellipsis;
-  transition: border-color 120ms ease;
-}
-[data-action="import-session-name"]::placeholder {
-  color: var(--gutter);
-}
-@media (hover: hover) {
-  [data-action="import-session-name"]:hover:enabled {
-    border-bottom-color: var(--gutter);
-  }
-}
-[data-action="import-session-name"]:focus {
-  outline: none;
-  border-bottom-color: var(--dim);
-}
-[data-action="import-session-name"]:invalid {
-  border-bottom-color: var(--warn);
-}
-/* A phone zooms into a field set smaller than 16px. */
-@media (pointer: coarse) {
-  [data-action="import-session-name"] {
-    font-size: 16px;
-  }
-}
-:is(
-  [data-part="import-here"],
-  [data-part="import-penalized"],
-  [data-part="import-csv-penalties"],
-  [data-part="import-csv-zone"]
-) {
-  margin: var(--s3) 0 0;
-  color: var(--dim);
-}
-[data-part="import-issue"] {
-  margin: var(--s3) 0 0;
-  color: var(--warn);
-}
-/* The words line up with the list; the padding gives the focus ring room around them. */
-[data-part="import-actions"] {
-  display: flex;
-  gap: var(--s3);
-  margin: var(--s4) 0 0 calc(-1 * var(--s2));
-}
-[data-part="import-actions"] button {
-  min-height: 44px;
-  padding-inline: var(--s2);
-  font-weight: 600;
-  color: var(--ink);
-  cursor: pointer;
-  transition: transform 140ms var(--ease);
-}
-[data-part="import-actions"] button:active:enabled {
-  transform: scale(0.96);
-}
-[data-part="import-actions"] [data-action="import-cancel"]:not(:only-child) {
-  font-weight: 500;
-  color: var(--dim);
-}
-@media (hover: hover) {
-  [data-part="import-actions"] button:hover:enabled {
-    color: var(--ink);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-}
-[data-part="import-actions"] button:focus-visible {
-  outline: 2px solid var(--double);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-[data-part="import-actions"] button:disabled {
-  color: var(--gutter);
-  cursor: default;
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-part="import-preview"] {
-    animation: none;
-  }
-}
-
 @media (max-width: 699px) {
   [data-part="settings"] {
-    padding: var(--s5) var(--s4) var(--s7);
+    padding: calc(var(--s5) + env(safe-area-inset-top))
+      max(var(--s4), env(safe-area-inset-right))
+      calc(var(--s7) + env(safe-area-inset-bottom))
+      max(var(--s4), env(safe-area-inset-left));
   }
   [data-part="settings"] h1 {
     margin: var(--s3) 0 var(--s5);
@@ -566,6 +444,12 @@ main[data-part="progress"] {
     margin-inline-end: calc(-1 * var(--s2));
   }
 }
+@media (pointer: coarse) {
+  [data-binding] [data-action="binding-change"] {
+    min-width: 44px;
+    justify-content: flex-end;
+  }
+}
 /* A long chord wraps in its own column rather than squeezing every name on a phone. */
 @media (max-width: 699px) {
   [data-part="binding-keys"] {
@@ -622,14 +506,11 @@ li[data-setting="training"] > span:first-child {
   }
 }
 
-[data-action="reset-sizes"],
-[data-action="theme-reset-colours"] {
+[data-action="reset-sizes"] {
   min-height: 44px;
   margin-block: var(--s2);
 }
 
-/* Custom theme (DESIGN.md section 2): each colour as its hex in mono and a small swatch at
-   the right edge, the picture and the file as words like the Data rows. */
 /* Desktop backups: the Data list's rows; a value (the folder, the newest copy's time) in
    mono `dim` before its action, a long folder cut from the left so its end shows. */
 [data-part="backups"] li > span:first-child {
@@ -698,87 +579,6 @@ li[data-setting="training"] > span:first-child {
   font-weight: 500;
   color: var(--ink);
   cursor: pointer;
-}
-
-[data-part="theme-colour"],
-[data-part="theme-picture-actions"] {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s3);
-  margin-inline-start: auto;
-}
-[data-part="theme-colour"] output {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  color: var(--dim);
-}
-[data-part="theme-colour"]:has(input[data-weak]) output {
-  color: var(--error);
-}
-[data-part="theme-editor"] li > span:first-child {
-  color: var(--dim);
-}
-@media (hover: hover) {
-  [data-part="theme-editor"] li:hover:has(:is(select, input, button):enabled) {
-    background: var(--line);
-  }
-}
-[data-part="theme-editor"] input[type="color"] {
-  box-sizing: border-box;
-  inline-size: 44px;
-  block-size: 44px;
-  margin-inline-end: calc(-1 * var(--s3));
-  padding: 12px;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-[data-part="theme-editor"] input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-[data-part="theme-editor"] input[type="color"]::-webkit-color-swatch {
-  border: 1px solid var(--gutter);
-  border-radius: 4px;
-}
-[data-part="theme-editor"] input[type="color"]::-moz-color-swatch {
-  border: 1px solid var(--gutter);
-  border-radius: 4px;
-}
-[data-part="theme-editor"] input[type="color"]:disabled {
-  cursor: default;
-  opacity: 0.4;
-}
-[data-part="theme-picture-actions"] :is(button, label) {
-  display: inline-flex;
-  align-items: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding-inline: var(--s2);
-  margin-inline-end: calc(-1 * var(--s2));
-  font-weight: 500;
-  color: var(--ink);
-  cursor: pointer;
-}
-[data-part="theme-picture-actions"] label input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-[data-part="theme-picture-actions"] label:has(input:focus-visible) {
-  outline: 2px solid var(--double);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-[data-part="theme-picture-actions"] label:has(input:disabled),
-[data-part="theme-picture-actions"] button:disabled {
-  color: var(--gutter);
-  cursor: default;
-}
-[data-part="theme-status"] {
-  min-height: 1.4em;
-  margin: var(--s2) 0 0;
-  color: var(--error);
 }
 
 /* Another timer's file: two words at the right edge, the open session or every one. They

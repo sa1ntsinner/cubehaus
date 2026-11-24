@@ -264,6 +264,12 @@ export interface Store {
      * there is none to bring back (never added, or in already).
      */
     restoreCase(setId: string, caseId: string): Promise<boolean>;
+    /** Marks or unmarks cases together, keeping any existing schedules. */
+    setCaseMembership(
+      setId: string,
+      added: readonly Pick<TrainerCase, "caseId" | "card" | "dueAt">[],
+      removed: readonly string[],
+    ): Promise<void>;
     addAttempt(attempt: TrainerAttempt): Promise<void>;
     /** Marks an attempt missed or not, with the grade that follows. */
     markAttempt(
@@ -419,6 +425,17 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
     );
     return result;
   }
+
+  const removeTrainerCaseSql =
+    "UPDATE trainer_case SET removed_at = ?, updated_at = ? WHERE set_id = ? AND case_id = ?";
+  const removeTrainerCase = (
+    setId: string,
+    caseId: string,
+    at: number,
+  ): Statement => ({
+    sql: removeTrainerCaseSql,
+    params: [at, at, setId, caseId],
+  });
 
   function insertion(
     solve: Solve,
@@ -1781,13 +1798,24 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
           ]);
         }),
       removeCase: (setId, caseId) =>
-        run(() => {
+        run(() => db.batch([removeTrainerCase(setId, caseId, now())])),
+      setCaseMembership: (setId, added, removed) =>
+        run(async () => {
+          if (added.length + removed.length === 0) return;
           const at = now();
-          return db.batch([
-            {
-              sql: "UPDATE trainer_case SET removed_at = ?, updated_at = ? WHERE set_id = ? AND case_id = ?",
-              params: [at, at, setId, caseId],
-            },
+          await db.batch([
+            ...removed.map((caseId) => ({
+              ...removeTrainerCase(setId, caseId, at),
+              sql: `${removeTrainerCaseSql} AND removed_at IS NULL`,
+            })),
+            ...added.map(({ caseId, card, dueAt }) => ({
+              sql: `INSERT INTO trainer_case (set_id, case_id, card, due_at, added_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(set_id, case_id) DO UPDATE SET
+                  removed_at = NULL, added_at = excluded.added_at, updated_at = excluded.updated_at
+                WHERE trainer_case.removed_at IS NOT NULL`,
+              params: [setId, caseId, card, dueAt, at, at],
+            })),
           ]);
         }),
       restoreCase: (setId, caseId) =>

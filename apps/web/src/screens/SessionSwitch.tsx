@@ -24,6 +24,8 @@ import {
 } from "../session-switch";
 import type { Text } from "../text";
 import { formatFileResult } from "./file-result";
+import "../design/sheet.css";
+import "../design/switch.css";
 
 type Row = Session & { last: Solve | null };
 

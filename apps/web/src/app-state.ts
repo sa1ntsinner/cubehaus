@@ -67,7 +67,7 @@ import {
   sessionSettingsKey,
 } from "./settings";
 import { text } from "./text";
-import { loadTheme, saveTheme, type ThemeDocument } from "./theme-editor";
+import { loadTheme, saveTheme, type ThemeDocument } from "./theme-document";
 import { createUndoStack } from "./undo";
 
 const defaultPageSize = 200;

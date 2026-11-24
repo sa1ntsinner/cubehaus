@@ -79,31 +79,6 @@
   }
 }
 
-/* The gestures in place of the keys: one column, what it does in ink over how in dim. */
-[data-part="keys-help"] dl[data-list="gestures"] {
-  width: min(560px, 100%);
-  columns: auto;
-}
-[data-part="keys-help"] dl[data-list="gestures"] > div {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 2px;
-  padding-block: var(--s2);
-}
-[data-part="keys-help"] dl[data-list="gestures"] dt {
-  display: block;
-  font-size: 14px;
-  color: var(--dim);
-}
-@media (max-width: 699px) {
-  dialog[data-part="keys-help"] {
-    padding: calc(var(--s4) + 44px + var(--s2) + env(safe-area-inset-top))
-      max(var(--s4), env(safe-area-inset-right))
-      calc(var(--s6) + env(safe-area-inset-bottom))
-      max(var(--s4), env(safe-area-inset-left));
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   [data-swipe-settling] {
     transition: none;
@@ -125,28 +100,6 @@
     min-width: 44px;
     min-height: 44px;
     margin-inline: -12px;
-  }
-}
-
-/* Algorithms: the touch line says the gesture where the keys line says the keys, in
-   the same quiet note (mono 13, gutter); in Learn one line over the cases. */
-[data-part="gesture-hint"] {
-  display: none;
-}
-@media (hover: none) and (pointer: coarse) {
-  [data-part="train-after"] > [data-part="gesture-hint"] {
-    display: block;
-    flex-basis: 100%;
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--gutter);
-    text-align: center;
-  }
-  [data-part="train-cases"] > [data-part="gesture-hint"] {
-    display: block;
-    margin: 0 0 var(--s3);
-    font-size: 14px;
-    color: var(--dim);
   }
 }
 

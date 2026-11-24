@@ -654,6 +654,7 @@ export async function openSeed(seed: Seed): Promise<DbState> {
   for (const solve of seededSolves(seed, session.id))
     await store.solves.add(solve);
   if (seed.state.startsWith("train")) await seedTrainer(store);
+  if (seed.state.startsWith("train-ollcp")) await seedOllcp(store);
   if (seed.state === "train-f2l-cross")
     await store.settings.set("trainer.f2lCross", "green");
   if (seed.state === "repeat" || seed.state === "repeat-long") {
@@ -870,9 +871,9 @@ export async function openSeed(seed: Seed): Promise<DbState> {
  * three F2L cases.
  */
 async function seedTrainer(store: Store): Promise<void> {
-  const { newCard, trainerSet } = await import("@cubehaus/algs");
+  const { loadTrainerSet, newCard } = await import("@cubehaus/algs/trainer");
   const now = Date.now();
-  const pll = trainerSet("pll");
+  const pll = await loadTrainerSet("pll");
   const id = (label: string) => pll.find((c) => c.label === label)?.id ?? label;
   const typical: Record<string, number> = {
     T: 1_400,
@@ -910,7 +911,7 @@ async function seedTrainer(store: Store): Promise<void> {
     "f2l-back",
     "f2l-back-left",
   ] as const) {
-    const f2l = trainerSet(setId);
+    const f2l = await loadTrainerSet(setId);
     for (const label of ["F2L 7", "F2L 13", "F2L 26"]) {
       const caseId = f2l.find((c) => c.label === label)?.id ?? label;
       const { card } = await newCard(caseId, now);
@@ -927,10 +928,24 @@ async function seedTrainer(store: Store): Promise<void> {
     "ls-right",
     "ls-front",
   ] as const)
-    for (const c of trainerSet(setId).slice(0, 2)) {
+    for (const c of (await loadTrainerSet(setId)).slice(0, 2)) {
       const { card } = await newCard(c.id, now);
       await store.trainer.putCase({ setId, caseId: c.id, card, dueAt: now });
     }
+}
+
+/** OLLCP's shots: two cases of OLL 2 and one of OLL 27 in the drills, due now. */
+async function seedOllcp(store: Store): Promise<void> {
+  const [{ newCard }, { OLLCP_INDEX }] = await Promise.all([
+    import("@cubehaus/algs/trainer"),
+    import("@cubehaus/algs/ollcp"),
+  ]);
+  const now = Date.now();
+  for (const label of ["OLL 2-1", "OLL 2-4", "OLL 27-2"]) {
+    const caseId = OLLCP_INDEX.find((c) => c.label === label)?.id ?? label;
+    const { card } = await newCard(caseId, now);
+    await store.trainer.putCase({ setId: "ollcp", caseId, card, dueAt: now });
+  }
 }
 
 /** The desktop's copies as the Settings shots show them: a week, one a day. */

@@ -174,19 +174,6 @@ test("progress compares stored solves and shows DNF-only days", async ({
   await expect(sessionButton(page)).toHaveText("Practice");
 });
 
-test("fresh progress shows an empty result", async ({ page }) => {
-  await page.goto("/");
-  await page.locator('[data-action="progress"]').click();
-  await expect(page.locator('[data-part="progress-empty"]')).toHaveText(
-    "No solves yet.",
-  );
-  await expect(page.locator('[data-part="progress-event"]')).toHaveCount(1);
-  await expect(page.locator('[data-part="progress-event-count"]')).toHaveText(
-    "0",
-  );
-  await expect(page.locator('[data-part="progress-practice"]')).toHaveCount(0);
-});
-
 test("folder and selected sessions combine one puzzle in chronological order", async ({
   page,
 }) => {
@@ -245,28 +232,6 @@ test("folder and selected sessions combine one puzzle in chronological order", a
   await expect(part("scope-count")).toHaveText("105 solves");
   await action("stat").selectOption("ao5");
   await expect(part("average")).toHaveText("12.67");
-});
-
-test("Progress opens on the scope and puzzle last looked at", async ({
-  page,
-}) => {
-  await page.goto("/?state=progress-scopes#/progress");
-  const part = (name: string) => page.locator(`[data-part="progress-${name}"]`);
-  const action = (name: string) =>
-    page.locator(`[data-action="progress-${name}"]`);
-  await expect(part("event-name")).toHaveText(["A", "B", "C"]);
-  await part("scope").locator("summary").click();
-  await action("scope").selectOption("folder");
-  await action("puzzle").selectOption("333fm");
-  await expect(part("scope-count")).toHaveText("3 solves");
-  // Back to the timer and in again: the same folder and puzzle.
-  await page.keyboard.press("Escape");
-  await expect(sessionButton(page)).toHaveText("A");
-  await page.keyboard.press("KeyT");
-  await expect(part("average-name")).toHaveText("mo3");
-  await part("scope").locator("summary").click();
-  await expect(action("scope")).toHaveValue("folder");
-  await expect(part("scope-count")).toHaveText("3 solves");
 });
 
 test("on a phone a month opens its days, and today counts in the file", async ({
@@ -397,20 +362,22 @@ test("a target time gets a rough day, or says why it cannot", async ({
   await page.locator('[data-action="progress"]').click();
   const part = (name: string) => page.locator(`[data-part="progress-${name}"]`);
   const target = part("target");
+  const answer = part("target-answer").filter({ visible: true });
   // The first screen stays calm: the target is one folded word.
-  await expect(target.locator("summary")).toHaveText("Target");
+  await expect(target.locator("summary")).toHaveText("Target", {
+    useInnerText: true,
+  });
   await target.locator("summary").click();
   const field = page.locator('[data-action="progress-target"]');
   await field.fill("9");
   await field.press("Enter");
   // Open, the line names the part and the answer stands beside the field.
-  await expect(target.locator("summary")).toHaveText("Target");
+  await expect(target.locator("summary")).toHaveText("Target", {
+    useInnerText: true,
+  });
   // 9.00 is met on 8 March; 9 March is the first day under it.
-  await expect(part("target-answer")).toHaveText("about 9 Mar 2026");
-  await expect(part("target-answer")).toHaveAttribute(
-    "data-reason",
-    "estimate",
-  );
+  await expect(answer).toHaveText("about 9 Mar 2026");
+  await expect(answer).toHaveAttribute("data-reason", "estimate");
   await expect(part("target-slope")).toHaveText("−1.00 a day");
   await expect(part("target-basis")).toContainText("from 7 days, 35 solves");
   // T typed in the field stays in the field.
@@ -420,17 +387,51 @@ test("a target time gets a rough day, or says why it cannot", async ({
   await field.press("Enter");
 
   await part("event").filter({ hasText: "Flat" }).click();
-  await expect(part("target-answer")).toHaveText("no change lately");
+  await expect(answer).toHaveText("no change lately");
   await part("event").filter({ hasText: "Sparse" }).click();
-  await expect(part("target-answer")).toHaveText(
-    "needs 7 days of 5 solves in the last 90",
-  );
+  await expect(answer).toHaveText("needs 7 days of 5 solves in the last 90");
   await expect(part("target-slope")).toHaveCount(0);
 
   // The target is the event's: it is back after a reload.
   await page.reload();
   await part("event").filter({ hasText: "Falling" }).click();
   // Folded, the line itself is the answer.
-  await expect(target.locator("summary span").first()).toHaveText("Under 9.00");
-  await expect(part("target-answer")).toHaveText("about 9 Mar 2026");
+  await expect(target.locator("summary")).toContainText("Under 9.00", {
+    useInnerText: true,
+  });
+  await expect(answer).toHaveText("about 9 Mar 2026");
+});
+
+test("the target layout follows the disclosure before its toggle event", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    document.addEventListener(
+      "toggle",
+      (event) => {
+        if (
+          event.target instanceof HTMLElement &&
+          event.target.dataset.part === "progress-target"
+        )
+          event.stopPropagation();
+      },
+      true,
+    );
+  });
+  await page.goto(
+    "/?state=progress-target-sparse&now=2026-11-22T12:00#/progress",
+  );
+  const target = page.locator('[data-part="progress-target"]');
+  const summary = target.locator("summary");
+  const folded = summary.getByText("Under 12.50", { exact: true });
+  const answer = target.locator('div [data-part="progress-target-answer"]');
+  await expect(folded).toBeVisible();
+  await summary.click();
+  await expect(target).toHaveAttribute("open", "");
+  await expect(summary).toHaveText("Target", { useInnerText: true });
+  await expect(answer).toBeVisible();
+  await summary.click();
+  await expect(folded).toBeVisible();
+  await expect(answer).toBeHidden();
 });

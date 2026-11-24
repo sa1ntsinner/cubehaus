@@ -14,6 +14,8 @@ import {
 import type { AppState, AppView } from "../app-state";
 import { titleField } from "../input/fields";
 import { actionKey } from "../keys/keymap";
+import { vibrate } from "../phone-app";
+import { puzzleGlyph } from "../puzzle-glyph";
 import {
   cleanName,
   containerIds,
@@ -38,6 +40,7 @@ import type { Text } from "../text";
 import { formatFileResult } from "./file-result";
 import { FolderGlyph, PuzzleGlyph } from "./PuzzleGlyph";
 import { officialNote } from "./SessionSwitch";
+import "../design/grid.css";
 
 /** What the screen shows: the sessions, the archive, the trash, the puzzle picker for a
  * new session, or the sessions picked ones can merge into. */
@@ -1025,7 +1028,7 @@ export function SessionGrid({
       place: { parent, index },
       target: null,
     });
-    navigator.vibrate?.(10);
+    vibrate([10]);
     cancelAnimationFrame(autoScroll.current);
     autoScroll.current = requestAnimationFrame(() => handlers.current.scroll());
   }
@@ -1475,9 +1478,17 @@ export function SessionGrid({
       case "create":
         return `${t.create(tile.name)}, ${eventInfo(tile.event).label}`;
       case "trashed":
-        return t.restore(tile.name, tile.left);
-      case "session":
-        return `${tile.name}, ${eventInfo(tile.event).label}`;
+      case "session": {
+        const mark = puzzleGlyph(tile.event).mark;
+        const name = mark ? `${mark} ${tile.name}` : tile.name;
+        if (tile.kind === "trashed")
+          return `${name}, ${tile.note}, ${tile.left}. ${t.restore}`;
+        const archived =
+          tile.archived && place === "list" ? t.archivedMark : null;
+        return [name, archived, eventInfo(tile.event).label]
+          .filter(Boolean)
+          .join(", ");
+      }
       case "event":
         return place === "new"
           ? [tile.name, officialName(tile.event, language), tile.note]
@@ -1831,7 +1842,8 @@ export function SessionGrid({
           <button
             type="button"
             data-action="switch-back"
-            aria-label={t.back}
+            // The word on show comes first in the name, so it can be asked for by voice.
+            aria-label={`${heading}, ${t.back}`}
             onClick={() => goTo("list")}
           >
             <span aria-hidden="true">‹</span>
@@ -2000,8 +2012,11 @@ export function SessionGrid({
           </button>
         </p>
       )}
+      <p data-heard role="status">
+        {notice?.text}
+      </p>
       {notice && (
-        <p data-part="switch-undo" role="status">
+        <p data-part="switch-undo">
           {notice.text}
           {notice.undo && (
             <button type="button" data-action="switch-undo" onClick={undo}>

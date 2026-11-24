@@ -14,7 +14,7 @@ import {
   switchSession,
 } from "./helpers";
 
-// Drill scrambles on the ordinary timer (plan task 29): the sheet, the line under the
+// Drill scrambles on the ordinary timer: the sheet, the line under the
 // scramble, the cross solution, and the scramble saved with the solve.
 
 const sheet = (page: Page) => page.locator('dialog[data-part="training"]');
@@ -220,24 +220,6 @@ test("a search that runs too long ends and leaves the timer working", async ({
   await expect(action(page, "drill-retry")).toBeVisible();
   await keyboardSolve(page);
   await expect(page.locator("[data-solve-id]")).toHaveCount(1);
-});
-
-test("the sheet and the line in Russian", async ({ page }) => {
-  await page.goto("/#/settings/look");
-  await page.locator("#setting-language").selectOption("ru");
-  await page.locator('[data-action="settings-close"]').click();
-  await readyScramble(page);
-  await page.keyboard.press("KeyL");
-  await expect(sheet(page).locator("legend")).toHaveText(
-    "Тренировочные скрамблы",
-  );
-  await pickDrill(page, "easy-cross");
-  await closeSheet(page);
-  await expect(line(page)).toContainText("Отработка: белый крест, 4 хода");
-  await readyScramble(page);
-  await action(page, "drill-solution").click();
-  await expect(solution(page)).toHaveText(/ \(4\)$/);
-  await expect(action(page, "drill-solution")).toHaveText("Скрыть");
 });
 
 test.describe("on a phone", () => {

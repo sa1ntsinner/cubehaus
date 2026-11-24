@@ -6,6 +6,28 @@
  * `error` time for an attempt marked missed.
  */
 
+/* Algorithms: the touch line says the gesture where the keys line says the keys, in
+   the same quiet note (mono 13, gutter); in Learn one line over the cases. */
+[data-part="gesture-hint"] {
+  display: none;
+}
+@media (hover: none) and (pointer: coarse) {
+  [data-part="train-after"] > [data-part="gesture-hint"] {
+    display: block;
+    flex-basis: 100%;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gutter);
+    text-align: center;
+  }
+  [data-part="train-cases"] > [data-part="gesture-hint"] {
+    display: block;
+    margin: 0 0 var(--s3);
+    font-size: 14px;
+    color: var(--dim);
+  }
+}
+
 main[data-part="train"] {
   box-sizing: border-box;
   width: min(960px, 100%);
@@ -16,19 +38,23 @@ main[data-part="train"] {
   font-size: 15px;
   color: var(--ink);
 }
-main[data-part="train"] > nav a {
+/* The way back, and in the same form OLLCP's way back from a group to its first list. */
+main[data-part="train"] > nav a,
+[data-action="train-group-close"] {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   color: var(--dim);
 }
-main[data-part="train"] > nav a::before {
+main[data-part="train"] > nav a::before,
+[data-action="train-group-close"]::before {
   content: "←";
   margin-inline-end: var(--s2);
   font-family: var(--font-mono);
 }
 @media (hover: hover) {
-  main[data-part="train"] > nav a:hover {
+  main[data-part="train"] > nav a:hover,
+  [data-action="train-group-close"]:hover {
     color: var(--ink);
   }
 }
@@ -398,6 +424,16 @@ main[data-part="train"]
 [data-part="train-algs"][data-others] [data-part="train-alg"] {
   font-size: 16px;
   color: var(--dim);
+}
+@media (pointer: coarse) {
+  /* A finger tells the way back from `All` under it: 8 px between the two. */
+  [data-action="train-group-close"] {
+    margin-bottom: var(--s2);
+  }
+}
+/* OLLCP: while a group's algorithms load, their room is kept and nothing is drawn. */
+[data-part="train-algs-wait"] {
+  visibility: hidden;
 }
 [data-part="train-case-actions"] {
   margin: var(--s4) 0 0;

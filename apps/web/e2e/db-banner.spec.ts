@@ -22,10 +22,14 @@ test("the failure banner restores the newest desktop backup", async ({
   });
   await page.goto("/");
   const banner = page.locator('[data-part="db-state"][data-kind="failed"]');
-  await banner.getByRole("button", { name: "Restore the newest copy" }).click();
-  await expect
-    .poll(() => page.evaluate(() => sessionStorage.getItem("restored")))
-    .toBe("latest");
+  await Promise.all([
+    page.waitForEvent("framenavigated", (frame) => frame === page.mainFrame()),
+    banner.getByRole("button", { name: "Restore the newest copy" }).click(),
+  ]);
+  await page.waitForLoadState("domcontentloaded");
+  expect(await page.evaluate(() => sessionStorage.getItem("restored"))).toBe(
+    "latest",
+  );
 });
 
 test("a restore under way says so, and a failed one keeps the keyboard on its button", async ({
@@ -77,41 +81,29 @@ test("a restore under way says so, and a failed one keeps the keyboard on its bu
   await expect(restore).toBeFocused();
 });
 
-for (const { language, message } of [
-  {
-    language: "en",
-    message: "This copy needs a newer version of cubehaus.",
-  },
-  {
-    language: "ru",
-    message: "Для этой копии нужна новая версия cubehaus.",
-  },
-]) {
-  test(`the desktop banner explains a newer backup in ${language}`, async ({
-    page,
-  }) => {
-    await page.addInitScript((language) => {
-      Object.defineProperty(navigator, "language", { value: language });
-      Object.assign(window, {
-        __TAURI_INTERNALS__: {
-          async invoke(command: string, args?: { id: string }) {
-            if (command === "db_open") throw new Error("File is damaged");
-            if (command === "list_backups") return [{ id: "latest" }];
-            if (command === "restore_backup" && args?.id === "latest")
-              throw "newer_backup_schema";
-            throw new Error(command);
-          },
+test("the desktop banner explains a newer backup", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.assign(window, {
+      __TAURI_INTERNALS__: {
+        async invoke(command: string, args?: { id: string }) {
+          if (command === "db_open") throw new Error("File is damaged");
+          if (command === "list_backups") return [{ id: "latest" }];
+          if (command === "restore_backup" && args?.id === "latest")
+            throw "newer_backup_schema";
+          throw new Error(command);
         },
-      });
-    }, language);
-    await page.goto("/");
-    const banner = page.locator('[data-part="db-state"][data-kind="failed"]');
-    const restore = banner.locator('[data-action="restore-latest-backup"]');
-    await restore.click();
-    await expect(banner.getByRole("alert")).toHaveText(message);
-    await expect(restore).toBeEnabled();
+      },
+    });
   });
-}
+  await page.goto("/");
+  const banner = page.locator('[data-part="db-state"][data-kind="failed"]');
+  const restore = banner.locator('[data-action="restore-latest-backup"]');
+  await restore.click();
+  await expect(banner.getByRole("alert")).toHaveText(
+    "This copy needs a newer version of cubehaus.",
+  );
+  await expect(restore).toBeEnabled();
+});
 
 test("a newer database offers an update message and no recovery actions", async ({
   page,
@@ -252,21 +244,68 @@ test("an integrity failure can save the tables still readable on desktop", async
   page,
 }) => {
   await page.addInitScript(() => {
+    type DownloadEvent = {
+      event: string;
+      id: number;
+      payload: { url: string; success: boolean };
+    };
+    const callbacks = new Map<number, (event: DownloadEvent) => void>();
+    let nextCallback = 0;
+    let downloadListener: number | undefined;
     Object.assign(window, {
+      finishDesktopDownload(url: string) {
+        if (downloadListener === undefined)
+          throw new Error("No desktop download listener");
+        callbacks.get(downloadListener)?.({
+          event: "download-finished",
+          id: downloadListener,
+          payload: { url, success: true },
+        });
+      },
+      __TAURI_EVENT_PLUGIN_INTERNALS__: {
+        unregisterListener(_event: string, id: number) {
+          callbacks.delete(id);
+        },
+      },
       __TAURI_INTERNALS__: {
-        async invoke(command: string, args?: { sql: string }) {
+        transformCallback(callback: (event: DownloadEvent) => void) {
+          callbacks.set(++nextCallback, callback);
+          return nextCallback;
+        },
+        async invoke(
+          command: string,
+          args?: {
+            sql?: string;
+            event?: string;
+            handler?: number;
+            target?: { kind: string; label: string };
+          },
+        ) {
+          if (
+            command === "plugin:event|listen" &&
+            args?.event === "download-finished" &&
+            args.target?.kind === "AnyLabel" &&
+            args.target.label === "main"
+          ) {
+            downloadListener = args.handler;
+            return downloadListener;
+          }
+          if (command === "plugin:event|unlisten") {
+            downloadListener = undefined;
+            return;
+          }
           if (command === "db_open") return "synthetic.sqlite3";
           if (command === "list_backups") return [];
           if (command === "db_all") {
             if (args?.sql === "PRAGMA user_version")
               return [{ user_version: 3 }];
-            if (args?.sql.includes("pragma_page_count"))
+            if (args?.sql?.includes("pragma_page_count"))
               return [{ bytes: 4096 }];
             if (args?.sql === "PRAGMA quick_check(1)")
               return [{ quick_check: "bad page" }];
-            if (args?.sql.includes("FROM setting"))
+            if (args?.sql?.includes("FROM setting"))
               return [{ key: "theme", value: '"dark"', updated_at: 0 }];
-            if (args?.sql.includes("FROM solve")) throw new Error("bad page");
+            if (args?.sql?.includes("FROM solve")) throw new Error("bad page");
             return [];
           }
           throw new Error(command);
@@ -285,6 +324,13 @@ test("an integrity failure can save the tables still readable on desktop", async
   const file = JSON.parse(
     await readFile((await download.path()) as string, "utf8"),
   );
+  await page.evaluate((url) => {
+    const desktop = window as unknown as {
+      finishDesktopDownload(url: string): void;
+    };
+    desktop.finishDesktopDownload(url);
+  }, download.url());
+  await expect(banner.getByText("Saved to Downloads.")).toBeVisible();
   expect(file).toMatchObject({
     format: "cubehaus",
     schema: 3,

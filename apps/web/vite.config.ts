@@ -4,6 +4,14 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 
+const { version } = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+) as { version: string };
+
+function integrity(bytes: Buffer | string): string {
+  return `sha256-${createHash("sha256").update(bytes).digest("base64")}`;
+}
+
 function offlinePrecache(): Plugin {
   return {
     name: "cubehaus-offline-precache",
@@ -25,20 +33,29 @@ function offlinePrecache(): Plugin {
           paths.map((path) => {
             const bytes = readFileSync(join(dir, path));
             size += bytes.length;
-            const hash = createHash("sha256").update(bytes).digest("base64");
-            return [path.split(sep).join("/"), `sha256-${hash}`];
+            return [path.split(sep).join("/"), integrity(bytes)];
           }),
         );
-        const list = JSON.stringify(files);
         const build = createHash("sha256")
           .update(worker)
-          .update(list)
+          .update(JSON.stringify(files))
           .digest("hex");
+        // Derive the build from the unstamped HTML to avoid hashing the ID into itself.
+        // The integrity manifest must still match the final HTML served to the page.
+        const htmlPath = join(dir, "index.html");
+        const original = readFileSync(htmlPath, "utf8");
+        const html = original.replace(
+          "</head>",
+          `<meta name="cubehaus-build" content="${build.slice(0, 7)}">\n</head>`,
+        );
+        writeFileSync(htmlPath, html);
+        files["index.html"] = integrity(html);
+        size += Buffer.byteLength(html) - Buffer.byteLength(original);
         writeFileSync(
           workerPath,
           worker
             .replace("__CUBEHAUS_BUILD__", JSON.stringify(build))
-            .replace("__CUBEHAUS_FILES__", list),
+            .replace("__CUBEHAUS_FILES__", JSON.stringify(files)),
         );
         this.info(`Precached ${paths.length} files (${size} bytes).`);
       },
@@ -48,12 +65,19 @@ function offlinePrecache(): Plugin {
 
 export default defineConfig({
   base: "./",
+  define: { __CUBEHAUS_VERSION__: JSON.stringify(version) },
   plugins: [offlinePrecache()],
   optimizeDeps: { exclude: ["@sqlite.org/sqlite-wasm"] },
   worker: { format: "es" },
   build: {
     target: "es2023",
-    modulePreload: false,
+    modulePreload: {
+      polyfill: false,
+      // Discover the startup graph from HTML, including the React runtime. Leave
+      // dynamic imports to fetch their own JS, including inside cubing's worker.
+      resolveDependencies: (_file, deps, { hostType }) =>
+        hostType === "html" ? deps : [],
+    },
     rolldownOptions: {
       input: {
         index: fileURLToPath(new URL("index.html", import.meta.url)),
@@ -69,6 +93,14 @@ export default defineConfig({
       // only inside functions; scripts/check-worker.mjs verifies this.
       preserveEntrySignatures: "strict",
       output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "react",
+              test: /[/\\]node_modules[/\\](?:react|react-dom|scheduler)[/\\]/,
+            },
+          ],
+        },
         entryFileNames: ({ name }) =>
           name === "sw" ? "sw.js" : "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",

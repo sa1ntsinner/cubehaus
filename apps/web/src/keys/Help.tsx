@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
+import { keepFocusInside } from "../input/tab-loop";
 import type { Action } from "./engine";
 import { isMacPlatform, keyLabel } from "./label";
+import "../design/sheet.css";
+import "../design/keys-help.css";
 
 // The keys that work right now, in the current state; on a touch screen, the gestures.
 export function Help({
@@ -39,6 +42,7 @@ export function Help({
       open
       aria-label={title}
       tabIndex={-1}
+      onBlur={keepFocusInside}
     >
       <button type="button" data-action="dialog-close" onClick={onClose}>
         {closeLabel}

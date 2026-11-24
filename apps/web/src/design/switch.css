@@ -66,6 +66,9 @@ dialog[data-part="switch"] > :not([data-action="dialog-close"]) {
   border-bottom: 1px solid var(--line);
   cursor: text;
 }
+dialog[data-purpose="move"] [data-part="switch-find"]:focus-within {
+  border-bottom-color: var(--dim);
+}
 [data-part="switch-find"] > span {
   flex: none;
   width: var(--lead);

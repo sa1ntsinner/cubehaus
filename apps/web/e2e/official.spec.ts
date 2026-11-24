@@ -56,30 +56,17 @@ test("A3b2 A3b3 A3b4: release starts inspection; 7.9 s is clean, 8.0 s warn, 12.
   await expect(inspection(page)).toHaveAttribute("data-band", "late");
 });
 
-for (const { rule, at, penalty, plus2 } of [
-  {
-    rule: "A3a1: 14.99 s stores a clean solve",
-    at: 14990,
-    penalty: "ok",
-    plus2: "0",
-  },
-  {
-    rule: "A4d1+: 15.00 s stores a +2",
-    at: 15000,
-    penalty: "plus2",
-    plus2: "1",
-  },
-  {
-    rule: "A4d2+: 17.00 s stores a DNF",
-    at: 17000,
-    penalty: "dnf",
-    plus2: "0",
-  },
-]) {
-  test(rule, async ({ page }) => {
-    await openTimer(page);
+test("A3a1, A4d1+, A4d2+: a start at 14.99 s is clean, at 15.00 s a +2, at 17.00 s a DNF", async ({
+  page,
+}) => {
+  await openTimer(page);
+  const solve = part(page, "solves").locator("[data-solve-id]").first();
+  for (const { at, penalty, plus2 } of [
+    { at: 14990, penalty: "ok", plus2: "0" },
+    { at: 15000, penalty: "plus2", plus2: "1" },
+    { at: 17000, penalty: "dnf", plus2: "0" },
+  ]) {
     await startInspection(page);
-
     await page.clock.fastForward(at - 400);
     await space(page, "keydown");
     await expect(page.locator("main")).toHaveAttribute("data-phase", "holding");
@@ -93,33 +80,32 @@ for (const { rule, at, penalty, plus2 } of [
     await space(page, "keydown");
     await expect(page.locator("main")).toHaveAttribute("data-phase", "stopped");
     await space(page, "keyup");
-
-    const solve = part(page, "solves").locator("[data-solve-id]");
-    await expect(solve).toHaveAttribute("data-penalty", penalty);
+    await expect(solve, `${at}`).toHaveAttribute("data-penalty", penalty);
     await expect(solve).toHaveAttribute("data-plus2", plus2);
-  });
-}
-
-for (const reason of ["Escape", "window blur"] as const) {
-  test(`Review Focus 2: ${reason} cancels inspection without a solve`, async ({
-    page,
-  }) => {
-    await openTimer(page);
-    const scramble = await part(page, "scramble").textContent();
-    await startInspection(page);
-
-    if (reason === "Escape") {
-      await page.keyboard.press("Escape");
-    } else {
-      await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-    }
-
+    // Keys rest for 200 ms after a stop, so a bounce cannot act.
+    await page.clock.fastForward(300);
     await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
+  }
+});
+
+test("Review Focus 2: Escape and a window blur cancel inspection without a solve", async ({
+  page,
+}) => {
+  await openTimer(page);
+  const scramble = await part(page, "scramble").textContent();
+  for (const reason of ["Escape", "window blur"] as const) {
+    await startInspection(page);
+    if (reason === "Escape") await page.keyboard.press("Escape");
+    else await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await expect(page.locator("main"), reason).toHaveAttribute(
+      "data-phase",
+      "idle",
+    );
     await expect(inspection(page)).toHaveCount(0);
     await expect(part(page, "scramble")).toHaveText(scramble ?? "");
     await expect(part(page, "solve-time")).toHaveCount(0);
-  });
-}
+  }
+});
 
 test("9b, 4b3, 4b3a–f, 12c2, 12f (draft), E2 and H1: all 18 events show official notation or their entry form", async ({
   page,

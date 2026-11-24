@@ -32,6 +32,14 @@ It is free and always will be. Use it if you like it. If something is missing or
   <img src=".github/progress-light.png" alt="Progress: the average of twelve over the last sixty solves">
 </picture>
 
+## Apps
+
+- **Web:** [cubehaus.imslide.workers.dev](https://cubehaus.imslide.workers.dev). Nothing to install.
+- **macOS, Windows, Linux:** installers are attached to each release on the [releases page](https://github.com/sa1ntsinner/cubehaus/releases). If the page is empty, the first release is not out yet.
+- **iPhone and iPad:** not in the App Store yet. It can be built from this repository and run in the simulator.
+
+All three are built from this repository.
+
 ## Run it
 
 Node 26 and pnpm 12.18.0.
@@ -40,6 +48,8 @@ Node 26 and pnpm 12.18.0.
 pnpm install
 pnpm --filter @cubehaus/web dev
 ```
+
+The desktop and iPhone apps, and everything else about building: [BUILDING.md](BUILDING.md).
 
 ## Help
 

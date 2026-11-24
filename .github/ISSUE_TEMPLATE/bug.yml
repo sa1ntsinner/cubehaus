@@ -12,3 +12,6 @@ body:
     attributes:
       label: Browser and device
       placeholder: Safari on iPhone 15, Chrome on Windows
+  - type: input
+    attributes:
+      label: Version (Settings › Data)

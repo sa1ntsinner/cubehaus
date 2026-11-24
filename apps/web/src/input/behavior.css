@@ -30,6 +30,20 @@ body {
 }
 
 /*
+ * Heard, not seen: a name or an announcement that is there for a screen reader only. It
+ * takes no room and draws nothing. Two selectors: above a sheet's rule for its children.
+ */
+html [data-heard] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
  * A downward drag that reaches the document reloads the page in iOS Safari (pull to
  * refresh): a drag on the session sheet, which has nothing to scroll, or a tile dragged
  * toward the trash band. The app is not a page to refresh.
@@ -131,4 +145,20 @@ main:is([data-phase="holding"], [data-phase="ready"], [data-phase="running"])
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+
+/*
+ * The phone app (apps/mobile) is an app, not a page: a long press anywhere selects no text
+ * and opens no callout. Fields that take text and the copyable version keep both.
+ */
+html[data-shell="phone"] body * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+html[data-shell="phone"]
+  :is(input, textarea, [contenteditable="true"], [data-part="version-value"]) {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }

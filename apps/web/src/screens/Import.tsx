@@ -7,6 +7,7 @@ import {
 } from "../import";
 import { titleField } from "../input/fields";
 import type { Text } from "../text";
+import "../design/import-preview.css";
 
 const timedEvents = EVENTS.filter(({ kind }) => kind === "time");
 

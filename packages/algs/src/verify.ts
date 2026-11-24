@@ -73,7 +73,8 @@ function upright(pattern: KPattern): { pattern: KPattern; rotation: string } {
   throw new Error("No rotation puts the centres home");
 }
 
-function patternOf(puzzle: KPuzzle, top: LastLayer): KPattern {
+/** A cube with the top layer as given and the first two layers solved. */
+export function patternOf(puzzle: KPuzzle, top: LastLayer): KPattern {
   const solved = puzzle.defaultPattern().patternData;
   return new KPattern(puzzle, {
     ...solved,

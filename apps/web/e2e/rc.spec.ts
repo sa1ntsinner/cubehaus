@@ -94,10 +94,12 @@ for (const action of atRest) {
       );
     // A screen that opens late (Settings, Progress and the drills load their own code)
     // needs time first: its code can be fetched and still not drawn, so an Escape sent
-    // before it shows closes nothing and the screen comes up after the walk.
+    // before it shows closes nothing and the screen comes up after the walk. Once the
+    // network is idle it draws within a few frames; an action that opens nothing waits
+    // out the whole poll, so the poll is short.
     await page.waitForLoadState("networkidle");
     await expect
-      .poll(away, { timeout: 2000 })
+      .poll(away, { timeout: 500 })
       .toBe(true)
       .catch(() => {});
     for (let i = 0; i < 4 && (await away()); i++) {

@@ -29,6 +29,7 @@ import { ProgressDistribution } from "./ProgressDistribution";
 import { ProgressPractice } from "./ProgressPractice";
 import { ProgressTarget } from "./ProgressTarget";
 import { ProgressTrend } from "./ProgressTrend";
+import "../design/progress.css";
 
 const revisions = new WeakMap<AppView, number>();
 let latestRevision = 0;
@@ -311,7 +312,12 @@ export function Progress({
           {dbMessage}
         </p>
       )}
-      {(!db || (reader && !result)) && <p role="status">{labels.loading}</p>}
+      <p data-heard role="status">
+        {!db || (reader && !result) ? labels.loading : ""}
+      </p>
+      {(!db || (reader && !result)) && (
+        <p data-part="progress-loading">{labels.loading}</p>
+      )}
       {result?.model === null && <p role="alert">{labels.failed}</p>}
       {sessions && (
         <nav data-part="progress-events" aria-label={labels.solves}>

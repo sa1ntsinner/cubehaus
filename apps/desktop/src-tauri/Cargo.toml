@@ -1,0 +1,45 @@
+[package]
+name = "cubehaus"
+version = "0.0.5"
+description = "cubehaus, a speedcubing timer"
+license = "MPL-2.0"
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "cubehaus_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "=2.7.5", features = [] }
+
+[dependencies]
+tauri = { version = "=2.12.6", features = [] }
+# SQLite compiled in (public domain); no extension loading, attach limit set at open.
+# `backup`: SQLite's online backup API, for consistent copies while the file is in use.
+rusqlite = { version = "=0.43.0", default-features = false, features = ["backup", "bundled", "cache", "limits"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+# The native folder picker for where backups go (MIT OR Apache-2.0).
+tauri-plugin-dialog = "=2.8.4"
+# Signed updates (MIT OR Apache-2.0); loaded only when a release build is given a key.
+# The system's TLS (native-tls): the default rustls route brings a root store under a
+# licence outside the allowed list (webpki-root-certs, CDLA-Permissive-2.0).
+# A second launch brings the running window forward instead of opening the file twice
+# (MIT OR Apache-2.0).
+tauri-plugin-single-instance = "=2.5.5"
+tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["native-tls", "zip"] }
+
+[dev-dependencies]
+# The mock runtime, for the updater test's app.
+tauri = { version = "=2.12.6", features = ["test"] }
+# A disposable signing key for the updater test (MIT).
+minisign = "=0.10.0"
+# setrlimit, for the full-disk test (MIT OR Apache-2.0).
+libc = "=0.2.191"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

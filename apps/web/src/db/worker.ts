@@ -12,12 +12,8 @@ import sqlite3InitModule, {
 import wasmUrl from "@sqlite.org/sqlite-wasm/sqlite3.wasm?url";
 import type { ImportInput } from "../import";
 import type { LegacyOpenResult, OpenResult } from "./client";
-import {
-  type ReadableData,
-  type RecoveryResult,
-  saveReadable,
-} from "./recovery";
-import { createDbServices, restoreFromFile } from "./services";
+import type { ReadableData, RecoveryResult } from "./recovery";
+import type { DbServices } from "./services";
 
 let database: Database | undefined;
 
@@ -83,14 +79,7 @@ const db: Db = {
     database = undefined;
   },
 };
-const {
-  progress,
-  previewImport: previewFile,
-  importFile,
-  exportBackup,
-  exportFile,
-  restoreBackup,
-} = createDbServices(db);
+let services: DbServices | undefined;
 
 // The published initializer type omits Emscripten's documented options.
 let initialized: ReturnType<typeof sqlite3InitModule> | undefined;
@@ -149,7 +138,9 @@ async function activeFile(pool: SAHPoolUtil) {
 
 async function saveWebReadable(): Promise<ReadableData | null> {
   if (database) {
-    const logical = await saveReadable(db).catch(() => null);
+    const logical = await import("./save-readable")
+      .then(({ saveReadable }) => saveReadable(db))
+      .catch(() => null);
     if (logical) return logical;
   }
   if (!pool || !filename || !pool.getFileNames().includes(filename))
@@ -162,6 +153,7 @@ async function saveWebReadable(): Promise<ReadableData | null> {
 
 /** Validate and build away from the damaged file. Publish the new name last. */
 async function restoreDamaged(file: File): Promise<RecoveryResult> {
+  const { restoreFromFile } = await import("./services");
   const sqlite = await initialize();
   const source = database;
   const replacement = new sqlite.oo1.DB(":memory:");
@@ -312,7 +304,27 @@ async function execute(method: string, args: unknown[]): Promise<unknown> {
     } satisfies OpenResult;
   }
   connection();
-  if (method === "previewImport") return previewFile(args[0] as ImportInput);
+  if (method === "all") {
+    return db.all(args[0] as string, args[1] as SqlValue[]);
+  }
+  if (method === "columns") {
+    return db.columns(args[0] as string, args[1] as SqlValue[]);
+  }
+  if (method === "batch") {
+    return db.batch(args[0] as Statement[]);
+  }
+  if (method === "close") return db.close();
+  // The worker's queue serializes requests. Keep one reader for Progress's cache.
+  services ??= (await import("./services")).createDbServices(db);
+  const {
+    previewImport,
+    importFile,
+    exportBackup,
+    exportFile,
+    restoreBackup,
+    progress,
+  } = services;
+  if (method === "previewImport") return previewImport(args[0] as ImportInput);
   if (method === "importFile") return importFile(args[0] as ImportInput);
   if (method === "exportBackup") return exportBackup();
   if (method === "exportFile")
@@ -330,16 +342,6 @@ async function execute(method: string, args: unknown[]): Promise<unknown> {
     return progress.distribution(args[0] as string);
   if (method === "progress.point")
     return progress.point(...(args as Parameters<typeof progress.point>));
-  if (method === "all") {
-    return db.all(args[0] as string, args[1] as SqlValue[]);
-  }
-  if (method === "columns") {
-    return db.columns(args[0] as string, args[1] as SqlValue[]);
-  }
-  if (method === "batch") {
-    return db.batch(args[0] as Statement[]);
-  }
-  if (method === "close") return db.close();
   throw new Error(`Unknown database method: ${method}`);
 }
 

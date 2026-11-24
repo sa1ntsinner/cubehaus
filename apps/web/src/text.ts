@@ -30,6 +30,7 @@ const en = {
     first: "This is the first attempt",
     last: "This is the last attempt",
   },
+  spokenRecord: "new record",
   noSolve: "No solve yet",
   noEarlier: "No earlier solve",
   noEarlierScramble: "No earlier scramble",
@@ -136,10 +137,20 @@ const en = {
     // the insert that puts the last pair in (last slot), the 2×2's bottom under its top in
     // one go.
     memberWords: {
+      oll: { oll: "OLL", ollcp: "OLLCP" },
+      coll: { coll: "COLL", cmll: "CMLL" },
       ls: { right: "R U' R'", front: "F' U F" },
       "two-cll": { solved: "Solved", adj: "Adj", diag: "Diag" },
     },
     members: {
+      oll: {
+        oll: "Orient the top layer",
+        ollcp: "Orient the top layer and place its corners",
+      },
+      coll: {
+        coll: "Top corners over the first two layers, edges oriented",
+        cmll: "Top corners over two side blocks",
+      },
       ls: {
         right: "Last pair in with R U' R'",
         front: "Last pair in with F' U F",
@@ -150,6 +161,8 @@ const en = {
         diag: "Bottom pieces swapped across",
       },
     },
+    // OLLCP's group with nothing to orient, and its cases (`Skip 1`).
+    skip: "Skip",
     add: "Add to drills",
     remove: "Take out of drills",
     moves: (n: number) => `${n} ${n === 1 ? "move" : "moves"}`,
@@ -276,6 +289,8 @@ const en = {
   dbMemory: "Solves are kept only until this tab closes.",
   dbEarlier:
     "Solves from the earlier version are kept apart. Settings › Data can add them.",
+  dbCopy:
+    "A copy of your solves is on this device: Settings › Data › Restore from a file.",
   unsaved: (n: number) =>
     n === 1
       ? "1 solve is not saved anywhere: the browser refused to store it."
@@ -561,7 +576,7 @@ const en = {
       "Deleted sessions and solves stay here for 30 days. Pick one to put it back.",
     solves: (n: number) => `${n} ${n === 1 ? "solve" : "solves"}`,
     left: (span: string) => `${span} left`,
-    restore: (name: string, left: string) => `Restore ${name}. ${left}`,
+    restore: "Restore",
     moveTitle: "Move solves",
     moveQuery: (n: number) =>
       n === 1 ? "Move this solve to…" : `Move ${n} solves to…`,
@@ -590,6 +605,9 @@ const en = {
   },
   settings: {
     data: "Data",
+    privacy: "Privacy",
+    support: "Support",
+    version: "Version",
     backup: "All data as one file",
     backupSave: "Save",
     backupFailed: "The file could not be saved.",
@@ -687,10 +705,11 @@ const en = {
     exportCsv: "Solves as a table",
     exportSession: "This session",
     exportAll: "All",
-    exported: (r: { solves: number; fields: string[] }) =>
+    savedToDownloads: "Saved to Downloads.",
+    exported: (r: { solves: number; fields: string[] }, saved = "Saved.") =>
       r.solves === 0
-        ? "Saved."
-        : `Saved. For ${r.solves} ${r.solves === 1 ? "solve" : "solves"} the file leaves out ${joinList(
+        ? saved
+        : `${saved} For ${r.solves} ${r.solves === 1 ? "solve" : "solves"} the file leaves out ${joinList(
             lost(r.fields, {
               started_at: "the date’s milliseconds",
               inspection_ms: "inspection times",
@@ -894,6 +913,7 @@ const ru: Text = {
     first: "Это первая попытка",
     last: "Это последняя попытка",
   },
+  spokenRecord: "новый рекорд",
   noSolve: "Сборок ещё нет",
   noEarlier: "Раньше сборок нет",
   noEarlierScramble: "Раньше скрамблов нет",
@@ -990,10 +1010,20 @@ const ru: Text = {
       bl: "Задний левый слот",
     },
     memberWords: {
+      oll: { oll: "OLL", ollcp: "OLLCP" },
+      coll: { coll: "COLL", cmll: "CMLL" },
       ls: { right: "R U' R'", front: "F' U F" },
       "two-cll": { solved: "Собран", adj: "Сосед", diag: "Диаг" },
     },
     members: {
+      oll: {
+        oll: "Ориентация верхнего слоя",
+        ollcp: "Ориентация верхнего слоя с расстановкой углов",
+      },
+      coll: {
+        coll: "Углы верха над двумя слоями, рёбра ориентированы",
+        cmll: "Углы верха над двумя боковыми блоками",
+      },
       ls: {
         right: "Последняя пара через R U' R'",
         front: "Последняя пара через F' U F",
@@ -1004,6 +1034,7 @@ const ru: Text = {
         diag: "Внизу обмен по диагонали",
       },
     },
+    skip: "Пропуск",
     add: "В отработку",
     remove: "Убрать из отработки",
     moves: (n: number) => `${n} ${plural(n, "ход", "хода", "ходов")}`,
@@ -1125,6 +1156,8 @@ const ru: Text = {
   dbMemory: "Сборки хранятся, только пока открыта эта вкладка.",
   dbEarlier:
     "Сборки из прежней версии хранятся отдельно. Добавить их можно в Настройках › Данные.",
+  dbCopy:
+    "На устройстве есть копия сборок: Настройки › Данные › Восстановить из файла.",
   unsaved: (n: number) =>
     `${n} ${plural(n, "сборка", "сборки", "сборок")} пока нигде не ${plural(n, "сохранена", "сохранены", "сохранены")}: браузер отказался ${plural(n, "её", "их", "их")} записать.`,
   unsavedDownload: "Скачать",
@@ -1405,7 +1438,7 @@ const ru: Text = {
       "Удалённые сессии и сборки лежат здесь 30 дней. Выберите, чтобы вернуть.",
     solves: (n) => `${n} ${plural(n, "сборка", "сборки", "сборок")}`,
     left: (span) => `ещё ${span}`,
-    restore: (name, left) => `Восстановить: ${name}. ${left}`,
+    restore: "Восстановить",
     moveTitle: "Перенос сборок",
     moveQuery: (n) =>
       n === 1
@@ -1433,6 +1466,9 @@ const ru: Text = {
   },
   settings: {
     data: "Данные",
+    privacy: "Приватность",
+    support: "Поддержка",
+    version: "Версия",
     backup: "Все данные одним файлом",
     backupSave: "Сохранить",
     backupFailed: "Не удалось сохранить файл.",
@@ -1524,10 +1560,11 @@ const ru: Text = {
     exportCsv: "Сборки таблицей",
     exportSession: "Эта сессия",
     exportAll: "Все",
-    exported: (r) =>
+    savedToDownloads: "Сохранено в Загрузки.",
+    exported: (r, saved = "Сохранено.") =>
       r.solves === 0
-        ? "Сохранено."
-        : `Сохранено. У ${r.solves} ${plural(r.solves, "сборки", "сборок", "сборок")} в файл не вошли ${joinList(
+        ? saved
+        : `${saved} У ${r.solves} ${plural(r.solves, "сборки", "сборок", "сборок")} в файл не вошли ${joinList(
             lost(r.fields, {
               started_at: "миллисекунды даты",
               inspection_ms: "время осмотра",

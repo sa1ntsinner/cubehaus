@@ -19,7 +19,7 @@ async function centreOf(page: Page, selector: string) {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-// Guards for what iOS Safari showed in the simulator (docs/testing/ios-simulator.md). The
+// Guards for what iOS Safari showed in the simulator. The
 // simulator itself is the check for what an emulated browser cannot show; these hold the
 // CSS and markup the fixes rest on.
 test.describe("on a phone", () => {

@@ -24,6 +24,17 @@ interface Stroke {
 }
 
 async function swipe(page: Page, selector: string, stroke: Stroke) {
+  // A part still springing back from the last stroke is not where its box says.
+  await page
+    .locator(selector)
+    .first()
+    .evaluate((element) =>
+      Promise.all(
+        element
+          .getAnimations({ subtree: true })
+          .map((animation) => animation.finished.catch(() => {})),
+      ),
+    );
   const box = await page.locator(selector).first().boundingBox();
   if (!box) throw new Error(`${selector} has no box`);
   const at = stroke.at ?? { x: 0.5, y: 0.5 };
@@ -94,7 +105,7 @@ test.describe("touch gestures", () => {
     await inspectionOff(page);
   });
 
-  test("the time swiped right is +2, down is DNF, again takes each off", async ({
+  test("the time: right is +2, down DNF, a short or slow move nothing, left deletes; a hold that moves times", async ({
     page,
   }) => {
     await solve(page);
@@ -107,68 +118,45 @@ test.describe("touch gestures", () => {
     await expect(line).toHaveAttribute("data-penalty", "dnf");
     await swipe(page, TIME, { dx: 0, dy: 120 });
     await expect(line).not.toHaveAttribute("data-penalty", "dnf");
-    // None of it started an attempt.
-    await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
-    await expect(lines(page)).toHaveCount(1);
-  });
-
-  test("the time swiped left deletes the solve, and Undo brings it back", async ({
-    page,
-  }) => {
-    await solve(page);
-    await solve(page);
-    await expect(lines(page)).toHaveCount(2);
-    await swipe(page, TIME, { dx: -120 });
-    await expect(lines(page)).toHaveCount(1);
-    // The click a timing touch may still send is swallowed for 600 ms (input/touch.ts).
-    await page.waitForTimeout(700);
-    await action(page, "undo").click();
-    await expect(lines(page)).toHaveCount(2);
-  });
-
-  test("a swipe begun beside a short time, on its row, is the time's", async ({
-    page,
-  }) => {
-    await solve(page);
-    const line = lines(page).first();
-    // A tenth of a second is a narrow number: start to its right, on the ground.
-    await swipe(page, TIME, { dx: -120, at: { x: 1.25, y: 0.5 } });
-    await expect(lines(page)).toHaveCount(0);
-    await page.waitForTimeout(700);
-    await action(page, "undo").click();
-    await expect(line).toHaveCount(1);
-    await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
-  });
-
-  test("a short or slow move springs back and changes nothing", async ({
-    page,
-  }) => {
-    await solve(page);
-    const line = lines(page).first();
+    // A short or slow move springs back and changes nothing.
     await swipe(page, TIME, { dx: 40, ms: 600 });
     await expect(line).toHaveAttribute("data-penalty", "ok");
     await expect(page.locator(TIME)).not.toHaveAttribute("data-swiping");
+    // None of it started an attempt.
     await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
-  });
+    await expect(lines(page)).toHaveCount(1);
 
-  test("a hold that then moves is the timer's: it starts, it never swipes", async ({
-    page,
-  }) => {
-    await solve(page);
+    // Left deletes, even begun beside a short time on its row (a tenth of a second is a
+    // narrow number: start to its right, on the ground); Undo brings it back.
+    await swipe(page, TIME, { dx: -120, at: { x: 1.25, y: 0.5 } });
+    await expect(lines(page)).toHaveCount(0);
+    // The click a timing touch may still send is swallowed for 600 ms (input/touch.ts).
+    await page.waitForTimeout(700);
+    await action(page, "undo").click();
+    await expect(lines(page)).toHaveCount(1);
+    await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
+
+    // A hold that then moves is the timer's: it starts, it never swipes.
     await swipe(page, TIME, { dx: 150, rest: 400 });
     await expect(page.locator("main")).toHaveAttribute("data-phase", "running");
     await page.waitForTimeout(200);
     await page.keyboard.press("Space");
     await expect(lines(page)).toHaveCount(2);
     await expect(lines(page).nth(0)).toHaveAttribute("data-penalty", "ok");
-  });
 
-  test("nothing acts in the moment after a stop, when the other hand lands", async ({
-    page,
-  }) => {
+    // Nothing acts in the moment after a stop, when the other hand lands.
+    await page.waitForTimeout(800);
     await keyboardSolve(page);
     await swipe(page, TIME, { dx: -120 });
-    await expect(lines(page)).toHaveCount(1);
+    await expect(lines(page)).toHaveCount(3);
+
+    // A line of the file swiped left is deleted.
+    await page.waitForTimeout(800);
+    await swipe(page, '[data-part="solves"] > li[data-solve-id]:last-child', {
+      dx: -140,
+      at: { x: 0.7, y: 0.5 },
+    });
+    await expect(lines(page)).toHaveCount(2);
   });
 
   test("the scramble swiped left is the next one, right the one before", async ({
@@ -181,17 +169,6 @@ test.describe("touch gestures", () => {
     await expect(scramble).not.toHaveText(first ?? "");
     await swipe(page, 'main > [data-part="scramble"]', { dx: 120 });
     await expect(scramble).toHaveText(first ?? "");
-  });
-
-  test("a line of the file swiped left is deleted", async ({ page }) => {
-    await solve(page);
-    await solve(page);
-    await expect(lines(page)).toHaveCount(2);
-    await swipe(page, '[data-part="solves"] > li[data-solve-id]:last-child', {
-      dx: -140,
-      at: { x: 0.7, y: 0.5 },
-    });
-    await expect(lines(page)).toHaveCount(1);
   });
 
   test("the session name swiped left goes to the next session", async ({

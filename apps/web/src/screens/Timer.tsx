@@ -154,6 +154,13 @@ export function Timer({
   // A solve was timed since the last one heard: the next new result is its result.
   const timed = useRef(false);
   if (phase === "running") timed.current = true;
+  // A record is a hue on screen: said in words, with the result it belongs to.
+  const isRecord = useRef(record);
+  isRecord.current = record;
+  useEffect(() => {
+    // Silence while the next solve runs, so the same result twice in a row is heard twice.
+    if (phase === "running") setSaid("");
+  }, [phase]);
   useEffect(() => {
     if (!shown) return;
     const penalty = `${shown.plus2}:${shown.dnf}`;
@@ -165,8 +172,13 @@ export function Timer({
         ? before.penalty !== penalty
         : shownNo === undefined && timed.current;
     if (before.id !== shown.id) timed.current = false;
-    if (changed) setSaid(spokenResult(shown, precision));
-  }, [shown, shownNo, precision]);
+    if (changed)
+      setSaid(
+        before.id !== shown.id && isRecord.current
+          ? `${spokenResult(shown, precision)}, ${words.spokenRecord}`
+          : spokenResult(shown, precision),
+      );
+  }, [shown, shownNo, precision, words]);
   return (
     <>
       <p

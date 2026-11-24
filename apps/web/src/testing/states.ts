@@ -198,6 +198,12 @@ export const namedStates = [
   "train-two-adj",
   "train-two-diag-list",
   "train-two-adj-drill",
+  "train-ollcp",
+  "train-ollcp-group",
+  "train-ollcp-three",
+  "train-ollcp-case",
+  "train-ollcp-drill",
+  "train-ollcp-skip",
 ] as const;
 
 export const eventStates = EVENTS.map(({ id }) => `event-${id}` as const);

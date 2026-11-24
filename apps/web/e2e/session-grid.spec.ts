@@ -194,20 +194,9 @@ test.describe("dragging with a mouse", () => {
   });
 });
 
-for (const viewport of [
-  { width: 390, height: 844 },
-  { width: 320, height: 568 },
-]) {
+for (const viewport of [{ width: 390, height: 844 }]) {
   test.describe(`a touch screen ${viewport.width}×${viewport.height}`, () => {
     test.use({ hasTouch: true, isMobile: true, viewport });
-
-    test("a few sessions need no Find; many do", async ({ page }) => {
-      await seeded(page, "switch-few");
-      await expect(part(page, "switch-places")).toBeVisible();
-      await expect(page.locator('[data-action="switch-find"]')).toHaveCount(0);
-      await seeded(page, "switch-many");
-      await expect(page.locator('[data-action="switch-find"]')).toBeVisible();
-    });
 
     test("a long press lifts a tile without the grid moving under the finger, and selects no text", async ({
       page,

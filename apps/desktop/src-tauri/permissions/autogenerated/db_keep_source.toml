@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-db-keep-source"
+description = "Enables the db_keep_source command without any pre-configured scope."
+commands.allow = ["db_keep_source"]
+
+[[permission]]
+identifier = "deny-db-keep-source"
+description = "Denies the db_keep_source command without any pre-configured scope."
+commands.deny = ["db_keep_source"]

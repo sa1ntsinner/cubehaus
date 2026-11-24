@@ -1,111 +1,7 @@
-/*
- * The command palette (Mod+K) and the key list (?), DESIGN.md sections 10, 15 and 18. Both
- * cover the screen on the ground colour like the session switch: no box, no shadow, a
- * column of words. A key is written as it is printed (keys/label.ts), in mono `dim`: arrows
- * and signs are thin strokes that `gutter` would leave below the contrast floor.
- */
-
-dialog:is(
-  [data-part="palette"],
-  [data-part="keys-help"],
-  [data-part="training"]
-) {
-  position: fixed;
-  inset: 0;
-  z-index: 8;
-  box-sizing: border-box;
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
-  margin: 0;
-  /* Room above the content for the way back, however short the window. */
-  padding: calc(
-      max(12vh, calc(44px + 2 * var(--s4))) +
-      env(safe-area-inset-top)
-    )
-    max(var(--s5), env(safe-area-inset-right))
-    calc(var(--s7) + env(safe-area-inset-bottom))
-    max(var(--s5), env(safe-area-inset-left));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border: 0;
-  background: var(--ground);
-  color: var(--ink);
-  font-family: var(--font-ui);
-  font-size: 15px;
-  /* It holds focus itself while it is open (a sheet over the screen): no ring round it. */
-  outline: none;
-  animation: sheet-in 110ms var(--ease);
-}
-@keyframes sheet-in {
-  from {
-    opacity: 0;
-  }
-}
-
-dialog:is([data-part="palette"], [data-part="keys-help"]) kbd {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--dim);
-  white-space: nowrap;
-}
-/* A touch screen has no keys to list (DESIGN.md section 5): the palette is its words. */
 @media (hover: none) and (pointer: coarse) {
   dialog[data-part="palette"] kbd {
     display: none;
   }
-}
-
-/* The way back, top left of the column as in Settings and Progress; Esc does the same. */
-dialog:is(
-    [data-part="palette"],
-    [data-part="keys-help"],
-    [data-part="switch"],
-    [data-part="training"]
-  )
-  [data-action="dialog-close"] {
-  position: absolute;
-  top: calc(
-    max(var(--s4), calc(12vh - 44px - var(--s4))) +
-    env(safe-area-inset-top)
-  );
-  left: max(var(--close-left), env(safe-area-inset-left));
-  display: inline-flex;
-  align-items: center;
-  width: auto;
-  min-height: 44px;
-  margin: 0;
-  color: var(--dim);
-}
-dialog:is(
-    [data-part="palette"],
-    [data-part="keys-help"],
-    [data-part="switch"],
-    [data-part="training"]
-  )
-  [data-action="dialog-close"]::before {
-  content: "←";
-  margin-inline-end: var(--s2);
-  font-family: var(--font-mono);
-}
-@media (hover: hover) {
-  dialog:is(
-      [data-part="palette"],
-      [data-part="keys-help"],
-      [data-part="switch"],
-      [data-part="training"]
-    )
-    [data-action="dialog-close"]:hover {
-    color: var(--ink);
-  }
-}
-[data-part="palette"] {
-  --close-left: max(var(--s5), calc(50% - 280px));
-}
-[data-part="keys-help"] {
-  --close-left: max(var(--s5), calc(50% - 380px));
 }
 
 /* ---- the palette: a query line, then the actions that match ---- */
@@ -141,6 +37,9 @@ dialog:is(
   font-size: 19px;
   color: var(--gutter);
   pointer-events: none;
+}
+[data-part="palette-query"]:focus {
+  border-bottom-color: var(--dim);
 }
 [data-part="palette-query"]::placeholder {
   color: var(--gutter);
@@ -182,65 +81,7 @@ dialog:is(
   transform: none;
 }
 
-/* ---- the key list: two columns of key and action on a wide screen ---- */
-[data-part="keys-help"] dl {
-  width: min(760px, 100%);
-  margin: 0 auto;
-  columns: 2 300px;
-  column-gap: var(--s7);
-}
-[data-part="keys-help"] dl > div {
-  display: grid;
-  grid-template-columns: 6.5em minmax(0, 1fr);
-  align-items: baseline;
-  column-gap: var(--s4);
-  padding-block: 6px;
-  break-inside: avoid;
-}
-[data-part="keys-help"] dt {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0 var(--s2);
-}
-[data-part="keys-help"] dd {
-  margin: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  dialog:is(
-    [data-part="palette"],
-    [data-part="keys-help"],
-    [data-part="training"]
-  ) {
-    animation: none;
-  }
-}
-
 @media (max-width: 699px) {
-  dialog:is(
-    [data-part="palette"],
-    [data-part="keys-help"],
-    [data-part="training"]
-  ) {
-    padding: calc(var(--s4) + 44px + var(--s2)) var(--s4) var(--s6);
-  }
-  dialog:is(
-      [data-part="palette"],
-      [data-part="keys-help"],
-      [data-part="switch"],
-      [data-part="training"]
-    )
-    [data-action="dialog-close"] {
-    top: calc(var(--s4) + env(safe-area-inset-top));
-  }
-  dialog:is(
-    [data-part="palette"],
-    [data-part="keys-help"],
-    [data-part="training"]
-  ) {
-    --close-left: var(--s4);
-  }
   [data-part="palette"]::before {
     top: calc(var(--s4) + 44px + var(--s2) + 24px);
     left: calc(var(--s4) + var(--s3));
@@ -254,22 +95,5 @@ dialog:is(
 @media (pointer: coarse) {
   [data-part="palette"] {
     --row: 44px;
-  }
-}
-
-[data-part="keys-help"] > [data-action="commands-open"] {
-  position: absolute;
-  top: calc(
-    max(var(--s4), calc(12vh - 44px - var(--s4))) +
-    env(safe-area-inset-top)
-  );
-  right: max(var(--close-left), env(safe-area-inset-right));
-  min-height: 44px;
-  color: var(--dim);
-}
-@media (hover: hover) {
-  [data-part="keys-help"] > [data-action="commands-open"]:hover {
-    color: var(--ink);
-    text-decoration: underline;
   }
 }

@@ -1,3 +1,4 @@
+import type { OllcpEntry } from "@cubehaus/algs/ollcp";
 import {
   type F2lSection,
   type F2lSetId,
@@ -7,8 +8,8 @@ import {
   REVIEW_LIVE_AT,
   type SetId,
   slotOf,
-  trainerSet,
-} from "@cubehaus/algs";
+  type TrainerCaseData,
+} from "@cubehaus/algs/trainer";
 
 /**
  * One drill attempt, from input event timestamps only (a result is the
@@ -250,16 +251,34 @@ export function storedSlot(value: string | null): F2lSlot {
 }
 
 /**
+ * A set the trainer shows: the sets `@cubehaus/algs/trainer` loads whole, and OLLCP, whose
+ * 331 cases are listed from an index and loaded a group at a time (`@cubehaus/algs/ollcp`).
+ */
+export type TrainSet = SetId | "ollcp";
+
+/**
  * Sets that stand as one word in the set row, with a quiet choice of member at the far
- * end of Learn's `All` line: F2L's four slots, last slot's two inserts (the pair goes in
- * with R U' R' or with F' U F), and the 2×2's top in one go over a bottom that is solved,
- * swapped side by side, or swapped across. Each remembers the member last chosen.
+ * end of Learn's `All` line: F2L's four slots, the last layer oriented alone (OLL) or with
+ * its corners placed (OLLCP), the last layer's corners over whole first
+ * two layers (COLL) or over two side blocks (CMLL), last slot's two inserts (the pair goes
+ * in with R U' R' or with F' U F), and the 2×2's top in one go over a bottom that is
+ * solved, swapped side by side, or swapped across. Each remembers the member last chosen.
  */
 export const FAMILIES = {
   f2l: {
     key: "trainer.slot",
     choices: ["fr", "fl", "br", "bl"],
     members: ["f2l", "f2l-left", "f2l-back", "f2l-back-left"],
+  },
+  oll: {
+    key: "trainer.oll",
+    choices: ["oll", "ollcp"],
+    members: ["oll", "ollcp"],
+  },
+  coll: {
+    key: "trainer.corners",
+    choices: ["coll", "cmll"],
+    members: ["coll", "cmll"],
   },
   ls: {
     key: "trainer.ls",
@@ -273,30 +292,32 @@ export const FAMILIES = {
   },
 } as const satisfies Record<
   string,
-  { key: string; choices: readonly string[]; members: readonly SetId[] }
+  { key: string; choices: readonly string[]; members: readonly TrainSet[] }
 >;
 export type Family = keyof typeof FAMILIES;
 export type Choice<F extends Family> = (typeof FAMILIES)[F]["choices"][number];
 
 /** The word in the set row a set stands under: its family, or itself. */
-export function familyOf(set: SetId): Family | SetId {
+export function familyOf(set: TrainSet): Family | TrainSet {
   for (const [family, { members }] of Object.entries(FAMILIES))
-    if ((members as readonly SetId[]).includes(set)) return family as Family;
+    if ((members as readonly TrainSet[]).includes(set)) return family as Family;
   return set;
 }
 
 export function memberOf<F extends Family>(
   family: F,
   choice: Choice<F>,
-): SetId {
+): TrainSet {
   const f = FAMILIES[family];
-  return f.members[(f.choices as readonly string[]).indexOf(choice)] as SetId;
+  return f.members[
+    (f.choices as readonly string[]).indexOf(choice)
+  ] as TrainSet;
 }
 
 /** The choice a set is in its family. */
-export function choiceOf(family: Family, set: SetId): string {
+export function choiceOf(family: Family, set: TrainSet): string {
   const f = FAMILIES[family];
-  return f.choices[(f.members as readonly SetId[]).indexOf(set)] as string;
+  return f.choices[(f.members as readonly TrainSet[]).indexOf(set)] as string;
 }
 
 /** The member last chosen, as stored; the first when nothing (or nothing known) is. */
@@ -314,12 +335,23 @@ export function storedMember<F extends Family>(
 /**
  * Case names as Learn and the drill show them: F2L numbered in the learner's order; the
  * 2×2's swapped bottoms by the set row's own words in the interface's language (`Adj 3`,
- * `Сосед 3`), so a title, its tile and what a screen reader hears name the set alike.
+ * `Сосед 3`), so a title, its tile and what a screen reader hears name the set alike;
+ * OLLCP's two cases with nothing to orient by the interface's word for that group
+ * (`skip`) in the same form.
  */
 export function caseLabels(
-  set: SetId,
+  set: TrainSet,
+  cases: readonly TrainerCaseData[],
   bottoms?: { adj: string; diag: string },
+  skip?: string,
 ): ReadonlyMap<string, string> {
+  if (set === "ollcp")
+    return new Map(
+      cases.map((c) => [
+        c.id,
+        skip ? c.label.replace(/^OLL skip-(?=\d+$)/, `${skip} `) : c.label,
+      ]),
+    );
   if (slotOf(set) !== null)
     return new Map(
       f2lOrder(set as F2lSetId).map((place) => [place.id, place.label]),
@@ -331,7 +363,7 @@ export function caseLabels(
         ? bottoms?.diag
         : null;
   return new Map(
-    trainerSet(set).map((c) => [
+    cases.map((c) => [
       c.id,
       word ? c.label.replace(/^\S+(?= \d+$)/, word) : c.label,
     ]),
@@ -339,6 +371,31 @@ export function caseLabels(
 }
 
 /** F2L's list in Learn: the learner's order in four groups. Other sets: one list. */
-export function learnGroups(set: SetId): F2lSection[] | null {
+export function learnGroups(set: TrainSet): F2lSection[] | null {
   return slotOf(set) !== null ? f2lGroups(set as F2lSetId) : null;
+}
+
+/**
+ * An OLLCP case's number in its group, the name of its tile under the group's heading:
+ * `OLL 27-3` is `3`.
+ */
+export const ollcpMember = (label: string): string =>
+  /(\d+)$/.exec(label)?.[1] ?? label;
+
+/**
+ * An OLLCP case from the index alone, in the shape every set's cases have: listed, drawn
+ * and kept in the drills by its id before its group's algorithms are loaded.
+ */
+export const ollcpListed = (entry: OllcpEntry): TrainerCaseData => ({
+  ...entry,
+  algs: [],
+  recognise: null,
+  subsets: [],
+});
+
+/** The OLLCP group a route names (`#/train/ollcp/learn/27`; 0 is the skip), or null. */
+export function ollcpGroupOf(segment: string | undefined): number | null {
+  if (segment === undefined || !/^\d{1,2}$/.test(segment)) return null;
+  const oll = Number(segment);
+  return oll <= 57 ? oll : null;
 }

@@ -1,0 +1,91 @@
+[data-action="theme-reset-colours"] {
+  min-height: 44px;
+  margin-block: var(--s2);
+}
+
+/* Custom theme (DESIGN.md section 2): each colour as its hex in mono and a small swatch at
+   the right edge, the picture and the file as words like the Data rows. */
+[data-part="theme-colour"],
+[data-part="theme-picture-actions"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-inline-start: auto;
+}
+[data-part="theme-colour"] output {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--dim);
+}
+[data-part="theme-colour"]:has(input[data-weak]) output {
+  color: var(--error);
+}
+[data-part="theme-editor"] li > span:first-child {
+  color: var(--dim);
+}
+@media (hover: hover) {
+  [data-part="theme-editor"] li:hover:has(:is(select, input, button):enabled) {
+    background: var(--line);
+  }
+}
+[data-part="theme-editor"] input[type="color"] {
+  box-sizing: border-box;
+  inline-size: 44px;
+  block-size: 44px;
+  margin-inline-end: calc(-1 * var(--s3));
+  padding: 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+[data-part="theme-editor"] input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+[data-part="theme-editor"] input[type="color"]::-webkit-color-swatch {
+  border: 1px solid var(--gutter);
+  border-radius: 4px;
+}
+[data-part="theme-editor"] input[type="color"]::-moz-color-swatch {
+  border: 1px solid var(--gutter);
+  border-radius: 4px;
+}
+[data-part="theme-editor"] input[type="color"]:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+[data-part="theme-picture-actions"] :is(button, label) {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: var(--s2);
+  margin-inline-end: calc(-1 * var(--s2));
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+[data-part="theme-picture-actions"] label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+[data-part="theme-picture-actions"] label:has(input:focus-visible) {
+  outline: 2px solid var(--double);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+[data-part="theme-picture-actions"] label:has(input:disabled),
+[data-part="theme-picture-actions"] button:disabled {
+  color: var(--gutter);
+  cursor: default;
+}
+[data-part="theme-status"] {
+  min-height: 1.4em;
+  margin: var(--s2) 0 0;
+  color: var(--error);
+}
+/* A file that was written is no error. */
+[data-part="theme-status"][data-tone="ok"] {
+  color: var(--dim);
+}

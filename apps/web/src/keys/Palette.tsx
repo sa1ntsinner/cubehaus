@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
+import { keepFocusInside } from "../input/tab-loop";
 import type { Action } from "./engine";
 import { actionKey, type Keymap } from "./keymap";
 import { isMacPlatform, keyLabel } from "./label";
+import "../design/sheet.css";
+import "../design/palette.css";
 
 // Find an action by its title in the current language and run it with Enter.
 export function matchActions(
@@ -20,6 +23,7 @@ export function Palette({
   actions,
   language,
   keymap,
+  title,
   placeholder,
   closeLabel,
   onClose,
@@ -27,6 +31,7 @@ export function Palette({
   actions: readonly Action[];
   language: "en" | "ru";
   keymap: Keymap;
+  title: string;
   placeholder: string;
   closeLabel: string;
   onClose(): void;
@@ -46,8 +51,11 @@ export function Palette({
   return (
     <dialog
       data-part="palette"
+      tabIndex={-1}
       data-no-timer
       open
+      aria-label={title}
+      onBlur={keepFocusInside}
       onKeyDown={(event) => {
         if (event.defaultPrevented || event.nativeEvent.isComposing) return;
         if (actionKey(keymap, "palette.run", event)) {
@@ -85,6 +93,11 @@ export function Palette({
           setSelected(0);
         }}
       />
+      {/* The arrows move a highlight the field's reader cannot see: the command Enter
+          would run is said as it changes. */}
+      <p data-heard role="status">
+        {found[selected]?.title[language]}
+      </p>
       <ul data-part="palette-results">
         {found.map((action, index) => (
           <li

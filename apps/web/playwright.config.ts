@@ -12,7 +12,8 @@ const origin = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
-  workers: 1,
+  // Two at most on the dev Mac: Chromium's tests beside WebKit's one.
+  workers: 2,
   use: { baseURL: origin, trace: "retain-on-failure" },
   projects: [
     {
@@ -25,8 +26,8 @@ export default defineConfig({
       },
     },
     // Firefox, opt-in with PW_FIREFOX=1: Playwright's Firefox build does not start on macOS
-    // 27 ("Could not find profile folder"), so it runs in the Linux image there
-    // (docs/release/0.1-acceptance.md). The GPU flag above is Chromium's.
+    // 27 ("Could not find profile folder"), so it runs in the Linux image there.
+    // The GPU flag above is Chromium's.
     ...(process.env.PW_FIREFOX === "1"
       ? [
           {
@@ -39,9 +40,9 @@ export default defineConfig({
     {
       name: "webkit",
       // Only what depends on the engine: touch and gestures, the timer's input, layout,
-      // storage and offline. The rest is the same code in both, and Chromium runs it.
-      testMatch:
-        /(ios|gestures|timer|layout|storage|offline|theme|a11y)\.spec\.ts$/,
+      // storage, offline and the theme's first paint. The rest is the same code in both,
+      // and Chromium runs it (axe and the keyboard walks too: one engine is enough).
+      testMatch: /(ios|gestures|timer|layout|storage|offline|theme)\.spec\.ts$/,
       use: { browserName: "webkit" },
       // WebKit keeps an origin's file system outside the profile, shared by every WebKit
       // process on the machine (e2e/fixtures.ts): two workers' tests would open, and clear,

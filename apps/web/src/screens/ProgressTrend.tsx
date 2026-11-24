@@ -221,6 +221,13 @@ export function ProgressTrend({
           y: plot.y(selected.value),
         }
       : null;
+  const readout = cursor && {
+    value: `${name} ${format(cursor.value)}`,
+    solve: labels.solveAt(
+      numbers.format(cursor.index + 1),
+      dates.format(cursor.startedAt),
+    ),
+  };
   return (
     <figure
       ref={ref}
@@ -232,6 +239,10 @@ export function ProgressTrend({
       data-side={cursor ? (cursor.x > width / 2 ? "end" : "start") : undefined}
       style={cursor ? ({ "--x": `${cursor.x}px` } as CSSProperties) : undefined}
     >
+      {/* The arrows move the cursor: the solve under it is said as it changes. */}
+      <p data-heard role="status">
+        {readout ? `${readout.value} ${readout.solve}` : ""}
+      </p>
       <svg
         role="img"
         aria-label={description ?? undefined}
@@ -261,18 +272,11 @@ export function ProgressTrend({
           </>
         )}
       </svg>
-      <figcaption data-part="progress-readout" hidden={!cursor}>
-        {cursor && (
+      <figcaption data-part="progress-readout" hidden={!readout}>
+        {readout && (
           <>
-            <span data-part="progress-readout-value">
-              {name} {format(cursor.value)}
-            </span>{" "}
-            <span data-part="progress-readout-solve">
-              {labels.solveAt(
-                numbers.format(cursor.index + 1),
-                dates.format(cursor.startedAt),
-              )}
-            </span>
+            <span data-part="progress-readout-value">{readout.value}</span>{" "}
+            <span data-part="progress-readout-solve">{readout.solve}</span>
           </>
         )}
       </figcaption>

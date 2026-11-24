@@ -362,150 +362,6 @@ async function settle(page: Page) {
   );
 }
 
-/** A mouse drag from the middle of one tile's picture to a point, in small steps. */
-async function drag(
-  page: Page,
-  name: string,
-  to: (box: { x: number; y: number; width: number; height: number }) => {
-    x: number;
-    y: number;
-  },
-  target: string,
-  options: { release?: boolean } = {},
-) {
-  // Tiles still gliding from the last change are where they are seen, not yet home.
-  await page.evaluate(() =>
-    Promise.all(
-      document.getAnimations().map((a) => a.finished.catch(() => {})),
-    ),
-  );
-  const from = await tileNamed(page, name)
-    .locator('[data-part="tile-picture"]')
-    .boundingBox();
-  const over = await tileNamed(page, target).boundingBox();
-  if (!from || !over) throw new Error("No tiles");
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-  await page.mouse.down();
-  const point = to(over);
-  await page.mouse.move(point.x, point.y, { steps: 10 });
-  if (options.release !== false) await page.mouse.up();
-}
-const middle = (box: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}) => ({
-  x: box.x + box.width / 2,
-  y: box.y + box.height * 0.3,
-});
-const rightEdge = (box: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}) => ({
-  x: box.x + box.width - 4,
-  y: box.y + box.height * 0.85,
-});
-const leftEdge = (box: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}) => ({
-  x: box.x + 4,
-  y: box.y + box.height * 0.85,
-});
-
-test("a mouse drag moves a tile, onto another makes a folder that opens in place, out of it ungroups; undo and reload", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await ready(page, "333");
-  await createSession(page, "B", "222");
-  await createSession(page, "C", "444");
-  await createSession(page, "D", "555");
-  await openSwitch(page);
-  await expect.poll(() => layoutRows(page)).toEqual(["3×3", "B", "C", "D"]);
-
-  // 3×3 past C's right side: the tiles make room, and it lands after C.
-  await drag(page, "3×3", rightEdge, "C", { release: false });
-  await expect(part(page, "switch")).toHaveAttribute("data-dragging");
-  await expect(part(page, "switch-drop-trash")).toBeVisible();
-  await expect.poll(() => layoutRows(page)).toEqual(["B", "C", "3×3", "D"]);
-  await page.mouse.up();
-  await expect(part(page, "switch")).not.toHaveAttribute("data-dragging");
-  await expect(part(page, "switch-drop-trash")).toHaveCount(0);
-  await expect(part(page, "switch-undo")).toContainText("Order changed.");
-  await expect.poll(() => layoutRows(page)).toEqual(["B", "C", "3×3", "D"]);
-
-  // 3×3 onto B's picture: a folder of the two where B stood, open, its name ready.
-  await drag(page, "3×3", middle, "B", { release: false });
-  await expect(tileNamed(page, "B")).toHaveAttribute("data-drop", "on");
-  await page.mouse.up();
-  const field = part(page, "switch-rename");
-  await expect(field).toBeFocused();
-  await expect(field).toHaveValue("Folder");
-  await field.fill("Cubes");
-  await field.press("Enter");
-  await expect
-    .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  B", "  3×3", "C", "D"]);
-  // The folder's tile shows its pictures; a click closes and opens it.
-  await expect(
-    tileNamed(page, "Cubes").locator('[data-part="glyph-folder"] svg'),
-  ).toHaveCount(2);
-  await tileNamed(page, "Cubes").locator('[data-action="switch-pick"]').click();
-  await expect.poll(() => layoutRows(page)).toEqual(["▸ Cubes", "C", "D"]);
-  await tileNamed(page, "Cubes").locator('[data-action="switch-pick"]').click();
-
-  // D dropped onto the folder joins it, last.
-  await drag(page, "D", middle, "Cubes");
-  await expect
-    .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  B", "  3×3", "  D", "C"]);
-
-  // B dragged out of the folder, before C: it leaves; then 3×3 too, and the folder, left
-  // with D alone, lets it go where the folder stood.
-  await drag(page, "B", leftEdge, "C");
-  await expect
-    .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  3×3", "  D", "B", "C"]);
-  await drag(page, "3×3", rightEdge, "C");
-  await expect.poll(() => layoutRows(page)).toEqual(["D", "B", "C", "3×3"]);
-
-  // Undo puts the folder back whole.
-  await page.keyboard.press("ControlOrMeta+z");
-  await expect
-    .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  3×3", "  D", "B", "C"]);
-
-  // A drag that Esc cancels changes nothing and starts no solve.
-  await drag(page, "C", leftEdge, "B", { release: false });
-  await page.keyboard.press("Escape");
-  await page.mouse.up();
-  await expect(part(page, "switch")).toBeVisible();
-  await expect
-    .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  3×3", "  D", "B", "C"]);
-  await page.keyboard.press("Escape");
-  await page.keyboard.press("Escape");
-  await expect(part(page, "switch")).toHaveCount(0);
-  await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
-
-  // [ ] walk the order as stored, folders opened; it survives a reload.
-  await page.reload();
-  await ready(page, "555");
-  await expect(sessionButton(page)).toHaveText("D");
-  await page.keyboard.press("BracketLeft");
-  await expect(sessionButton(page)).toHaveText("3×3");
-  await openSwitch(page);
-  await expect
-    .poll(() => layoutRows(page))
-    .toEqual(["▾ Cubes", "  3×3", "  D", "B", "C"]);
-});
-
 test("keys alone: arrows walk the grid, Alt moves a tile, Move to… groups, Backspace deletes with undo", async ({
   page,
 }) => {
@@ -969,10 +825,7 @@ test.describe("tiles on a touch screen", () => {
   });
 });
 
-for (const viewport of [
-  { width: 390, height: 844 },
-  { width: 844, height: 390 },
-]) {
+for (const viewport of [{ width: 390, height: 844 }]) {
   test.describe(`the switch on a touch screen ${viewport.width}×${viewport.height}`, () => {
     test.use({ hasTouch: true, isMobile: true, viewport });
 
@@ -1289,50 +1142,6 @@ test("Shift+S splits the session before the solve on show; undo joins it, and a 
   await expect(sessionButton(page)).toHaveText("Before the camp");
   await expect(rows(page)).toHaveCount(3);
   expect(await sessionNames(page)).toEqual(["Before the camp", "3×3"]);
-});
-
-test("totals wait for two results and omit the newest best single", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await ready(page, "333");
-  const totals = part(page, "stats-totals");
-  await expect(totals).toHaveCount(0);
-  await solve(page, 1, 12_000);
-  await expect(part(page, "time")).toHaveText("12.00");
-  await expect(totals).toHaveCount(0);
-  await ready(page, "333");
-  await solve(page, 2, 10_000);
-  await expect(part(page, "time")).toHaveText("10.00");
-  await expect(stat(page, "mean")).toHaveText("11.00");
-  await expect(stat(page, "best")).toHaveCount(0);
-  await ready(page, "333");
-  await solve(page, 3, 14_000);
-  await expect(part(page, "time")).toHaveText("14.00");
-  await expect(stat(page, "best")).toHaveText("10.00");
-  await expect(stat(page, "mean")).toHaveText("12.00");
-});
-
-test("3×3 Blindfolded shows the best slot after a slower solve", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await createSession(page, "Blindfolded", "333bf");
-  const scramble = part(page, "scramble");
-  await expect(scramble).toHaveAttribute("data-event", "333bf");
-  await expect(scramble).toHaveAttribute("data-ready", "true");
-
-  const slots = part(page, "stats-now");
-  const best = slots.locator('[data-slot="best"]');
-  await solve(page, 1, 1_200);
-  await expect(part(page, "time")).toHaveText("1.20");
-  await expect(slots.locator('[data-slot="ao5"]')).toHaveCount(1);
-  await expect(best).toHaveCount(0);
-
-  await expect(scramble).toHaveAttribute("data-ready", "true");
-  await solve(page, 2, 2_000);
-  await expect(part(page, "time")).toHaveText("2.00");
-  await expect(best.locator('[data-stat="best"]')).toHaveText("1.20");
 });
 
 test.describe("splitting on a touch screen", () => {

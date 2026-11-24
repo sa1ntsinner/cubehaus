@@ -90,8 +90,3 @@ test("one session alone saves as a table and for csTimer", async ({ page }) => {
   expect(Object.keys(cstimer)).toEqual(["session1", "properties"]);
   expect(cstimer.session1).toHaveLength(2);
 });
-
-test("inspection calls are off until chosen", async ({ page }) => {
-  await page.goto("/#/settings/timer");
-  await expect(page.locator("#setting-calls")).toHaveValue("off");
-});

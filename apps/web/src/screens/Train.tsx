@@ -1,3 +1,4 @@
+import type { OllcpCaseData, OllcpGroup } from "@cubehaus/algs/ollcp";
 import {
   type AlgPiece,
   algUnits,
@@ -6,7 +7,8 @@ import {
   type Grade,
   gradeOf,
   lastSlotTop,
-  lookalikes,
+  loadTrainerSet,
+  lookalikesFor,
   newCard,
   nextCase,
   pictureOf,
@@ -23,10 +25,9 @@ import {
   slotMirrored,
   slotOf,
   type TrainerCaseData,
-  trainerSet,
   turnScramble,
   weakCases,
-} from "@cubehaus/algs";
+} from "@cubehaus/algs/trainer";
 import {
   CROSS_COLOURS,
   type CrossColour,
@@ -45,15 +46,18 @@ import type { TrainerAttempt, TrainerCase } from "@cubehaus/storage";
 import {
   createContext,
   Fragment,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useContext,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { AppView, createAppState } from "../app-state";
 import { HINT_GAP } from "../gesture-hints";
@@ -68,7 +72,7 @@ import {
   SlotDiagram,
   TwoDiagram,
   TwoSides,
-} from "../scramble/Training";
+} from "../scramble/TrainingDiagrams";
 import {
   createTrainingClient,
   heldScramble,
@@ -92,11 +96,16 @@ import {
   learntChoices,
   memberOf,
   myAlg,
+  ollcpGroupOf,
+  ollcpListed,
+  ollcpMember,
   otherAlgs,
   parseChoices,
   showCase,
   storedMember,
+  type TrainSet,
 } from "../train-state";
+import "../design/safe-area.css";
 import "../design/train.css";
 import "../input/train-behavior.css";
 
@@ -112,23 +121,82 @@ import "../input/train-behavior.css";
  * inserts, the 2×2's top in one go over three bottoms), whose member is chosen at the far
  * end of Learn's `All` line.
  */
-type Tab = SetId | Family;
+type Tab = TrainSet | Family;
 const SETS: readonly Tab[] = ["pll", "oll", "coll", "f2l", "ls"];
 /** The 2×2's sets, in the set row while the 2×2 is chosen. */
 const TWO_SETS: readonly Tab[] = ["two-oll", "two-pbl", "two-cll"];
-const isTwo = (set: SetId) => set.startsWith("two-");
+const isTwo = (set: TrainSet) => set.startsWith("two-");
 const setName = (id: Tab) => id.replace("two-", "").toUpperCase();
 const isFamily = (tab: Tab): tab is Family => tab in FAMILIES;
 /** Every set a route can open: the row's own and each family's members. */
-const ROUTE_SETS: readonly SetId[] = [...SETS, ...TWO_SETS].flatMap((tab) =>
+const ROUTE_SETS: readonly TrainSet[] = [...SETS, ...TWO_SETS].flatMap((tab) =>
   isFamily(tab) ? [...FAMILIES[tab].members] : [tab],
 );
 const FAMILY_IDS = Object.keys(FAMILIES) as Family[];
-const isF2l = (set: SetId) => slotOf(set) !== null;
-const isLastSlot = (set: SetId) => set.startsWith("ls-");
+const isF2l = (set: TrainSet) => slotOf(set) !== null;
+const isLastSlot = (set: TrainSet) => set.startsWith("ls-");
+/** Sets whose drill scrambles come with their data: the 2×2's, CMLL and OLLCP. */
+const shipsScrambles = (set: TrainSet) =>
+  isTwo(set) || set === "cmll" || set === "ollcp";
+/** The puzzle a set is for (OLLCP is the 3×3's). */
+const puzzleFor = (set: TrainSet) => puzzleOf(set as SetId);
+
+/**
+ * OLLCP's own module (`@cubehaus/algs/ollcp`): its index, its groups and its pictures.
+ * Loaded when OLLCP is first chosen, so the trainer's first screen does not carry it; the
+ * algorithms of a group come in a file of their own when the group is asked for.
+ */
+type OllcpModule = typeof import("@cubehaus/algs/ollcp");
+let ollcpModule: OllcpModule | null = null;
+/** What OLLCP's first list needs: the groups, each with its OLL tile's picture. */
+type OllcpSet = {
+  groups: readonly (OllcpGroup & { stickers: string })[];
+  /** Every case as listed, without its algorithms. */
+  listed: readonly TrainerCaseData[];
+  /** The group (its OLL case's number) each case belongs to. */
+  groupOf: ReadonlyMap<string, number>;
+  loadGroup(oll: number): Promise<readonly OllcpCaseData[]>;
+};
+async function loadOllcpSet(): Promise<OllcpSet> {
+  // The first list is the OLL set's own tiles, so its pictures are the OLL set's.
+  const [module, oll] = await Promise.all([
+    import("@cubehaus/algs/ollcp"),
+    loadTrainerSet("oll"),
+  ]);
+  ollcpModule = module;
+  const groups = module.ollcpGroups().map((group) => {
+    const tile = oll.find((c) => c.label === group.label);
+    return {
+      ...group,
+      // The skip has no OLL case: its own top, every sticker up.
+      stickers: tile
+        ? pictureOf(tile)
+        : module.ollcpPicture(group.cases[0] as OllcpGroup["cases"][number]),
+    };
+  });
+  const loads = new Map<number, Promise<readonly OllcpCaseData[]>>();
+  return {
+    groups,
+    listed: module.OLLCP_INDEX.map(ollcpListed),
+    groupOf: new Map(module.OLLCP_INDEX.map((c) => [c.id, c.oll])),
+    loadGroup(oll) {
+      const pending = loads.get(oll);
+      if (pending) return pending;
+      const load = module.loadOllcpGroup(oll).catch((error: unknown) => {
+        loads.delete(oll);
+        throw error;
+      });
+      loads.set(oll, load);
+      return load;
+    },
+  };
+}
+/** A short word's full name for a screen reader, the word on show first (voice control asks for it). */
+const named = (word: string, name: string) =>
+  name.includes(word) ? name : `${word}, ${name}`;
 const showKey = "trainer.show";
 const puzzleKey = "trainer.puzzle";
-const poolKey = (set: SetId) => `trainer.pool.${set}`;
+const poolKey = (set: TrainSet) => `trainer.pool.${set}`;
 const algsKey = "trainer.algs";
 const splitKey = "trainer.split";
 /** F2L's pictures and scrambles on another cross colour (`trainer.f2lCross`). */
@@ -137,11 +205,20 @@ type Mode = "learn" | "drill" | "review";
 const MODES: readonly Mode[] = ["learn", "drill", "review"];
 type App = ReturnType<typeof createAppState>;
 
-export function parseTrainRoute(hash: string): { set: SetId; mode: Mode } {
-  const [, , set, mode] = hash.split("/");
+export function parseTrainRoute(hash: string): {
+  set: TrainSet;
+  mode: Mode;
+  /** OLLCP: the group in view (its OLL case's number, 0 for the skip), or its first list. */
+  group: number | null;
+} {
+  const [, , set, mode, group] = hash.split("/");
+  const known = ROUTE_SETS.includes(set as TrainSet)
+    ? (set as TrainSet)
+    : "pll";
   return {
-    set: ROUTE_SETS.includes(set as SetId) ? (set as SetId) : "pll",
+    set: known,
     mode: MODES.includes(mode as Mode) ? (mode as Mode) : "learn",
+    group: known === "ollcp" ? ollcpGroupOf(group) : null,
   };
 }
 
@@ -233,8 +310,13 @@ const Held = createContext<Record<string, string> | undefined>(undefined);
  * up or not; seen from above the slot, 26 cases at 60 px looked alike), every other as
  * `pictureOf` draws it after `turns` U turns.
  */
-const stickersOf = (set: SetId, c: TrainerCaseData, turns = 0) =>
-  isLastSlot(set) ? lastSlotTop(c) : pictureOf(c, turns);
+const stickersOf = (set: TrainSet, c: TrainerCaseData, turns = 0) =>
+  isLastSlot(set)
+    ? lastSlotTop(c)
+    : set === "ollcp" && ollcpModule
+      ? // The corners in colour; an edge says only whether it shows the top colour.
+        ollcpModule.ollcpPicture(c, turns)
+      : pictureOf(c, turns);
 
 function Picture({
   set,
@@ -242,7 +324,7 @@ function Picture({
   arrows = false,
   tile = false,
 }: {
-  set: SetId;
+  set: TrainSet;
   stickers: string;
   /** PLL: arrows on the top for which piece goes where. */
   arrows?: boolean;
@@ -291,11 +373,37 @@ export function Train({
   route: string;
 }) {
   const t = words.train;
-  const { set, mode } = parseTrainRoute(route);
-  const cases = useMemo(() => trainerSet(set), [set]);
+  const { set, mode, group } = parseTrainRoute(route);
+  const [loaded, setLoaded] = useState<{
+    set: SetId;
+    cases: readonly TrainerCaseData[];
+  }>();
+  // OLLCP: its index (the first list), then each group's algorithms as it is asked for.
+  const [ollcp, setOllcp] = useState<OllcpSet | null>(null);
+  const [ollcpData, setOllcpData] = useState<
+    ReadonlyMap<number, readonly OllcpCaseData[]>
+  >(new Map());
+  useEffect(() => {
+    let stale = false;
+    if (set === "ollcp")
+      void loadOllcpSet().then((found) => {
+        if (!stale) setOllcp((was) => was ?? found);
+      });
+    else
+      void loadTrainerSet(set).then((cases) => {
+        if (!stale) setLoaded({ set, cases });
+      });
+    return () => {
+      stale = true;
+    };
+  }, [set]);
   const store = app.trainer();
   const stored = app.storedSettings();
   const [rows, setRows] = useState<TrainerCase[] | null>(null);
+  const membershipWrites = useRef<Promise<unknown>>(Promise.resolve());
+  const [pendingWrites, setPendingWrites] = useState(0);
+  const active = useRef({ set, store });
+  active.current = { set, store };
   const [attempts, setAttempts] = useState<TrainerAttempt[]>([]);
   // How the drill shows a case: remembered, changed at the drill's foot.
   const [byPicture, setByPicture] = useState<boolean | null>(null);
@@ -312,7 +420,7 @@ export function Train({
   const [members, setMembers] = useState<Partial<Record<Family, string>>>({});
   // The set each puzzle was left on: the puzzle switch goes back to it.
   const [puzzleWas, setPuzzleWas] = useState<
-    Partial<Record<"333" | "222", SetId>>
+    Partial<Record<"333" | "222", TrainSet>>
   >({});
   const ru = view.settings.language === "ru";
   // F2L on a chosen cross colour: the whole cube turned so that colour is at the bottom,
@@ -341,7 +449,7 @@ export function Train({
       return;
     }
     void Promise.all([
-      store.cases(set),
+      membershipWrites.current.then(() => store.cases(set)),
       store.attempts(set),
       stored?.get(showKey) ?? null,
       stored?.get(poolKey(set)) ?? null,
@@ -365,10 +473,10 @@ export function Train({
       );
       setF2lCross(isCrossColour(crossWas) ? crossWas : null);
       // The set last left on the other puzzle (setting `trainer.puzzle`).
-      if (left && ROUTE_SETS.includes(left as SetId))
+      if (left && ROUTE_SETS.includes(left as TrainSet))
         setPuzzleWas((was) => ({
           ...was,
-          [puzzleOf(left as SetId)]: left as SetId,
+          [puzzleFor(left as TrainSet)]: left as TrainSet,
         }));
     });
     return () => {
@@ -391,12 +499,74 @@ export function Train({
     return () => window.removeEventListener("keydown", close);
   }, []);
 
-  const go = (next: { set?: SetId; mode?: Mode }) => {
-    location.hash = `#/train/${next.set ?? set}/${next.mode ?? mode}`;
+  // A mode keeps OLLCP's group; another set, or the way back to the first list, leaves it.
+  const go = (next: { set?: TrainSet; mode?: Mode; group?: number | null }) => {
+    const to = next.set ?? set;
+    const at =
+      next.group !== undefined ? next.group : to === set ? group : null;
+    location.hash = `#/train/${to}/${next.mode ?? mode}${
+      to === "ollcp" && at !== null ? `/${at}` : ""
+    }`;
   };
+
+  // An open group loads as a unit. At the first level, the practice order needs only
+  // the index, and the chosen case's algorithms arrive before the other groups.
+  useEffect(() => {
+    if (set !== "ollcp" || !ollcp || group === null || ollcpData.has(group))
+      return;
+    let stale = false;
+    void ollcp.loadGroup(group).then((found) => {
+      if (!stale) setOllcpData((was) => new Map(was).set(group, found));
+    });
+    return () => {
+      stale = true;
+    };
+  }, [set, group, ollcp, ollcpData]);
+  const ollcpGroup = ollcp?.groups.find((g) => g.oll === group) ?? null;
+  const ollcpLoaded = group === null || ollcpData.has(group);
+  const cases = useMemo(() => {
+    if (set !== "ollcp") return loaded?.set === set ? loaded.cases : null;
+    if (!ollcp) return null;
+    return ollcpGroup
+      ? (ollcpData.get(ollcpGroup.oll) ?? ollcpGroup.cases.map(ollcpListed))
+      : ollcp.listed;
+  }, [set, loaded, ollcp, ollcpGroup, ollcpData]);
+  const loadPracticeCase = useMemo(() => {
+    if (set !== "ollcp" || group !== null || !ollcp || mode === "learn")
+      return undefined;
+    const groups = whole
+      ? ollcp.groups.map((g) => g.oll)
+      : [...new Set(rows?.map((row) => ollcp.groupOf.get(row.caseId)))];
+    let prefetching = false;
+    return async (id: string) => {
+      const oll = ollcp.groupOf.get(id);
+      if (oll === undefined) return undefined;
+      const found = await ollcp.loadGroup(oll);
+      if (!prefetching) {
+        prefetching = true;
+        for (const other of groups)
+          if (other !== undefined && other !== oll)
+            void ollcp.loadGroup(other).catch(() => {
+              // The case can try again when drawn.
+            });
+      }
+      return found.find((c) => c.id === id);
+    };
+  }, [set, group, mode, ollcp, whole, rows]);
+  // A drill of one group holds that group's cards alone.
+  const scoped = useMemo(() => {
+    if (!ollcpGroup || rows === null) return rows;
+    const ids = new Set(ollcpGroup.cases.map((c) => c.id));
+    return rows.filter((r) => ids.has(r.caseId));
+  }, [ollcpGroup, rows]);
   const learning = useMemo(() => new Set(rows?.map((r) => r.caseId)), [rows]);
   const bottoms = words.train.memberWords["two-cll"];
-  const labels = useMemo(() => caseLabels(set, bottoms), [set, bottoms]);
+  // OLLCP's group with nothing to orient, and its cases (`Skip 1`).
+  const skipWord = words.train.skip;
+  const labels = useMemo(
+    () => caseLabels(set, cases ?? [], bottoms, skipWord),
+    [set, cases, bottoms, skipWord],
+  );
   // What each case shows: the person's own choice, else the algorithm they learnt it with.
   const learnt = useMemo(
     () => learntChoices({}, set, attempts),
@@ -408,7 +578,7 @@ export function Train({
   );
   const family = familyOf(set);
 
-  const otherPuzzle = puzzleOf(set) === "222" ? "333" : "222";
+  const otherPuzzle = puzzleFor(set) === "222" ? "333" : "222";
   return (
     <Held.Provider value={faces}>
       <main data-no-timer data-part="train" data-mode={mode}>
@@ -461,7 +631,7 @@ export function Train({
               aria-label={t.puzzleNames[otherPuzzle]}
               onClick={() => {
                 void stored?.set(puzzleKey, set);
-                setPuzzleWas((was) => ({ ...was, [puzzleOf(set)]: set }));
+                setPuzzleWas((was) => ({ ...was, [puzzleFor(set)]: set }));
                 go({
                   set:
                     puzzleWas[otherPuzzle] ??
@@ -473,12 +643,26 @@ export function Train({
             </button>
           </p>
         </div>
-        {rows === null || byPicture === null || whole === null ? null : mode ===
-          "learn" ? (
+        {cases === null ||
+        rows === null ||
+        scoped === null ||
+        byPicture === null ||
+        whole === null ? null : mode === "learn" ? (
           <Learn
             key={set}
             set={set}
             cases={cases}
+            ollcp={
+              set === "ollcp" && ollcp
+                ? {
+                    groups: ollcp.groups,
+                    open: ollcpGroup,
+                    loading: !ollcpLoaded,
+                    skipWord,
+                    onGroup: (oll) => go({ group: oll }),
+                  }
+                : null
+            }
             learning={learning}
             attempts={attempts}
             words={words}
@@ -502,30 +686,40 @@ export function Train({
               void stored?.set(FAMILIES[f].key, next);
               go({ set: memberOf(f, next as never) });
             }}
-            onDrill={async (ids, on) => {
-              if (!store) return;
-              const current = new Set(
-                (await store.cases(set)).map((r) => r.caseId),
+            onDrill={(added, removed) => {
+              if (!store)
+                return Promise.reject(new Error("Database unavailable"));
+              setPendingWrites((count) => count + 1);
+              const write = membershipWrites.current.then(async () => {
+                const now = Date.now();
+                const cards = await Promise.all(
+                  added.map(async (caseId) => ({
+                    caseId,
+                    ...(await newCard(caseId, now)),
+                  })),
+                );
+                await store.setCaseMembership(set, cards, removed);
+                const next = await store.cases(set);
+                if (
+                  active.current.set === set &&
+                  active.current.store === store
+                )
+                  setRows(next);
+              });
+              membershipWrites.current = write.catch(() => {});
+              return write.finally(() =>
+                setPendingWrites((count) => count - 1),
               );
-              for (const id of ids) {
-                if (on === current.has(id)) continue;
-                if (!on) await store.removeCase(set, id);
-                // Back in: the schedule it had, else a new card due now.
-                else if (!(await store.restoreCase(set, id))) {
-                  const { card, dueAt } = await newCard(id, Date.now());
-                  await store.putCase({ setId: set, caseId: id, card, dueAt });
-                }
-              }
-              setRows(await store.cases(set));
             }}
           />
-        ) : (
+        ) : pendingWrites > 0 || (set === "ollcp" && !ollcpLoaded) ? null : (
           <Practice
-            key={`${set}/${mode}/${whole}`}
+            key={`${set}/${group}/${mode}/${whole}`}
             set={set}
             review={mode === "review"}
             cases={cases}
-            rows={rows}
+            loadCase={loadPracticeCase}
+            rows={scoped}
             attempts={attempts}
             words={words}
             precision={view.settings.precision}
@@ -609,6 +803,14 @@ function TrainKeys({
   );
 }
 
+const wideLearn = () => matchMedia("(min-width: 900px)");
+const isWideLearn = () => wideLearn().matches;
+function watchWideLearn(change: () => void) {
+  const media = wideLearn();
+  media.addEventListener("change", change);
+  return () => media.removeEventListener("change", change);
+}
+
 function Learn({
   set,
   cases,
@@ -625,12 +827,26 @@ function Learn({
   cross,
   crossOrder: order,
   onCross,
+  ollcp,
 }: {
   /** F2L: the cross colour the pictures are drawn for, and the order a press steps in. */
   cross: CrossColour | null;
   crossOrder: readonly CrossColour[];
   onCross(next: CrossColour): void;
-  set: SetId;
+  /**
+   * OLLCP's two levels: its groups as the OLL set's tiles, then the open group's cases
+   * (`cases`) in the list's place. Null for every other set.
+   */
+  ollcp: {
+    groups: readonly (OllcpGroup & { stickers: string })[];
+    open: OllcpGroup | null;
+    /** The open group's algorithms are on their way. */
+    loading: boolean;
+    /** The name of the group with nothing to orient. */
+    skipWord: string;
+    onGroup(oll: number | null): void;
+  } | null;
+  set: TrainSet;
   cases: readonly TrainerCaseData[];
   learning: ReadonlySet<string>;
   attempts: readonly TrainerAttempt[];
@@ -640,7 +856,7 @@ function Learn({
   /** Each case's name (F2L numbered in the learner's order). */
   labels: ReadonlyMap<string, string>;
   /** Puts the cases into the drills, or takes them out. */
-  onDrill(ids: readonly string[], on: boolean): Promise<void>;
+  onDrill(added: readonly string[], removed: readonly string[]): Promise<void>;
   choices: AlgChoices;
   onChoose(c: TrainerCaseData, moves: string): void;
   /** A family's member: F2L's slot, last slot's insert, the 2×2's bottom. */
@@ -648,8 +864,17 @@ function Learn({
 }) {
   const t = words.train;
   const labelOf = (c: TrainerCaseData) => labels.get(c.id) ?? c.label;
+  // Under its group's heading an OLLCP case's tile is named by its number alone.
+  const tileLabel = (c: TrainerCaseData) =>
+    ollcp ? ollcpMember(labelOf(c)) : labelOf(c);
   const family = familyOf(set);
-  // F2L in the learner's order and its four groups; every other set as one list.
+  const groupName = (g: OllcpGroup) =>
+    g.oll === 0 ? ollcp?.skipWord : g.label;
+  // OLLCP's first list: its groups, no cases yet.
+  const levelOne = ollcp !== null && ollcp.open === null;
+  const openGroup = ollcp?.open ?? null;
+  // F2L in the learner's order and its four groups; OLLCP's open group under its OLL
+  // case's name; every other set as one list.
   const groups = useMemo(() => {
     const found = learnGroups(set);
     const byId = new Map(cases.map((c) => [c.id, c]));
@@ -664,29 +889,50 @@ function Learn({
   const [open, setOpen] = useState<string | null>(null);
   // The other algorithms of the open case, one tap away.
   const [more, setMore] = useState(false);
-  // A tap shows at once; the stored list catches up a moment later.
-  const [pending, setPending] = useState<ReadonlyMap<string, boolean>>(
-    new Map(),
-  );
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the stored list arrived.
-  useEffect(() => setPending(new Map()), [learning]);
-  const picked = (id: string) => pending.get(id) ?? learning.has(id);
+  // Layer each pending edit over the last committed rows, including during a quick
+  // second tap. Dropping a failed edit restores the affected rings.
+  const [pending, setPending] = useState<
+    readonly ReadonlyMap<string, boolean>[]
+  >([]);
+  const [writeFailed, setWriteFailed] = useState(false);
+  const selected = useMemo(() => {
+    const selected = new Set(learning);
+    for (const edit of pending)
+      for (const [id, on] of edit)
+        if (on) selected.add(id);
+        else selected.delete(id);
+    return selected;
+  }, [learning, pending]);
+  const changeDrill = async (
+    added: readonly string[],
+    removed: readonly string[],
+  ) => {
+    const edit = new Map<string, boolean>();
+    for (const id of removed) edit.set(id, false);
+    for (const id of added) edit.set(id, true);
+    setPending((was) => [...was, edit]);
+    setWriteFailed(false);
+    try {
+      await onDrill(added, removed);
+    } catch {
+      setWriteFailed(true);
+    } finally {
+      setPending((was) => was.filter((item) => item !== edit));
+    }
+  };
   const twoLook = cases
     .filter((c) => c.subsets.includes("2-look"))
     .map((c) => c.id);
   const all = cases.map((c) => c.id);
   const inDrills = (ids: readonly string[]) =>
-    ids.length > 0 && ids.every((id) => learning.has(id));
+    ids.length > 0 && ids.every((id) => selected.has(id));
   const current = cases.find((c) => c.id === open) ?? null;
-  const twoLookOnly = inDrills(twoLook) && learning.size === twoLook.length;
+  const twoLookOnly = inDrills(twoLook) && selected.size === twoLook.length;
 
   // A case swiped sideways goes into the drills, or out of them.
   const caseList = useRef<HTMLElement>(null);
-  const toggleDrill = (id: string) => {
-    const on = !picked(id);
-    setPending((was) => new Map(was).set(id, on));
-    void onDrill([id], on);
-  };
+  const toggleDrill = (id: string) =>
+    selected.has(id) ? changeDrill([], [id]) : changeDrill([id], []);
   useSwipe(caseList, {
     config: { ...DEFAULT_SWIPE, directions: ["left", "right"], commitPx: 56 },
     // A tile has a neighbour 12 px away: it shows the way, it does not travel far.
@@ -694,19 +940,20 @@ function Learn({
     wordAt: "above",
     subject: (element) =>
       element.closest<HTMLElement>("[data-part='train-case-list'] > li"),
-    enabled: () => true,
+    // OLLCP's groups are not cases: nothing to put in the drills there.
+    enabled: () => !levelOne,
     word: (_direction, line) =>
-      picked(line.dataset.caseId ?? "") ? t.remove : t.add,
+      selected.has(line.dataset.caseId ?? "") ? t.remove : t.add,
     onCommit: (_direction, line) => {
       const id = line.dataset.caseId;
       if (!id) return;
-      toggleDrill(id);
+      void toggleDrill(id);
       learnGesture("learn");
     },
   });
   // On a touch screen, a few visits say how, once each.
   const [learnHint] = useState(() =>
-    isTouchScreen() ? takeHint(["learn"], HINT_GAP) : null,
+    isTouchScreen() && !ollcp ? takeHint(["learn"], HINT_GAP) : null,
   );
   useEffect(() => {
     if (!learnHint) return;
@@ -719,7 +966,33 @@ function Learn({
   // Narrow, the case takes the list's place: show it from its top, and on the way back
   // the list where it was left.
   const listScroll = useRef(0);
-  const choose = (id: string | null) => {
+  const caseTitle = useRef<HTMLHeadingElement>(null);
+  const wide = useSyncExternalStore(watchWideLearn, isWideLearn);
+  const casePanel = useRef<HTMLElement>(null);
+  const openTile = useRef<HTMLButtonElement>(null);
+  const openPick = useRef<HTMLInputElement>(null);
+  const caseTabIndex = wide ? -1 : undefined;
+
+  // Insert the side panel between the open tile's picture and its checkbox.
+  const tabThroughCase = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (!wide || event.key !== "Tab" || event.defaultPrevented) return;
+    const controls = Array.from(
+      casePanel.current?.querySelectorAll<HTMLButtonElement>(
+        "button:enabled",
+      ) ?? [],
+    ).filter((button) => button.getClientRects().length > 0);
+    const stops: (EventTarget | null)[] = [
+      openTile.current,
+      ...controls,
+      openPick.current,
+    ];
+    const at = stops.indexOf(event.target);
+    const next = stops[at + (event.shiftKey ? -1 : 1)];
+    if (at < 0 || !(next instanceof HTMLElement)) return;
+    event.preventDefault();
+    next.focus();
+  };
+  const choose = (id: string | null, byKey = false) => {
     const narrow = matchMedia("(max-width: 899px)").matches;
     if (id && !open) listScroll.current = window.scrollY;
     setOpen(id);
@@ -727,6 +1000,10 @@ function Learn({
     const was = open;
     requestAnimationFrame(() => {
       if (narrow) window.scrollTo({ top: id ? 0 : listScroll.current });
+      // Narrow, the list and the tile that had the keyboard have gone: the keyboard goes
+      // into the case with it. Escape comes back to the tile.
+      if (id && byKey && narrow)
+        caseTitle.current?.focus({ preventScroll: true });
       // Back on the list, the keyboard is on the case it came from (beside the list too:
       // the case's column it was in has gone).
       if (!id && was)
@@ -752,13 +1029,80 @@ function Learn({
     return () => window.removeEventListener("keydown", back, true);
   }, [open]);
 
+  // OLLCP: a group takes the list's place, shown from its top; on the way back the first
+  // list stands where it was left and the keyboard is on the group it came from.
+  const groupId = useId();
+  const groupAt = openGroup?.oll ?? null;
+  const groupWas = useRef(groupAt);
+  const groupsScroll = useRef(0);
+  const groupByKey = useRef(false);
+  const groupTitle = useRef<HTMLHeadingElement>(null);
+  const toGroup = (oll: number, byKey: boolean) => {
+    groupsScroll.current = window.scrollY;
+    groupByKey.current = byKey;
+    ollcp?.onGroup(oll);
+  };
+  useLayoutEffect(() => {
+    const was = groupWas.current;
+    groupWas.current = groupAt;
+    if (was === groupAt) return;
+    setOpen(null);
+    setMore(false);
+    if (groupAt !== null) {
+      window.scrollTo({ top: 0 });
+      // The tile that had the keyboard has gone: the keyboard goes into the group.
+      if (groupByKey.current)
+        groupTitle.current?.focus({ preventScroll: true });
+      groupByKey.current = false;
+      return;
+    }
+    window.scrollTo({ top: groupsScroll.current });
+    document
+      .querySelector<HTMLElement>(
+        `[data-part="train-case-list"] [data-group="${was}"] button`,
+      )
+      ?.focus({ preventScroll: true });
+  }, [groupAt]);
+  const leaveGroup = ollcp?.onGroup;
+  const leaveRef = useRef(leaveGroup);
+  leaveRef.current = leaveGroup;
+  useEffect(() => {
+    // With a case open, Escape closes the case first (above).
+    if (groupAt === null || open) return;
+    function back(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      leaveRef.current?.(null);
+    }
+    window.addEventListener("keydown", back, true);
+    return () => window.removeEventListener("keydown", back, true);
+  }, [groupAt, open]);
+
   return (
-    <div data-part="train-learn" data-open={current ? "" : undefined}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: Tab is delegated from the tile and case controls.
+    <div
+      data-part="train-learn"
+      data-open={current ? "" : undefined}
+      onKeyDown={tabThroughCase}
+    >
       <section data-part="train-cases" ref={caseList}>
         {learnHint && (
           <p data-part="gesture-hint" data-input="touch">
             {words.gestures.hint.learn}
           </p>
+        )}
+        {openGroup && (
+          // The way back to OLLCP's first list, in the form of the screen's own.
+          <a
+            href={`#/train/${set}/learn`}
+            data-action="train-group-close"
+            onClick={(click) => {
+              click.preventDefault();
+              ollcp?.onGroup(null);
+            }}
+          >
+            {setName(set)}
+          </a>
         )}
         <p data-part="train-filter">
           {/* Presets: the one that describes the drills stands pressed, and pressed
@@ -767,7 +1111,9 @@ function Learn({
             type="button"
             data-action="train-all"
             aria-pressed={inDrills(all)}
-            onClick={() => void onDrill(all, !inDrills(all))}
+            onClick={() =>
+              void (inDrills(all) ? changeDrill([], all) : changeDrill(all, []))
+            }
           >
             {t.all}
           </button>
@@ -778,12 +1124,10 @@ function Learn({
               aria-pressed={twoLookOnly}
               onClick={() =>
                 twoLookOnly
-                  ? void onDrill(all, false)
-                  : void onDrill(twoLook, true).then(() =>
-                      onDrill(
-                        all.filter((id) => !twoLook.includes(id)),
-                        false,
-                      ),
+                  ? void changeDrill([], all)
+                  : void changeDrill(
+                      twoLook,
+                      all.filter((id) => !twoLook.includes(id)),
                     )
               }
             >
@@ -803,8 +1147,14 @@ function Learn({
                   data-member={id}
                   aria-label={
                     family === "f2l"
-                      ? t.slotNames[id as F2lSlot]
-                      : t.members[family][id as never]
+                      ? named(
+                          t.slots[id as F2lSlot],
+                          t.slotNames[id as F2lSlot],
+                        )
+                      : named(
+                          t.memberWords[family][id as never],
+                          t.members[family][id as never],
+                        )
                   }
                   aria-pressed={choiceOf(family, set) === id}
                   onClick={() => onMember(family, id)}
@@ -817,7 +1167,38 @@ function Learn({
             </span>
           )}
         </p>
-        {groups.map((group) => (
+        {writeFailed && (
+          <p data-part="db-state" data-kind="failed" role="alert">
+            {words.dbFailed}
+          </p>
+        )}
+        {levelOne && (
+          // OLLCP's groups, each the OLL set's own tile; a group opens in the list's place.
+          <ul data-part="train-case-list" data-level="groups">
+            {ollcp.groups.map((g) => (
+              <li key={g.oll} data-group={g.oll}>
+                <button
+                  type="button"
+                  id={`${groupId}-${g.oll}`}
+                  aria-label={groupName(g)}
+                  onClick={(click) => toGroup(g.oll, click.detail === 0)}
+                >
+                  <Picture set="oll" stickers={g.stickers} tile />
+                </button>
+                {/* The name belongs to the picture: a press on it opens the group too. */}
+                <label data-part="train-pick" htmlFor={`${groupId}-${g.oll}`}>
+                  {groupName(g)}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        {openGroup && (
+          <h2 data-part="train-group-name" ref={groupTitle} tabIndex={-1}>
+            {groupName(openGroup)}
+          </h2>
+        )}
+        {(levelOne ? [] : groups).map((group) => (
           <Fragment key={group.id}>
             {group.name && <h2 data-part="train-group-name">{group.name}</h2>}
             <ul data-part="train-case-list">
@@ -825,29 +1206,28 @@ function Learn({
                 <li
                   key={c.id}
                   data-case-id={c.id}
-                  data-learning={learning.has(c.id) ? "" : undefined}
+                  data-learning={selected.has(c.id) ? "" : undefined}
                 >
                   <button
                     type="button"
+                    ref={c.id === open ? openTile : undefined}
                     aria-label={labelOf(c)}
                     aria-current={c.id === open ? "true" : undefined}
-                    data-learning={learning.has(c.id) ? "" : undefined}
-                    onClick={() => choose(c.id)}
+                    data-learning={selected.has(c.id) ? "" : undefined}
+                    onClick={(click) => choose(c.id, click.detail === 0)}
                   >
                     <Picture set={set} stickers={stickersOf(set, c)} tile />
                   </button>
                   <label data-part="train-pick">
                     <input
                       type="checkbox"
+                      ref={c.id === open ? openPick : undefined}
                       data-action="train-pick"
-                      checked={picked(c.id)}
-                      onChange={(event) => {
-                        const on = event.currentTarget.checked;
-                        setPending((was) => new Map(was).set(c.id, on));
-                        void onDrill([c.id], on);
-                      }}
+                      aria-label={ollcp ? labelOf(c) : undefined}
+                      checked={selected.has(c.id)}
+                      onChange={() => void toggleDrill(c.id)}
                     />
-                    <span>{labelOf(c)}</span>
+                    <span>{tileLabel(c)}</span>
                   </label>
                 </li>
               ))}
@@ -856,7 +1236,11 @@ function Learn({
         ))}
       </section>
       {current && (
-        <article data-part="train-case" data-case-id={current.id}>
+        <article
+          ref={casePanel}
+          data-part="train-case"
+          data-case-id={current.id}
+        >
           <button
             type="button"
             data-action="train-case-close"
@@ -871,13 +1255,16 @@ function Learn({
               <Picture set={set} stickers={current.pictures.slot} />
             )}
             <div data-part="train-case-title">
-              <h2>{labelOf(current)}</h2>
+              <h2 ref={caseTitle} tabIndex={-1}>
+                {labelOf(current)}
+              </h2>
               {family === "f2l" && cross && (
                 // The cross colour every F2L picture is drawn for, as the timer marks a
                 // cross: its sticker and its name. A press steps to the next colour (the
                 // person's own, its opposite, then the other pairs) and the list follows.
                 <button
                   type="button"
+                  tabIndex={caseTabIndex}
                   data-action="train-cross"
                   data-colour={cross}
                   aria-label={t.crossOn(words.cross.name[cross])}
@@ -913,7 +1300,23 @@ function Learn({
                 : (current.recognise ?? current.idea)?.en}
             </p>
           )}
-          {current.algs.length === 0 ? (
+          {current.algs.length === 0 && ollcp?.loading ? (
+            // The group's algorithms are on their way: their room is kept, so nothing
+            // under them moves when they come.
+            <div data-part="train-algs-wait" aria-hidden="true">
+              <ol data-part="train-algs">
+                <AlgLine alg={WAITING_ALG} words={words} />
+              </ol>
+              <button
+                type="button"
+                data-action="train-more"
+                tabIndex={-1}
+                disabled
+              >
+                {t.more(1)}
+              </button>
+            </div>
+          ) : current.algs.length === 0 ? (
             <p data-part="train-recognise">{t.noAlg}</p>
           ) : (
             <>
@@ -924,6 +1327,7 @@ function Learn({
                 <>
                   <button
                     type="button"
+                    tabIndex={caseTabIndex}
                     data-action="train-more"
                     aria-expanded={more}
                     onClick={() => setMore(!more)}
@@ -936,6 +1340,7 @@ function Learn({
                         <AlgLine key={alg.moves} alg={alg} words={words}>
                           <button
                             type="button"
+                            tabIndex={caseTabIndex}
                             data-action="train-use"
                             onClick={() => onChoose(current, alg.moves)}
                           >
@@ -950,11 +1355,11 @@ function Learn({
             </>
           )}
           <p data-part="train-case-actions">
-            {learning.has(current.id) ? (
+            {selected.has(current.id) ? (
               <button
                 type="button"
                 data-action="train-remove"
-                onClick={() => void onDrill([current.id], false)}
+                onClick={() => void changeDrill([], [current.id])}
               >
                 {t.remove}
               </button>
@@ -962,7 +1367,7 @@ function Learn({
               <button
                 type="button"
                 data-action="train-add"
-                onClick={() => void onDrill([current.id], true)}
+                onClick={() => void changeDrill([current.id], [])}
               >
                 {t.add}
               </button>
@@ -973,6 +1378,13 @@ function Learn({
     </div>
   );
 }
+
+/** Stands in an algorithm's place, unseen, while an OLLCP group loads: two lines' worth. */
+const WAITING_ALG = {
+  moves: "R U R' U' R U R' U' R U R' U' R U",
+  auf: 0,
+  metrics: { moves: 14 },
+} as TrainerCaseData["algs"][number];
 
 /**
  * The case's own medians where they help: recognition and execution over its last
@@ -1011,6 +1423,7 @@ function CaseNumbers({
 
 type Shown = {
   caseId: string;
+  data?: TrainerCaseData;
   /** U turns before the picture or the scramble, and the colour turn (y). */
   auf: number;
   colour: number;
@@ -1055,6 +1468,7 @@ function Practice({
   set,
   review: onlyWeak,
   cases,
+  loadCase,
   rows,
   attempts,
   words,
@@ -1073,9 +1487,10 @@ function Practice({
   onSaved,
 }: {
   app: App;
-  set: SetId;
+  set: TrainSet;
   review: boolean;
   cases: readonly TrainerCaseData[];
+  loadCase?: ((id: string) => Promise<TrainerCaseData | undefined>) | undefined;
   rows: readonly TrainerCase[];
   attempts: readonly TrainerAttempt[];
   words: Text;
@@ -1126,8 +1541,13 @@ function Practice({
     tick();
     return () => cancelAnimationFrame(frame);
   }, [counting, drill.recognisedAt, running]);
+  const [pictureScramble, setPictureScramble] = useState<{
+    picture: Shown;
+    text: string;
+  } | null>(null);
   const client = useRef<TrainingClient | null>(null);
   const sequence = useRef(0);
+  const loadingCase = useRef(false);
   const live = useRef({ rows, attempts });
   live.current = { rows, attempts };
 
@@ -1146,7 +1566,9 @@ function Practice({
       cards: live.current.rows,
       attempts: live.current.attempts,
       now,
-      lookalikes: lookalikes(set),
+      // OLLCP has no look-alikes of its own: its set id is none of theirs.
+      lookalikes:
+        set === "ollcp" ? new Map() : lookalikesFor(set as SetId, cases),
       // One order per local day.
       seed: Math.floor(
         (now - new Date(now).getTimezoneOffset() * 60_000) / 86_400_000,
@@ -1176,6 +1598,7 @@ function Practice({
 
   useEffect(
     () => () => {
+      sequence.current++;
       client.current?.close();
     },
     [],
@@ -1183,6 +1606,9 @@ function Practice({
 
   const next = useCallback(
     async (last: string | null) => {
+      if (last !== null && loadingCase.current) return;
+      const draw = loadCase ? ++sequence.current : null;
+      if (loadCase) loadingCase.current = true;
       const { rows: current } = live.current;
       const now = Date.now();
       let id: string | null;
@@ -1193,6 +1619,7 @@ function Practice({
           // The last attempt's new schedule first: a quick Space after the stop must not
           // find the case due as it was before it.
           await writes.current;
+          if (draw !== null && draw !== sequence.current) return;
           const dueNow = new Set(
             current
               .filter(
@@ -1219,6 +1646,7 @@ function Practice({
               recall: await recall(r.card, now),
             })),
           );
+          if (draw !== null && draw !== sequence.current) return;
           round.current = roundOf(
             queued,
             pool,
@@ -1237,7 +1665,24 @@ function Practice({
             recall: await recall(r.card, now),
           })),
         );
+        if (draw !== null && draw !== sequence.current) return;
         id = nextCase(queued, now, last);
+      }
+      let data: TrainerCaseData | undefined;
+      if (loadCase) {
+        try {
+          if (id) data = await loadCase(id);
+        } catch {
+          // Keep the draw, so a later press can retry this group.
+          if (id && draw === sequence.current) {
+            if (onlyWeak) queue.current.unshift(id);
+            else if (whole) round.current.unshift(id);
+          }
+          return;
+        } finally {
+          if (draw === sequence.current) loadingCase.current = false;
+        }
+        if (draw !== sequence.current) return;
       }
       setSaved(null);
       setMissed(false);
@@ -1251,28 +1696,38 @@ function Practice({
       const auf = isLastSlot(set) && byPicture ? 0 : random4();
       // A last-layer case comes up with any side in front; an F2L or last-slot case is
       // its slot's, so its colours stay.
-      const colour = isF2l(set) || isLastSlot(set) ? 0 : random4();
-      if (byPicture) {
-        setShown({ caseId: id, auf, colour, scramble: null });
-        moveDrill(showCase(true, split));
-        return;
-      }
-      setShown({ caseId: id, auf, colour, scramble: null });
-      moveDrill(showCase(false, split));
-      if (isTwo(set)) {
-        // The 2×2's scrambles come with its data, each one leading to its case.
-        const list = cases.find((c) => c.id === id)?.scrambles ?? [];
-        const picked = list[Math.floor(Math.random() * list.length)];
-        if (picked === undefined) return;
-        setShown({
-          caseId: id,
-          auf,
-          colour,
-          scramble: renameTurns(
-            turnScramble(picked, colour),
-            holdingFaces(holding),
-          ),
-        });
+      // A CMLL scramble keeps its sides too: the blocks are the left and the right.
+      const colour =
+        isF2l(set) || isLastSlot(set) || (set === "cmll" && !byPicture)
+          ? 0
+          : random4();
+      const picture: Shown = {
+        caseId: id,
+        ...(data ? { data } : {}),
+        auf,
+        colour,
+        scramble: null,
+      };
+      setShown(picture);
+      moveDrill(showCase(byPicture, split));
+      const ask = draw ?? ++sequence.current;
+      const showScramble = (text: string) => {
+        if (byPicture) setPictureScramble({ picture, text });
+        else setShown({ ...picture, scramble: text });
+      };
+      if (shipsScrambles(set)) {
+        // The 2×2's and CMLL's scrambles come with the data, each one leading to its case.
+        const list = (data ?? cases.find((c) => c.id === id))?.scrambles ?? [];
+        const picked =
+          list[
+            byPicture
+              ? auf % list.length
+              : Math.floor(Math.random() * list.length)
+          ];
+        if (picked !== undefined)
+          showScramble(
+            renameTurns(turnScramble(picked, colour), holdingFaces(holding)),
+          );
         return;
       }
       client.current ??= createTrainingClient(
@@ -1284,7 +1739,6 @@ function Practice({
             },
           ) as unknown as WorkerLike,
       );
-      const ask = ++sequence.current;
       // Another slot's scramble is its front right case's, renamed for the slot (seen
       // after a y turn, or in the mirror).
       const at = slotOf(set);
@@ -1293,16 +1747,18 @@ function Practice({
         kind:
           at !== null
             ? ("f2l" as const)
-            : (set as Exclude<SetId, `f2l${string}` | `two-${string}`>),
+            : (set as Exclude<
+                TrainSet,
+                `f2l${string}` | `two-${string}` | "cmll" | "ollcp"
+              >),
         caseIds: [other ? `f2l-${id.slice(-4)}` : id],
       } as const;
-      const result = await client.current.requestTraining({ request }, ask);
+      const result = await client.current
+        .requestTraining({ request }, ask)
+        .catch(() => null);
       if (!result || ask !== sequence.current) return;
-      setShown({
-        caseId: id,
-        auf,
-        colour,
-        scramble: heldScramble(
+      showScramble(
+        heldScramble(
           request,
           turnScramble(
             other ? slotAlg(result.scramble, at) : result.scramble,
@@ -1310,7 +1766,7 @@ function Practice({
           ),
           holding,
         ),
-      });
+      );
     },
     [
       byPicture,
@@ -1320,6 +1776,7 @@ function Practice({
       pool,
       set,
       cases,
+      loadCase,
       holding,
       moveDrill,
       todayQueue,
@@ -1590,33 +2047,34 @@ function Practice({
     </span>
   );
 
-  if (pool.length === 0)
-    return (
-      <div data-part="train-empty" role="status">
-        <p>{onlyWeak ? t.noWeak : t.nothing}</p>
-        {!whole && !onlyWeak && (
-          <p>
-            <button
-              type="button"
-              data-action="train-drill-all"
-              onClick={() => onWhole(true)}
-            >
-              {t.drillAll}
-            </button>
-          </p>
-        )}
-        {onlyWeak && <p data-part="train-show">{poolChoice}</p>}
-      </div>
-    );
+  const emptyNotice =
+    pool.length === 0 ? (onlyWeak ? t.noWeak : t.nothing) : "";
+  const emptyContent = (
+    <div data-part="train-empty">
+      <p>{onlyWeak ? t.noWeak : t.nothing}</p>
+      {!whole && !onlyWeak && (
+        <p>
+          <button
+            type="button"
+            data-action="train-drill-all"
+            onClick={() => onWhole(true)}
+          >
+            {t.drillAll}
+          </button>
+        </p>
+      )}
+      {onlyWeak && <p data-part="train-show">{poolChoice}</p>}
+    </div>
+  );
 
-  const c = shown ? cases.find((x) => x.id === shown.caseId) : undefined;
+  const c = shown?.data ?? cases.find((x) => x.id === shown?.caseId);
   const result = drill.result;
   const before = saved?.before ?? attempts;
   const typical = c ? caseMedian(before, c.id) : null;
   const format = (ms: number) => formatTime(ms, { precision });
   const faster = result && typical !== null && result.execMs < typical;
 
-  return (
+  const activeContent = (
     <section
       ref={surface}
       data-part="train-drill"
@@ -1627,7 +2085,15 @@ function Practice({
     >
       <div data-part="train-stage">
         {c && shown && byPicture && (
-          <div data-part="train-picture">
+          <div
+            data-part="train-picture"
+            role="img"
+            aria-label={
+              pictureScramble?.picture === shown
+                ? pictureScramble.text
+                : t.preparing
+            }
+          >
             <Picture
               set={set}
               stickers={recolour(stickersOf(set, c, shown.auf), shown.colour)}
@@ -1768,6 +2234,14 @@ function Practice({
         )}
       </div>
     </section>
+  );
+  return (
+    <>
+      <p data-heard role="status">
+        {emptyNotice}
+      </p>
+      {empty ? emptyContent : activeContent}
+    </>
   );
 }
 

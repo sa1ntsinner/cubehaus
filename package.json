@@ -14,7 +14,8 @@
     "test": "vitest run",
     "build": "pnpm -r --if-present run build",
     "e2e": "pnpm -r --if-present run e2e",
-    "check:licenses": "node scripts/check-licenses.mjs"
+    "check:licenses": "node scripts/check-licenses.mjs",
+    "check:crates": "node scripts/check-crate-licenses.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",

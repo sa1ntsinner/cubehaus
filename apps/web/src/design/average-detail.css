@@ -73,19 +73,11 @@ dialog[data-part="average-detail"] {
 [data-part="average-detail"] [data-penalty="dnf"] span:nth-child(2) {
   color: var(--error);
 }
-[data-part="average-detail"] nav,
-[data-part="average-picker-actions"] {
+[data-part="average-detail"] nav {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2) var(--s4);
 }
-[data-part="average-picker-actions"] {
-  grid-column: 1 / -1;
-}
-[data-part="average-picker-actions"] button {
-  min-height: 44px;
-}
-[data-part="average-picker-actions"] button:disabled,
 [data-part="average-detail"] button:disabled {
   color: var(--gutter);
 }

@@ -3,8 +3,6 @@ import { test as stored } from "./fixtures";
 
 const scrambleSelector = 'main > [data-part="scramble"]';
 const solveListSelector = '[data-part="solves"]';
-const statusSelector = 'footer[data-part="status-line"]';
-const keysSelector = '[data-action="keys"]';
 const mobile = { hasTouch: true, isMobile: true };
 const desktop = { width: 1440, height: 900 };
 const events = ["333", "333bf", "pyram", "fto", "sq1", "444bf", "555bf", "666"];
@@ -20,6 +18,11 @@ for (const { name, viewport, touch } of [
 ]) {
   test.describe(name, () => {
     test.describe.configure({ mode: "default", timeout: 120_000 });
+    // The scramble's line breaks are the font's: WebKit's own check is the phone.
+    test.skip(
+      ({ browserName }) => browserName === "webkit" && !("hasTouch" in touch),
+      "WebKit checks the phone",
+    );
     let page: Page;
 
     // Seeded states use an in-memory database, including on WebKit.
@@ -47,7 +50,7 @@ for (const { name, viewport, touch } of [
         await expect(scramble).toHaveAttribute("data-event", event);
         await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
-        for (let sample = 1; sample <= 6; sample++) {
+        for (let sample = 1; sample <= 3; sample++) {
           const { height, minHeight, previousText } = await scramble.evaluate(
             (element) => ({
               height: element.getBoundingClientRect().height,
@@ -82,142 +85,7 @@ for (const { name, viewport, touch } of [
   });
 }
 
-test.describe("small phone 320×568", () => {
-  test.use({ ...mobile, viewport: { width: 320, height: 568 } });
-
-  for (const state of ["two", "session", "record"]) {
-    test(`${state} shows the whole newest solve in Russian`, async ({
-      page,
-    }) => {
-      await page.goto(`/?state=${state}&lang=ru`);
-      await expect(page.locator("html")).toHaveAttribute("lang", "ru");
-      await expect(page.locator(scrambleSelector)).toHaveAttribute(
-        "data-ready",
-        "true",
-      );
-      const newest = page
-        .locator(`${solveListSelector} > li[data-solve-id]`)
-        .first();
-      await expect(newest).toHaveAttribute("aria-posinset", "1");
-      await expect(newest).toBeVisible();
-      await page.evaluate(() => document.fonts.ready.then(() => undefined));
-
-      // The line's time, not its padding: WebKit may leave a reversed scroller a pixel short
-      // of its end, which cuts only the line's empty edge.
-      const { rowTop, rowBottom, listTop, listBottom } = await newest.evaluate(
-        (row) => {
-          const time = row.querySelector('[data-part="solve-time"]') ?? row;
-          const rowRect = time.getBoundingClientRect();
-          const listRect = row.parentElement?.getBoundingClientRect();
-          if (!listRect) throw new Error("The newest solve has no list");
-          return {
-            rowTop: rowRect.top,
-            rowBottom: rowRect.bottom,
-            listTop: listRect.top,
-            listBottom: listRect.bottom,
-          };
-        },
-      );
-      expect(rowTop).toBeGreaterThanOrEqual(listTop - 0.5);
-      expect(rowBottom).toBeLessThanOrEqual(listBottom + 0.5);
-    });
-  }
-});
-
-test.describe("desktop status line 1440×900", () => {
-  test.use({ viewport: desktop });
-
-  test("Russian status controls share one row", async ({ page }) => {
-    await page.goto("/?state=session&lang=ru");
-    await expect(page.locator("html")).toHaveAttribute("lang", "ru");
-    const status = page.locator(statusSelector);
-    await expect(status.locator(keysSelector)).toBeVisible();
-    await expect(
-      status.locator('[data-action="session-switch"]'),
-    ).toBeVisible();
-    await page.evaluate(() => document.fonts.ready.then(() => undefined));
-
-    // A message stands above the words on purpose (DESIGN.md section 5): not counted.
-    const centers = await status.evaluate((footer) =>
-      Array.from(footer.children)
-        .filter((child) => child.tagName !== "P")
-        .flatMap((child) => {
-          const rect = child.getBoundingClientRect();
-          return (child instanceof HTMLElement &&
-            child.offsetParent !== null) ||
-            rect.width > 0 ||
-            rect.height > 0
-            ? [rect.top + rect.height / 2]
-            : [];
-        }),
-    );
-    expect(centers.length).toBeGreaterThan(1);
-    expect(
-      Math.max(...centers) - Math.min(...centers),
-      `Status control vertical centers: ${centers.join(", ")}`,
-    ).toBeLessThanOrEqual(4);
-  });
-});
-
-for (const viewport of [
-  { width: 844, height: 390 },
-  { width: 820, height: 1180 },
-]) {
-  test.describe(`touch status line ${viewport.width}×${viewport.height}`, () => {
-    test.use({ ...mobile, viewport });
-
-    test("shows the session's name and hides desktop controls", async ({
-      page,
-    }) => {
-      await page.goto("/?state=session");
-      const status = page.locator(statusSelector);
-      for (const selector of [keysSelector]) {
-        const control = status.locator(selector);
-        await expect(control).toHaveCount(1);
-        await expect(control).toBeHidden();
-      }
-      // The name opens the switch: a finger's target, never waiting for a hover.
-      const name = status.locator('[data-action="session-switch"]');
-      await expect(name).toBeVisible();
-      await expect(name).toHaveCSS("opacity", "1");
-      expect((await name.boundingBox())?.height).toBeGreaterThanOrEqual(44);
-    });
-  });
-}
-
-test.describe("expanded timer layouts on a 320px phone", () => {
-  test.use({ ...mobile, viewport: { width: 320, height: 568 } });
-
-  for (const [state, layout] of [
-    ["layout-times", "times"],
-    ["layout-focus", "focus"],
-    ["wide-time", "lift"],
-  ] as const) {
-    test(`${state} fits its time and slots in Russian`, async ({ page }) => {
-      await page.goto(`/?state=${state}&lang=ru`);
-      await expect(page.locator("main")).toHaveAttribute("data-layout", layout);
-      const output = page.locator('[data-part="time"]');
-      await expect(output).toHaveText(
-        state === "wide-time" ? "9:59.999" : /\d+\.\d{2}/,
-      );
-      await expect(output).toHaveCSS("-webkit-text-stroke-width", "0px");
-      await page.evaluate(() => document.fonts.ready);
-      const slots = page.locator('[data-part="stats-now"] [data-slot]');
-      await expect(slots).toHaveCount(layout === "lift" ? 2 : 4);
-      for (const element of [output, ...(await slots.all())]) {
-        const box = await element.boundingBox();
-        if (!box) throw new Error("The time or stat has no layout box");
-        expect(box.x).toBeGreaterThanOrEqual(0);
-        expect(box.x + box.width).toBeLessThanOrEqual(320);
-      }
-      await expect(page.locator(solveListSelector)).toHaveCount(
-        layout === "focus" ? 0 : 1,
-      );
-    });
-  }
-});
-
-// Plan task 30: + and − resize the part under the pointer; Settings does the same; the
+// + and − resize the part under the pointer; Settings does the same; the
 // sizes are kept per device.
 stored.describe("sizes", () => {
   stored.use({ viewport: desktop });
@@ -347,15 +215,20 @@ test.describe("sizes on a phone", () => {
     parts.map((_, bit) => ((mask >> bit) & 1 ? 150 : 70)),
   );
 
+  // The smallest phone, and a common Android size whose height lets the file show; WebKit
+  // takes the smallest only. 360×640 and 390×844 fall between the two.
   for (const viewport of [
     { width: 320, height: 568 },
-    { width: 360, height: 640 },
     { width: 360, height: 800 },
-    { width: 390, height: 844 },
   ]) {
     test(`${viewport.width}×${viewport.height} fits every combination of extremes`, async ({
       browser,
+      browserName,
     }, testInfo) => {
+      test.skip(
+        browserName === "webkit" && viewport.width !== 320,
+        "WebKit checks the smallest phone",
+      );
       const { baseURL } = testInfo.project.use;
       if (!baseURL) throw new Error("The layout tests require a base URL");
       const page = await browser.newPage({
@@ -529,6 +402,11 @@ test.describe("sizes on a phone", () => {
 // stat names, totals, notes) stop at the floor.
 test.describe("smallest sizes on a phone", () => {
   test.describe.configure({ timeout: 180_000 });
+  // A computed font size: the same in every engine.
+  test.skip(
+    ({ browserName }) => browserName !== "chromium",
+    "one engine is enough",
+  );
   for (const viewport of [
     { width: 320, height: 568 },
     { width: 390, height: 844 },

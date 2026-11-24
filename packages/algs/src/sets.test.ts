@@ -3,11 +3,11 @@ import { f2lGroups, f2lOrder } from "./f2l-order";
 import {
   lastSlotSet,
   lastSlotTop,
+  lookalikes,
   pictureOf,
   puzzleOf,
   trainerSet,
 } from "./index";
-import { lookalikes } from "./lookalike";
 import type { SetId } from "./types";
 
 const LS = ["ls-right", "ls-front"] as const;

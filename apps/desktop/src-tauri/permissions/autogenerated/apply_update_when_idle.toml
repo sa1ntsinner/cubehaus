@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-apply-update-when-idle"
+description = "Enables the apply_update_when_idle command without any pre-configured scope."
+commands.allow = ["apply_update_when_idle"]
+
+[[permission]]
+identifier = "deny-apply-update-when-idle"
+description = "Denies the apply_update_when_idle command without any pre-configured scope."
+commands.deny = ["apply_update_when_idle"]

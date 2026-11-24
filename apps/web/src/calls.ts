@@ -6,6 +6,8 @@
 // require it), and a failure to play is ignored: a call is never worth an
 // error.
 
+import { vibrate } from "./phone-app";
+
 export type CallMode = "off" | "tick" | "voice";
 
 export interface CallOutputs {
@@ -89,7 +91,7 @@ export function browserCallOutputs(): CallOutputs & { unlock(): void } {
       speech.speak(utterance);
     },
     vibrate(pattern) {
-      if (unlocked) globalThis.navigator?.vibrate?.(pattern);
+      if (unlocked) vibrate(pattern);
     },
   };
 }

@@ -123,8 +123,13 @@ test("click enlarges, and Escape, a click and Space close without timing", async
     })
     .toBeLessThanOrEqual(2);
   expect((await box.boundingBox())?.height).toBeGreaterThanOrEqual(630);
+  for (const key of ["Tab", "Shift+Tab", "Tab"]) {
+    await page.keyboard.press(key);
+    await expect(overlay).toBeFocused();
+  }
   await page.keyboard.press("Escape");
   await expect(overlay).toHaveCount(0);
+  await expect(open).toBeFocused();
 
   await page.keyboard.press("KeyF");
   await expect(overlay).toBeVisible();
@@ -201,15 +206,17 @@ test("the picture is absent while armed and running and returns after a solve", 
   await expect(figure).toBeVisible();
 });
 
-for (const [event, partName, count] of [
-  ["pyram", "[data-sticker]", 36],
-  ["skewb", "[data-sticker]", 48],
-  ["minx", "[data-sticker]", 180],
-  ["fto", "[data-sticker]", 72],
-  ["sq1", "[data-sticker]", 52],
-  ["clock", part("clock-dial"), 18],
-] as const) {
-  test(`${event} draws ${count} stickers or dials`, async ({ page }) => {
+test("each puzzle draws its stickers or dials, with no broken path", async ({
+  page,
+}) => {
+  for (const [event, partName, count] of [
+    ["pyram", "[data-sticker]", 36],
+    ["skewb", "[data-sticker]", 48],
+    ["minx", "[data-sticker]", 180],
+    ["fto", "[data-sticker]", 72],
+    ["sq1", "[data-sticker]", 52],
+    ["clock", part("clock-dial"), 18],
+  ] as const) {
     await page.goto(`/?state=event-${event}`);
     await expect(page.locator(scramble)).toHaveAttribute("data-event", event);
     // The puzzle's first scramble in a page builds its search first (Square-1 most).
@@ -218,13 +225,14 @@ for (const [event, partName, count] of [
     });
     const svg = page.locator(picture).locator(drawing);
     await expect(svg).toBeVisible();
-    await expect(svg.locator(partName)).toHaveCount(count);
+    await expect(svg.locator(partName), event).toHaveCount(count);
     expect(
       await svg.evaluate((element) =>
         Array.from(element.querySelectorAll("path")).every(
           (path) => !/NaN|Infinity/.test(path.getAttribute("d") ?? ""),
         ),
       ),
+      event,
     ).toBe(true);
-  });
-}
+  }
+});

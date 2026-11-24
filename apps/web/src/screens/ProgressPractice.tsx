@@ -180,6 +180,41 @@ export function ProgressPractice({
     return { count, active };
   }, [pickedMonth, totals]);
   const todayCount = totalOn(totals, today).count;
+  const monthReadout = month && pickedMonth && monthTotal && (
+    <>
+      <span>{monthName.format(new Date(`${pickedMonth}-01T00:00:00Z`))}</span>{" "}
+      <span>{labels.solveCount(monthTotal.count)}</span>{" "}
+      <span>{labels.dayCount(monthTotal.active)}</span>
+    </>
+  );
+  const dayReadout = picked && (
+    <>
+      <span>{dates.format(new Date(`${picked.day}T12:00:00`))}</span>{" "}
+      {picked.count === 0 ? (
+        <span>{labels.noSolves}</span>
+      ) : (
+        <>
+          <span data-key="count">{labels.solveCount(picked.count)}</span>
+          {mean && picked.mean !== null && (
+            <>
+              {" "}
+              <span data-key="mean">
+                {mean(picked.mean)} <small>{labels.mean}</small>
+              </span>
+            </>
+          )}
+          {picked.dnf > 0 && (
+            <>
+              {" "}
+              <span data-key="dnf">
+                {numbers.format(picked.dnf)} <small>{labels.dnf}</small>
+              </span>
+            </>
+          )}
+        </>
+      )}
+    </>
+  );
 
   return (
     <section ref={ref} data-part="progress-practice">
@@ -284,15 +319,12 @@ export function ProgressPractice({
           )
         )}
       </svg>
+      <p data-heard role="status">
+        {dayReadout ?? monthReadout}
+      </p>
       {month && pickedMonth && monthTotal && (
         <>
-          <p data-part="progress-day" aria-live="polite">
-            <span>
-              {monthName.format(new Date(`${pickedMonth}-01T00:00:00Z`))}
-            </span>{" "}
-            <span>{labels.solveCount(monthTotal.count)}</span>{" "}
-            <span>{labels.dayCount(monthTotal.active)}</span>
-          </p>
+          <p data-part="progress-day">{monthReadout}</p>
           <svg
             data-part="progress-month"
             role="img"
@@ -342,31 +374,8 @@ export function ProgressPractice({
         </>
       )}
       {picked && (
-        <p data-part="progress-day" data-day={picked.day} aria-live="polite">
-          <span>{dates.format(new Date(`${picked.day}T12:00:00`))}</span>{" "}
-          {picked.count === 0 ? (
-            <span>{labels.noSolves}</span>
-          ) : (
-            <>
-              <span data-key="count">{labels.solveCount(picked.count)}</span>
-              {mean && picked.mean !== null && (
-                <>
-                  {" "}
-                  <span data-key="mean">
-                    {mean(picked.mean)} <small>{labels.mean}</small>
-                  </span>
-                </>
-              )}
-              {picked.dnf > 0 && (
-                <>
-                  {" "}
-                  <span data-key="dnf">
-                    {numbers.format(picked.dnf)} <small>{labels.dnf}</small>
-                  </span>
-                </>
-              )}
-            </>
-          )}
+        <p data-part="progress-day" data-day={picked.day}>
+          {dayReadout}
         </p>
       )}
     </section>

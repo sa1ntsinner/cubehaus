@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The main window: the core defaults and the app's own database, backup and update commands, local pages only",
+  "windows": ["main"],
+  "local": true,
+  "permissions": [
+    "core:default",
+    "allow-db-open",
+    "allow-db-all",
+    "allow-db-columns",
+    "allow-db-batch",
+    "allow-db-keep-source",
+    "allow-db-close",
+    "allow-backup-now",
+    "allow-list-backups",
+    "allow-backup-folder",
+    "allow-restore-backup",
+    "allow-choose-backup-directory",
+    "allow-check-update",
+    "allow-apply-update-when-idle"
+  ]
+}

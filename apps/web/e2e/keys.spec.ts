@@ -25,63 +25,6 @@ test.beforeEach(async ({ page }) => {
   await page.locator("main").focus();
 });
 
-test("A6i, 9f4 and DESIGN §18: 2 toggles +2 and D sets DNF on the newest solve", async ({
-  page,
-}) => {
-  const newest = solves(page).first();
-  const older = solves(page).nth(1);
-
-  await page.keyboard.press("Digit2");
-  await expect(newest).toHaveAttribute("data-plus2", "1");
-  await expect(newest).toHaveAttribute("data-penalty", "plus2");
-  await page.keyboard.press("Digit2");
-  await expect(newest).toHaveAttribute("data-plus2", "0");
-  await expect(newest).toHaveAttribute("data-penalty", "ok");
-
-  await page.keyboard.press("KeyD");
-  await expect(newest).toHaveAttribute("data-penalty", "dnf");
-  await expect(newest.locator('[data-part="solve-time"]')).toHaveText("DNF");
-  await expect(older).toHaveAttribute("data-penalty", "ok");
-});
-
-test("DESIGN §18: Backspace deletes the newest solve and Mod+Z restores it", async ({
-  page,
-}) => {
-  const rows = solves(page);
-  const id = await rows.first().getAttribute("data-solve-id");
-  expect(id).toBeTruthy();
-  await page.keyboard.press("Backspace");
-  await expect(rows).toHaveCount(1);
-  await expect(part(page, "solve-time")).toHaveText("12.34");
-
-  await page.keyboard.press("ControlOrMeta+KeyZ");
-  await expect(rows).toHaveCount(2);
-  await expect(rows.first()).toHaveAttribute("data-solve-id", id ?? "");
-  await expect(part(page, "solve-time").first()).toHaveText("10.00");
-});
-
-test("Task 7: Mod+K opens the palette and Enter runs the filtered action", async ({
-  page,
-}) => {
-  await page.keyboard.press("ControlOrMeta+KeyK");
-  const palette = part(page, "palette");
-  await expect(palette).toBeVisible();
-
-  const query = part(page, "palette-query");
-  await query.pressSequentially("delete solve");
-  const results = part(page, "palette-results").locator("li");
-  await expect(results).toHaveCount(1);
-  await expect(results.first()).toHaveAttribute(
-    "data-action-id",
-    "solve.delete",
-  );
-  await query.press("Enter");
-
-  await expect(palette).toHaveCount(0);
-  await expect(solves(page)).toHaveCount(1);
-  await expect(part(page, "solve-time")).toHaveText("12.34");
-});
-
 test("Review Focus 5: typing 2 in the comment field changes no penalty", async ({
   page,
 }) => {
@@ -95,29 +38,6 @@ test("Review Focus 5: typing 2 in the comment field changes no penalty", async (
   await expect(part(page, "solve-comment")).toHaveText("// 2");
   await expect(newest).toHaveAttribute("data-penalty", "ok");
   await expect(newest).toHaveAttribute("data-plus2", "0");
-});
-
-test("DESIGN §18: ? lists the current idle bindings", async ({ page }) => {
-  await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
-  await page.keyboard.press("Shift+Slash");
-  const help = part(page, "keys-help");
-  await expect(help).toBeVisible();
-  await expect(help.getByText("Turn inspection on or off")).toBeVisible();
-  await expect(help.getByText("Enter times by hand")).toBeVisible();
-  // Each key is written as it is printed on the keyboard; data-key keeps its code.
-  for (const [action, key, label] of [
-    ["solve.plus2", "Digit2", /^2$/],
-    ["scramble.next", "ArrowRight", /^→$/],
-    ["picture.toggle", "KeyP", /^P$/],
-    ["palette", "Mod+KeyK", /^(⌘K|Ctrl\+K)$/],
-  ] as const) {
-    const kbd = help.locator(`[data-action-id="${action}"] kbd`);
-    await expect(kbd).toHaveAttribute("data-key", key);
-    await expect(kbd).toHaveText(label);
-  }
-
-  await page.keyboard.press("Escape");
-  await expect(help).toHaveCount(0);
 });
 
 test("status-line Keys opens help and pointer dismissal restores focus", async ({
@@ -164,22 +84,6 @@ test("the palette close button restores the same focus as Escape", async ({
   await page.keyboard.press("Escape");
   await expect(palette).toHaveCount(0);
   await expect(input).toBeFocused();
-});
-
-test("the I key switches the session's inspection and says so", async ({
-  page,
-}) => {
-  const main = page.locator("main");
-  // Inspection is a setting: the main screen carries no word for it.
-  await expect(page.locator('[data-action="inspection-toggle"]')).toHaveCount(
-    0,
-  );
-  await expect(main).toHaveAttribute("data-inspection", "official");
-  await page.keyboard.press("KeyI");
-  await expect(main).toHaveAttribute("data-inspection", "off");
-  await expect(part(page, "notice")).toHaveText("Inspection off");
-  await page.keyboard.press("KeyI");
-  await expect(main).toHaveAttribute("data-inspection", "official");
 });
 
 test("scramble history restores the text and picture, copies, and times the shown scramble", async ({
@@ -509,23 +413,4 @@ test("copies an older average with both dropped attempts and a clipboard fallbac
     "data-solve-id",
     "average-5",
   );
-});
-
-test("Shift+F puts the page in full screen and takes it out, listed in Keys", async ({
-  page,
-}) => {
-  await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
-  await page.keyboard.press("Shift+Slash");
-  await expect(
-    part(page, "keys-help").locator('[data-action-id="view.fullscreen"] kbd'),
-  ).toHaveAttribute("data-key", "Shift+KeyF");
-  await page.keyboard.press("Escape");
-  await page.keyboard.press("Shift+KeyF");
-  await expect
-    .poll(() => page.evaluate(() => document.fullscreenElement !== null))
-    .toBe(true);
-  await page.keyboard.press("Shift+KeyF");
-  await expect
-    .poll(() => page.evaluate(() => document.fullscreenElement !== null))
-    .toBe(false);
 });

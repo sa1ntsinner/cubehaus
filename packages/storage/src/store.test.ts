@@ -1501,3 +1501,73 @@ test("colour series: the scope's solves with a cross colour, oldest first, DNF i
   });
   expect(both.colours).toEqual(["white", "yellow", "yellow", "green"]);
 });
+
+test("batching trainer membership matches individual writes and rolls back on failure", async () => {
+  const other = createNodeDb(":memory:");
+  await migrate(other);
+  const single = createStore(other, () => clock);
+  const batch = createStore(db, () => clock);
+  const setId = "pll";
+  const seed = (caseId: string, card: string, dueAt: number) => ({
+    caseId,
+    card,
+    dueAt,
+  });
+  const rows = (from: Db) =>
+    from.all("SELECT * FROM trainer_case ORDER BY set_id, case_id");
+  try {
+    for (const { trainer } of [single, batch]) {
+      await trainer.putCase({ setId, ...seed("pll-T", "active", 500) });
+      await trainer.putCase({ setId, ...seed("pll-Y", "scheduled", 900) });
+      await trainer.removeCase(setId, "pll-Y");
+    }
+    clock += 100;
+    const added = [
+      seed("pll-T", "unused", clock),
+      seed("pll-Y", "unused", clock),
+      seed("pll-Ua", "fresh", clock),
+    ];
+    const active = new Set(
+      (await single.trainer.cases(setId)).map((r) => r.caseId),
+    );
+    for (const entry of added) {
+      if (active.has(entry.caseId)) continue;
+      if (!(await single.trainer.restoreCase(setId, entry.caseId)))
+        await single.trainer.putCase({ setId, ...entry });
+    }
+    await batch.trainer.setCaseMembership(setId, added, []);
+    expect(await rows(db)).toEqual(await rows(other));
+
+    clock += 100;
+    for (const { caseId } of added)
+      await single.trainer.removeCase(setId, caseId);
+    await batch.trainer.setCaseMembership(
+      setId,
+      [],
+      added.map((r) => r.caseId),
+    );
+    expect(await rows(db)).toEqual(await rows(other));
+
+    await db.batch([
+      {
+        sql: `CREATE TRIGGER reject_case BEFORE INSERT ON trainer_case
+        WHEN NEW.case_id = 'rejected' BEGIN SELECT RAISE(ABORT, 'test rejection'); END`,
+      },
+    ]);
+    const before = await rows(db);
+    await expect(
+      batch.trainer.setCaseMembership(
+        setId,
+        [
+          seed("pll-T", "unused", clock),
+          seed("new", "fresh", clock),
+          seed("rejected", "fresh", clock),
+        ],
+        [],
+      ),
+    ).rejects.toThrow("test rejection");
+    expect(await rows(db)).toEqual(before);
+  } finally {
+    await other.close();
+  }
+});

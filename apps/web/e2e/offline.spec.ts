@@ -86,7 +86,7 @@ const test = base.extend<{
 });
 
 // Playwright documents service worker support for Chromium only; these pass in its
-// Firefox as well (plan task 37) and stay off in WebKit, as before.
+// Firefox as well and stay off in WebKit, as before.
 test.skip(
   ({ browserName }) => browserName === "webkit",
   "Playwright documents service worker support for Chromium only.",

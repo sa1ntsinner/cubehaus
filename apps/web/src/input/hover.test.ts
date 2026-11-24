@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 // A touch screen keeps the last tap's :hover on whatever lies under the finger after the
 // screen changes, and iOS spends a first tap on a hover that reveals something. Every
 // :hover rule therefore stands inside `@media (hover: hover)`, where only a pointer that
-// can hover sees it (docs/testing/ios-simulator.md).
+// can hover sees it.
 const ROOT = join(import.meta.dirname, "..");
 
 /** Hover rules that may stand outside the media query, and why. Keep it short. */

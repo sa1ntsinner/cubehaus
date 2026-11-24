@@ -348,13 +348,15 @@ test("an algorithm chosen as mine is the one Learn and the drill show", async ({
   expect(answer).toBe(chosen);
 });
 
-test("the 41 F2L cases are learnt and drilled like the other sets", async ({
+test("F2L: the 41 cases from above each slot, each slot learnt and drilled on its own", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(sessionButton(page)).toBeEnabled();
   await page.goto("/#/train/f2l/learn");
-  await expect(part(page, "train-case-list").locator("li")).toHaveCount(41);
+  await expect(
+    action(page, "train-slot").filter({ hasText: "FR" }),
+  ).toHaveAttribute("aria-pressed", "true");
   // In a learner's order, numbered in it, in four groups by where the pair is.
   await expect(part(page, "train-group-name")).toHaveText([
     "Both on top",
@@ -365,98 +367,28 @@ test("the 41 F2L cases are learnt and drilled like the other sets", async ({
   await expect(
     part(page, "train-case-list").first().locator("li button").first(),
   ).toHaveAttribute("aria-label", "F2L 1");
-  // A case: the slot drawn from above the front right corner, its algorithm in R, U, F.
-  await addCase(page, "F2L 13");
-  await expect(
-    part(page, "train-case").locator('svg[data-shape="slot"]'),
-  ).toBeVisible();
-  await expect(
-    part(page, "train-alg").first().locator('[data-part="train-moves"]'),
-  ).toHaveText(/^[RUF'2\s]+$/);
-  // Its one line says what the algorithm does.
-  await expect(part(page, "train-recognise")).not.toBeEmpty();
-  await action(page, "train-mode").filter({ hasText: "Drill" }).click();
-  await expect(
-    part(page, "train-picture").locator('svg[data-shape="slot"]'),
-  ).toBeVisible();
-  await attempt(page);
-  await expect(part(page, "train-label")).toHaveText("F2L 13");
-  // A scramble that leads to it.
-  await page.keyboard.press("Space");
-  await part(page, "train-show")
-    .locator("button", { hasText: "Scramble" })
-    .click();
-  await expect(part(page, "train-scramble")).toHaveAttribute(
-    "data-ready",
-    "true",
-    { timeout: 20_000 },
-  );
-});
-
-test("F2L's front left slot: the same cases in the mirror, learnt and drilled on their own", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await expect(sessionButton(page)).toBeEnabled();
-  await page.goto("/#/train/f2l/learn");
-  await expect(
-    action(page, "train-slot").filter({ hasText: "FR" }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await action(page, "train-slot").filter({ hasText: "FL" }).click();
-  await expect(page).toHaveURL(/#\/train\/f2l-left\/learn$/);
-  await expect(
-    action(page, "train-set").filter({ hasText: "F2L" }),
-  ).toHaveAttribute("aria-pressed", "true");
-  // The same 41, numbered the same; the slot drawn from the front left, its algorithm in L, U, F.
-  await expect(part(page, "train-case-list").locator("li")).toHaveCount(41);
-  await addCase(page, "F2L 13");
-  await expect(
-    part(page, "train-case").locator('svg[data-shape="slot"][data-mirrored]'),
-  ).toBeVisible();
-  await expect(
-    part(page, "train-alg").first().locator('[data-part="train-moves"]'),
-  ).toHaveText(/^[LUF'2\s]+$/);
-  // Its drills are its own: the right slot has none of its cases.
-  await action(page, "train-mode").filter({ hasText: "Drill" }).click();
-  await expect(page).toHaveURL(/#\/train\/f2l-left\/drill$/);
-  await expect(
-    part(page, "train-picture").locator("svg[data-mirrored]"),
-  ).toBeVisible();
-  await attempt(page);
-  await expect(part(page, "train-label")).toHaveText("F2L 13");
-  await page.keyboard.press("Space");
-  await part(page, "train-show")
-    .locator("button", { hasText: "Scramble" })
-    .click();
-  await expect(part(page, "train-scramble")).toHaveAttribute(
-    "data-ready",
-    "true",
-    { timeout: 20_000 },
-  );
-  // The tab remembers the slot.
-  await action(page, "train-set").filter({ hasText: "PLL" }).click();
-  await action(page, "train-set").filter({ hasText: "F2L" }).click();
-  await expect(page).toHaveURL(/#\/train\/f2l-left\/drill$/);
-  await page.goto("/#/train/f2l/drill");
-  await expect(part(page, "train-empty")).toBeVisible();
-});
-
-test("F2L's back slots: the same cases from above the back corners, each learnt and drilled on its own", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await expect(sessionButton(page)).toBeEnabled();
-  await page.goto("/#/train/f2l/learn");
   for (const [label, route, letters, mirrored] of [
+    ["FR", "f2l", /^[RUF'2\s]+$/, false],
+    ["FL", "f2l-left", /^[LUF'2\s]+$/, true],
     ["BR", "f2l-back", /^[RUB'2\s]+$/, false],
     ["BL", "f2l-back-left", /^[LUB'2\s]+$/, true],
   ] as const) {
     await action(page, "train-slot").filter({ hasText: label }).click();
     await expect(page).toHaveURL(new RegExp(`#/train/${route}/learn$`));
     await expect(
-      action(page, "train-slot").filter({ hasText: label }),
+      action(page, "train-set").filter({ hasText: "F2L" }),
     ).toHaveAttribute("aria-pressed", "true");
+    // The same 41, numbered the same; a slot's drills are its own.
     await expect(part(page, "train-case-list").locator("li")).toHaveCount(41);
+    await expect(
+      part(page, "train-case-list")
+        .locator("li")
+        .filter({ has: page.locator('button[aria-label="F2L 13"]') })
+        .locator('[data-action="train-pick"]'),
+      label,
+    ).not.toBeChecked();
+    // A case: the slot drawn from above its corner, its algorithm in that slot's faces,
+    // and one line that says what it does.
     await addCase(page, "F2L 13");
     const picture = part(page, "train-case").locator('svg[data-shape="slot"]');
     await expect(picture).toBeVisible();
@@ -465,9 +397,13 @@ test("F2L's back slots: the same cases from above the back corners, each learnt 
     await expect(
       part(page, "train-alg").first().locator('[data-part="train-moves"]'),
     ).toHaveText(letters);
-    // Drilled on its own, by picture and by a scramble that leads to the case.
+    await expect(part(page, "train-recognise")).not.toBeEmpty();
+    // Drilled by picture, then by a scramble that leads to the case.
     await action(page, "train-mode").filter({ hasText: "Drill" }).click();
     await expect(page).toHaveURL(new RegExp(`#/train/${route}/drill$`));
+    await expect(
+      part(page, "train-picture").locator('svg[data-shape="slot"]'),
+    ).toBeVisible();
     await attempt(page);
     await expect(part(page, "train-label")).toHaveText("F2L 13");
     await page.keyboard.press("Space");
@@ -804,3 +740,170 @@ test("opening Algorithms from the keyboard lights nothing else in the status lin
   expect(seen.length).toBeGreaterThan(0);
   expect(seen.every((opacity) => opacity === "0")).toBe(true);
 });
+
+test("wide Learn tabs between the picked tile and its case controls", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/#/train/pll/learn");
+  const tile = part(page, "train-case-list").getByRole("button", {
+    name: "Ga",
+    exact: true,
+  });
+  await tile.focus();
+  await page.keyboard.press("Enter");
+  const more = action(page, "train-more");
+  await expect(more).toBeVisible();
+  await page.keyboard.press("Tab");
+  await expect(more).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(tile).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await expect(action(page, "train-use").first()).toBeFocused();
+  const picks = part(page, "train-case-list").getByRole("checkbox", {
+    name: "Ga",
+    exact: true,
+  });
+  await action(page, "train-use").last().focus();
+  await page.keyboard.press("Tab");
+  await expect(picks).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(action(page, "train-use").last()).toBeFocused();
+});
+
+test("OLLCP: the OLL tiles open a group, its cases open and go into a drill", async ({
+  page,
+}) => {
+  await page.goto("/#/train/oll/learn");
+  await action(page, "train-member").filter({ hasText: "OLLCP" }).click();
+  await expect(page).toHaveURL(/#\/train\/ollcp\/learn$/);
+  // The first list: the 57 OLL cases and the one with nothing to orient.
+  const tiles = part(page, "train-case-list").locator("li");
+  await expect(tiles).toHaveCount(58);
+  await expect(tiles.last().locator("label")).toHaveText("Skip");
+
+  // A group opens in the list's place; opened from the keyboard, it takes the keyboard.
+  const group = tiles.locator('button[aria-label="OLL 27"]');
+  await group.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#\/train\/ollcp\/learn\/27$/);
+  await expect(part(page, "train-group-name")).toHaveText("OLL 27");
+  await expect(part(page, "train-group-name")).toBeFocused();
+  await expect(tiles).toHaveCount(6);
+  await expect(tiles.nth(1).locator("label")).toHaveText("2");
+
+  // A case: its full name, its algorithm once the group has loaded, no recognition line.
+  const tile = tiles.locator('button[aria-label="OLL 27-2"]');
+  await tile.click();
+  await expect(part(page, "train-case").locator("h2")).toHaveText("OLL 27-2");
+  await expect(part(page, "train-alg").first()).toBeVisible();
+  await expect(part(page, "train-recognise")).toHaveCount(0);
+  await tiles.nth(1).locator('[data-action="train-pick"]').check();
+
+  // Escape: back to the case's tile, then to the group's tile in the first list.
+  await page.keyboard.press("Escape");
+  await expect(part(page, "train-case")).toHaveCount(0);
+  await expect(tile).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/#\/train\/ollcp\/learn$/);
+  await expect(tiles).toHaveCount(58);
+  await expect(group).toBeFocused();
+
+  // From the first list a drill holds the cases put in the drills, here the one.
+  await action(page, "train-mode").filter({ hasText: "Drill" }).click();
+  await expect(page).toHaveURL(/#\/train\/ollcp\/drill$/);
+  await expect(part(page, "train-picture").locator("svg")).toBeVisible();
+  await attempt(page);
+  await expect(part(page, "train-label")).toHaveText("OLL 27-2");
+  await expect(part(page, "train-answer")).toContainText("R");
+});
+
+// The first five draws recorded with the original eager loader and the same seeds.
+const ollcpDraws = {
+  drill: {
+    file: "oll-43-45",
+    labels: ["OLL 43-4", "OLL 25-2", "OLL 40-2", "OLL 2-3", "OLL 23-4"],
+  },
+  review: {
+    file: "oll-07-09",
+    labels: ["OLL 7-2", "OLL 28-3", "OLL 42-5", "OLL 41-2", "OLL 49-1"],
+  },
+};
+
+for (const mode of ["drill", "review"] as const) {
+  test(`whole OLLCP ${mode} keeps the seeded order with other files delayed`, async ({
+    browser,
+    baseURL,
+  }) => {
+    const { file, labels } = ollcpDraws[mode];
+    const context = await browser.newContext({
+      ...(baseURL ? { baseURL } : {}),
+      serviceWorkers: "block",
+      timezoneId: "UTC",
+    });
+    const page = await context.newPage();
+    let releaseFiles = () => {};
+    const otherFiles = new Promise<void>((resolve) => {
+      releaseFiles = resolve;
+    });
+    const files = new Set<string>();
+    try {
+      await page.clock.setFixedTime(new Date("2026-11-24T12:00:00Z"));
+      await page.addInitScript(() => {
+        let seed = 12345;
+        const original = crypto.getRandomValues.bind(crypto);
+        crypto.getRandomValues = (array) => {
+          if (array instanceof Uint32Array && array.length === 1) {
+            seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+            array[0] = seed;
+            return array;
+          }
+          return original(array);
+        };
+      });
+      if (mode === "review") {
+        // Choose All while Review is empty, then make every card due.
+        await page.goto("/#/train/ollcp/review");
+        const whole = page.locator(
+          '[data-action="train-pool"][data-pool="all"]',
+        );
+        await whole.click();
+        await expect(whole).toHaveAttribute("aria-pressed", "true");
+        await page
+          .locator('[data-action="train-mode"][data-mode="learn"]')
+          .click();
+        await action(page, "train-all").click();
+        await page
+          .locator('[data-action="train-mode"][data-mode="review"]')
+          .click();
+        await expect(part(page, "train-picture")).toBeVisible();
+      }
+      await page.route(/\/oll-(?:\d\d-\d\d|skip)-[^/]+\.js$/, async (route) => {
+        const path = new URL(route.request().url()).pathname;
+        files.add(path);
+        if (!path.includes(`/${file}-`)) await otherFiles;
+        await route.continue();
+      });
+      if (mode === "drill") {
+        await page.goto("/#/train/ollcp/drill");
+        await action(page, "train-drill-all").click();
+      } else {
+        await page.reload();
+      }
+      await expect(part(page, "train-picture")).toBeVisible();
+      await expect.poll(() => files.size).toBe(20);
+      for (const [i, label] of labels.entries()) {
+        if (i > 0) await action(page, "train-next").click();
+        await attempt(page);
+        await expect(part(page, "train-label")).toHaveText(label);
+        await expect(part(page, "train-answer")).toContainText(/\s[A-Z]/);
+        if (i === 0) releaseFiles();
+      }
+    } finally {
+      releaseFiles();
+      await context.close();
+    }
+  });
+}

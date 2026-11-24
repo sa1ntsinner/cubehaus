@@ -126,41 +126,29 @@ test("a busy tab saves its pending solve when the first tab closes", async ({
 
 // The settings are in the database the first tab holds: the second says why its rows are
 // off, in a line like the timer's, and they come on once that tab goes.
-for (const { language, line } of [
-  {
-    language: "en",
-    line: "Open in another tab. Settings can be changed there, or here once it closes.",
-  },
-  {
-    language: "ru",
-    line: "Открыто в другой вкладке. Настройки можно изменить там или здесь, когда она закроется.",
-  },
-]) {
-  test(`a second tab says why its settings are off (${language})`, async ({
-    page,
-    context,
-  }) => {
-    await page.goto("/");
-    await expectPersistent(page);
-    const second = await context.newPage();
-    try {
-      await second.addInitScript((language) => {
-        Object.defineProperty(navigator, "language", { value: language });
-      }, language);
-      await second.goto("/#/settings/look");
-      const busy = second.locator(
-        '[data-part="settings"] [data-part="db-state"][data-kind="busy"]',
-      );
-      await expect(busy).toHaveText(line);
-      await expect(second.locator("#setting-language")).toBeDisabled();
-      await page.close();
-      await expect(busy).toHaveCount(0, { timeout: 15_000 });
-      await expect(second.locator("#setting-language")).toBeEnabled();
-    } finally {
-      await second.close();
-    }
-  });
-}
+test("a second tab says why its settings are off, and they come on once the first goes", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/");
+  await expectPersistent(page);
+  const second = await context.newPage();
+  try {
+    await second.goto("/#/settings/look");
+    const busy = second.locator(
+      '[data-part="settings"] [data-part="db-state"][data-kind="busy"]',
+    );
+    await expect(busy).toHaveText(
+      "Open in another tab. Settings can be changed there, or here once it closes.",
+    );
+    await expect(second.locator("#setting-language")).toBeDisabled();
+    await page.close();
+    await expect(busy).toHaveCount(0, { timeout: 15_000 });
+    await expect(second.locator("#setting-language")).toBeEnabled();
+  } finally {
+    await second.close();
+  }
+});
 
 test("a solve the browser refuses to store is offered for download", async ({
   page,

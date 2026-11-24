@@ -1,0 +1,11 @@
+{
+  "appId": "app.cubehaus.mobile",
+  "appName": "cubehaus",
+  "webDir": "../web/dist",
+  "ios": {
+    "contentInset": "never",
+    "allowsLinkPreview": false,
+    "preferredContentMode": "mobile",
+    "path": "ios"
+  }
+}

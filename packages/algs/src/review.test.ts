@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { trainerSet } from "./index";
-import { lookalikes } from "./lookalike";
+import { lookalikes, trainerSet } from "./index";
 import { reviewQueue, seededOrder } from "./review";
 
 const id = (set: "pll" | "oll" | "coll", label: string) =>

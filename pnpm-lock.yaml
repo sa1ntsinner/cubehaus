@@ -185,8 +185,20 @@ importers:
         specifier: 2.12.5
         version: 2.12.5
 
+  apps/mobile:
+    dependencies:
+      '@capacitor/core':
+        specifier: 8.6.2
+        version: 8.6.2
+      '@capacitor/ios':
+        specifier: 8.6.2
+        version: 8.6.2(@capacitor/core@8.6.2)
+
   apps/web:
     dependencies:
+      '@capacitor/core':
+        specifier: 8.6.2
+        version: 8.6.2
       '@cubehaus/algs':
         specifier: workspace:*
         version: link:../../packages/algs
@@ -394,6 +406,14 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@capacitor/core@8.6.2':
+    resolution: {integrity: sha512-UEb9crRuqEAe2Iu2eGOEuQ8rLQxpwg7ZZIpl17UJoytEpnV1e4oXXW0K7yYS2NsCOGmJjyLeKjNlgG7tkAoX8g==}
+
+  '@capacitor/ios@8.6.2':
+    resolution: {integrity: sha512-YnVm0lRA1mQWK0SKd2bdJIOG+PXRRDDdndZ1+nGqeiob+QmHZmb4wWo5gVpWhoHO37pGi2qzH5w5WGvfKrs+Gg==}
+    peerDependencies:
+      '@capacitor/core': ^8.6.0
 
   '@cubing/lazy-promise@0.1.3':
     resolution: {integrity: sha512-WVnnVWnmX2W4GvBTk496JP4EHi9JLxtVT2WpdbgRuUN8OXpEu5AMCY1AJPj2NTeiUe/hf8bit8Y6QAyXjMorZw==}
@@ -1187,6 +1207,14 @@ snapshots:
   '@biomejs/cli-win32-x64@2.6.8':
     optional: true
 
+  '@capacitor/core@8.6.2':
+    dependencies:
+      tslib: 2.9.1
+
+  '@capacitor/ios@8.6.2(@capacitor/core@8.6.2)':
+    dependencies:
+      '@capacitor/core': 8.6.2
+
   '@cubing/lazy-promise@0.1.3': {}
 
   '@emnapi/core@2.0.0-beta.2':
@@ -1637,8 +1665,7 @@ snapshots:
     dependencies:
       '@open-spaced-repetition/srs-kit': 1.0.0
 
-  tslib@2.9.1:
-    optional: true
+  tslib@2.9.1: {}
 
   type-fest@5.10.0:
     dependencies:

@@ -16,7 +16,9 @@ import {
   type StatId,
 } from "@cubehaus/stats";
 import {
+  type ComponentType,
   type CSSProperties,
+  createElement,
   lazy,
   Suspense,
   startTransition,
@@ -42,10 +44,18 @@ import { isTouchScreen } from "./input/touch-screen";
 import { DEFAULT_SWIPE, useSwipe } from "./input/use-swipe";
 import { actionsForEvent, bindActions } from "./keys/actions";
 import type { Action } from "./keys/engine";
-import { Help } from "./keys/Help";
 import { actionKey, keysFor, resolveBindings } from "./keys/keymap";
 import { isMacPlatform, keyLabel } from "./keys/label";
-import { Palette } from "./keys/Palette";
+import {
+  copyOffered,
+  copySettled,
+  copySolves,
+  inPhoneApp,
+  keepBackupCopy,
+  markCopyOffered,
+  wakeLockHost,
+  writeBackupCopy,
+} from "./phone-app";
 import {
   aheadKey,
   keepAhead,
@@ -66,11 +76,8 @@ import {
   trainingReady,
   type WorkerLike,
 } from "./scramble/training-client";
-import { AverageDetail } from "./screens/AverageDetail";
 import { CrossCells } from "./screens/CrossCells";
 import { Entry } from "./screens/Entry";
-import { SessionGrid } from "./screens/SessionGrid";
-import { SessionSwitch } from "./screens/SessionSwitch";
 import { Sessions } from "./screens/Sessions";
 import { SolveList } from "./screens/SolveList";
 import { type CrossLine, Timer } from "./screens/Timer";
@@ -95,9 +102,52 @@ import {
   VIEW_PARTS,
   type ViewSizes,
 } from "./view-size";
-import { keepAwake, type WakeLockHost } from "./wake-lock";
+import { keepAwake } from "./wake-lock";
 import "./input/behavior.css";
 
+// A sheet a key opens (S, Mod+K, ?): its code is fetched right after the first paint and,
+// once here, renders at once. A lazy component alone suspends on its first render even when
+// its chunk is cached, and the key typed straight after the opening one was lost.
+function warm<P extends object>(load: () => Promise<ComponentType<P>>) {
+  let got: ComponentType<P> | null = null;
+  let pending: Promise<ComponentType<P>> | null = null;
+  const start = () => {
+    pending ??= load().then((component) => {
+      got = component;
+      return component;
+    });
+    return pending;
+  };
+  const Later = lazy(() =>
+    start().then((component) => ({ default: component })),
+  );
+  // biome-ignore lint/correctness/noComponentHookFactories: called once per sheet at module level, never during a render.
+  const Sheet = (props: P) =>
+    createElement((got ?? Later) as ComponentType<P>, props);
+  return [Sheet, start] as const;
+}
+const [Help, warmHelp] = warm(() =>
+  import("./keys/Help").then(({ Help }) => Help),
+);
+const [Palette, warmPalette] = warm(() =>
+  import("./keys/Palette").then(({ Palette }) => Palette),
+);
+const AverageDetail = lazy(() =>
+  import("./screens/AverageDetail").then(({ AverageDetail }) => ({
+    default: AverageDetail,
+  })),
+);
+const [SessionGrid, warmGrid] = warm(() =>
+  import("./screens/SessionGrid").then(({ SessionGrid }) => SessionGrid),
+);
+const [SessionSwitch, warmSwitch] = warm(() =>
+  import("./screens/SessionSwitch").then(({ SessionSwitch }) => SessionSwitch),
+);
+if (typeof window !== "undefined")
+  window.setTimeout(() => {
+    for (const start of [warmGrid, warmSwitch, warmPalette, warmHelp])
+      void start().catch(() => {});
+  }, 0);
 const Training = lazy(() =>
   import("./scramble/Training").then(({ Training }) => ({ default: Training })),
 );
@@ -117,9 +167,11 @@ const Progress = lazy(() =>
 export function App({
   seed: fixture,
   applyUpdate,
+  installFailed = false,
 }: {
   seed?: LoadedSeed | undefined;
   applyUpdate?: (() => void) | undefined;
+  installFailed?: boolean;
 } = {}) {
   const seed = import.meta.env.VITE_TEST_HOOKS === "1" ? fixture : undefined;
   const [initialTheme] = useState(readThemeMirror);
@@ -218,6 +270,45 @@ export function App({
     };
   }, [backups]);
 
+  // Phone app: the history's copy in Documents, which the phone's backups keep (the
+  // webview's own storage they leave out).
+  const phoneCopy = inPhoneApp() && view.dbState?.kind === "persistent";
+  useEffect(
+    () =>
+      phoneCopy
+        ? keepBackupCopy(
+            () => app.exportBackup(),
+            writeBackupCopy,
+            document,
+            10_000,
+            copySettled,
+          )
+        : undefined,
+    [app, phoneCopy],
+  );
+  // A phone restored from a backup: the webview starts empty while the copy in Documents
+  // came back. Said once, while the history is still empty.
+  const looksEmpty =
+    phoneCopy &&
+    view.current !== null &&
+    view.sessions.length <= 1 &&
+    view.rows.length === 0;
+  const [copyOffer, setCopyOffer] = useState(false);
+  useEffect(() => {
+    if (!looksEmpty || copyOffered()) return;
+    let live = true;
+    void copySolves()
+      .then((solves) => {
+        if (!live || solves === 0) return;
+        markCopyOffered();
+        setCopyOffer(true);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [looksEmpty]);
+
   // The first-paint mirror stays in force until device settings are available.
   const theme = snapshot?.current || seed ? view.settings.theme : initialTheme;
   const mirrorTheme = !seed && snapshot?.current != null;
@@ -263,16 +354,30 @@ export function App({
   }, []);
 
   const dbKind = view.dbState?.kind;
-  const words = textFor(view.settings.language);
+  const words = textFor(language);
+  const routeScreen = screenOf(route);
+  const heading =
+    routeScreen === "#/settings"
+      ? words.settings.title
+      : routeScreen === "#/progress"
+        ? words.progress.title
+        : routeScreen === "train"
+          ? words.train.title
+          : null;
+  useLayoutEffect(() => {
+    document.title = heading ? `${heading} · cubehaus` : "cubehaus";
+  }, [heading]);
   const dbMessage =
     view.dbState?.kind === "persistent" &&
     view.dbState.handoff === "needs-recovery"
       ? words.dbEarlier
-      : dbKind === "memory"
-        ? words.dbMemory
-        : dbKind === "busy"
-          ? words.dbBusy
-          : null;
+      : copyOffer && looksEmpty
+        ? words.dbCopy
+        : dbKind === "memory"
+          ? words.dbMemory
+          : dbKind === "busy"
+            ? words.dbBusy
+            : null;
 
   // One boundary for every screen, so a transition keeps the shown one in place.
   return <Suspense fallback={null}>{screen()}</Suspense>;
@@ -292,6 +397,7 @@ export function App({
         openCommands={route === "#/commands"}
         openDrills={route === "#/drills"}
         applyUpdate={applyUpdate}
+        installFailed={installFailed}
       />
     );
   }
@@ -334,10 +440,10 @@ function slotName(faces: readonly string[]): string {
 
 /** Saves pending solves as a JSON file the person can keep (DESIGN.md: never lose a solve). */
 function downloadSolves(solves: readonly Solve[]) {
-  download(
+  void download(
     backupFileName().replace("backup", "unsaved"),
     JSON.stringify({ format: "cubehaus-pending", version: 1, solves }, null, 2),
-  );
+  )?.catch(() => {});
 }
 
 function TimerPage({
@@ -348,6 +454,7 @@ function TimerPage({
   openCommands,
   openDrills,
   applyUpdate,
+  installFailed,
 }: {
   app: AppState;
   view: AppView;
@@ -356,6 +463,7 @@ function TimerPage({
   openCommands: boolean;
   openDrills: boolean;
   applyUpdate: (() => void) | undefined;
+  installFailed: boolean;
 }) {
   const seed = import.meta.env.VITE_TEST_HOOKS === "1" ? fixture : undefined;
   const dbKind = view.dbState?.kind;
@@ -849,6 +957,12 @@ function TimerPage({
   const [statPicker, setStatPicker] = useState(false);
   const pictureButton = useRef<HTMLButtonElement>(null);
   const [zoom, setZoom] = useState<ZoomState>(null);
+  const restorePictureFocus = useRef(false);
+  useLayoutEffect(() => {
+    if (zoom !== null || !restorePictureFocus.current) return;
+    restorePictureFocus.current = false;
+    pictureButton.current?.focus({ preventScroll: true });
+  }, [zoom]);
   const closePictureNow = useCallback(() => setZoom(null), []);
   const closePicture = useCallback(() => {
     setZoom((current) =>
@@ -1015,7 +1129,7 @@ function TimerPage({
   // The screen stays on while the app shows: a solve or a drill is not touched for a while.
   const awake = view.settings.awake;
   useEffect(
-    () => (awake ? keepAwake(navigator as WakeLockHost, document) : undefined),
+    () => (awake ? keepAwake(wakeLockHost(), document) : undefined),
     [awake],
   );
   const showToday = view.settings.today;
@@ -1060,7 +1174,10 @@ function TimerPage({
       if (hide) {
         closePictureNow();
         void app.setSetting("picture", false);
-      } else closePicture();
+      } else {
+        restorePictureFocus.current = key.key === "Escape";
+        closePicture();
+      }
     };
     const click = (input: MouseEvent) => {
       if (zoom === null) return;
@@ -1819,6 +1936,7 @@ function TimerPage({
         }
       }}
     >
+      <h1 data-heard>{words.timer}</h1>
       <Timer
         scramble={shownScramble}
         event={event}
@@ -1990,116 +2108,121 @@ function TimerPage({
                     >
                       {solutionFor ? words.drill.hide : words.drill.solution}
                     </button>
-                    {solutionFor && (
-                      <output
-                        data-part="drill-solution"
-                        data-state={solutionFor.state}
-                      >
-                        {solutionFor.state === "searching"
-                          ? words.drill.searching
-                          : solutionFor.state === "none"
-                            ? words.drill.notFound
-                            : solutionFor.state === "failed"
-                              ? words.drill.failed
-                              : solutionFor.moves?.length
-                                ? `${solutionFor.moves.join(" ")} (${solutionFor.moves.length})`
-                                : words.drill.solved}
-                        {solutionFor.state === "found" && solutionFor.pair && (
-                          <>
-                            {" · "}
-                            {words.drill.slotOf(slotName(solutionFor.pair))}
-                          </>
-                        )}
-                        {solutionFor.state === "failed" && (
-                          <>
-                            {" "}
-                            <button
-                              type="button"
-                              data-action="drill-retry"
-                              onClick={findSolution}
-                            >
-                              {words.drill.retry}
-                            </button>
-                          </>
-                        )}
-                      </output>
-                    )}
+                    <output
+                      data-part={solutionFor ? "drill-solution" : undefined}
+                      data-state={solutionFor?.state}
+                      data-heard={solutionFor ? undefined : ""}
+                    >
+                      {solutionFor && (
+                        <>
+                          {solutionFor.state === "searching"
+                            ? words.drill.searching
+                            : solutionFor.state === "none"
+                              ? words.drill.notFound
+                              : solutionFor.state === "failed"
+                                ? words.drill.failed
+                                : solutionFor.moves?.length
+                                  ? `${solutionFor.moves.join(" ")} (${solutionFor.moves.length})`
+                                  : words.drill.solved}
+                          {solutionFor.state === "found" &&
+                            solutionFor.pair && (
+                              <>
+                                {" · "}
+                                {words.drill.slotOf(slotName(solutionFor.pair))}
+                              </>
+                            )}
+                          {solutionFor.state === "failed" && (
+                            <>
+                              {" "}
+                              <button
+                                type="button"
+                                data-action="drill-retry"
+                                onClick={findSolution}
+                              >
+                                {words.drill.retry}
+                              </button>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </output>
                   </>
                 )}
             </>
           )}
         </p>
       )}
-      {modal === "palette" && (
-        <Palette
-          actions={actions.filter(
-            (action) =>
-              action.id !== "palette" &&
-              !action.id.startsWith("timer.") &&
-              action.id !== "escape" &&
-              action.when.some((when) => when === helpState),
-          )}
-          language={view.settings.language}
-          keymap={view.keymap}
-          placeholder={words.palettePlaceholder}
-          closeLabel={words.backToTimer}
-          onClose={closeDialog}
-        />
-      )}
-      {modal === "switch" && !moveOpen && (
-        <SessionGrid
-          app={app}
-          view={view}
-          words={words}
-          renameCurrent={renameOnOpen}
-          startIn={
-            seed?.state === "switch-archive"
-              ? "archive"
-              : seed?.state === "switch-trash"
-                ? "trash"
-                : "list"
-          }
-          onClose={(picked) => {
-            // A session picked: the keyboard is on the timer, so Space times at once.
-            if (picked) dialogOpener.current = null;
-            closeDialog();
-          }}
-        />
-      )}
-      {modal === "switch" && moveOpen && (
-        <SessionSwitch
-          app={app}
-          view={view}
-          words={words}
-          moving={{
-            count: Math.max(1, view.selected.size),
-            event,
-            onPick: (to: string | { name: string }) =>
-              void app.moveSolves(to).then((result) => {
-                if ("to" in result) {
-                  if (result.moved > 0)
-                    setNotice(words.movedTo(result.moved, result.to.name));
-                } else if (result.error !== "nothing")
-                  setNotice(words.notMoved[result.error]);
-              }),
-          }}
-          onClose={closeDialog}
-        />
-      )}
-      {modal === "help" && (
-        <Help
-          bindings={bindingsFor(helpState, actions)}
-          language={view.settings.language}
-          title={isTouchScreen() ? words.gestures.title : words.keysTitle}
-          gestures={isTouchScreen() ? words.gestures.list : undefined}
-          closeLabel={words.backToTimer}
-          commandsLabel={words.paletteTitle}
-          onCommands={() => setModal("palette")}
-          onClose={closeDialog}
-        />
-      )}
-      {modal === "drills" && event === "333" && session && (
-        <Suspense fallback={null}>
+      <Suspense fallback={null}>
+        {modal === "palette" && (
+          <Palette
+            actions={actions.filter(
+              (action) =>
+                action.id !== "palette" &&
+                !action.id.startsWith("timer.") &&
+                action.id !== "escape" &&
+                action.when.some((when) => when === helpState),
+            )}
+            language={view.settings.language}
+            keymap={view.keymap}
+            title={words.paletteTitle}
+            placeholder={words.palettePlaceholder}
+            closeLabel={words.backToTimer}
+            onClose={closeDialog}
+          />
+        )}
+        {modal === "switch" && !moveOpen && (
+          <SessionGrid
+            app={app}
+            view={view}
+            words={words}
+            renameCurrent={renameOnOpen}
+            startIn={
+              seed?.state === "switch-archive"
+                ? "archive"
+                : seed?.state === "switch-trash"
+                  ? "trash"
+                  : "list"
+            }
+            onClose={(picked) => {
+              // A session picked: the keyboard is on the timer, so Space times at once.
+              if (picked) dialogOpener.current = null;
+              closeDialog();
+            }}
+          />
+        )}
+        {modal === "switch" && moveOpen && (
+          <SessionSwitch
+            app={app}
+            view={view}
+            words={words}
+            moving={{
+              count: Math.max(1, view.selected.size),
+              event,
+              onPick: (to: string | { name: string }) =>
+                void app.moveSolves(to).then((result) => {
+                  if ("to" in result) {
+                    if (result.moved > 0)
+                      setNotice(words.movedTo(result.moved, result.to.name));
+                  } else if (result.error !== "nothing")
+                    setNotice(words.notMoved[result.error]);
+                }),
+            }}
+            onClose={closeDialog}
+          />
+        )}
+        {modal === "help" && (
+          <Help
+            bindings={bindingsFor(helpState, actions)}
+            language={view.settings.language}
+            title={isTouchScreen() ? words.gestures.title : words.keysTitle}
+            gestures={isTouchScreen() ? words.gestures.list : undefined}
+            closeLabel={words.backToTimer}
+            commandsLabel={words.paletteTitle}
+            onCommands={() => setModal("palette")}
+            onClose={closeDialog}
+          />
+        )}
+        {modal === "drills" && event === "333" && session && (
           <Training
             profile={profile}
             words={words}
@@ -2110,18 +2233,18 @@ function TimerPage({
             }
             onClose={closeDialog}
           />
-        </Suspense>
-      )}
-      {modal === "average" && average && (
-        <AverageDetail
-          request={average}
-          app={app}
-          settings={view.settings}
-          keymap={view.keymap}
-          words={words}
-          onClose={closeDialog}
-        />
-      )}
+        )}
+        {modal === "average" && average && (
+          <AverageDetail
+            request={average}
+            app={app}
+            settings={view.settings}
+            keymap={view.keymap}
+            words={words}
+            onClose={closeDialog}
+          />
+        )}
+      </Suspense>
       {entry && session && !shownSolve && (
         <Entry
           key={`entry:${session.id}`}
@@ -2189,6 +2312,9 @@ function TimerPage({
           </nav>
         )}
       {/* The status line: the session on the left, the rest to the right. */}
+      <p data-heard role="status">
+        {notice ?? (hint ? words.gestures.hint[hint] : "")}
+      </p>
       <footer data-part="status-line">
         <Sessions
           app={app}
@@ -2230,6 +2356,11 @@ function TimerPage({
               </button>
             </p>
           )}
+        {installFailed && state.phase === "idle" && (
+          <p data-part="update" data-kind="failed">
+            {words.updateFailed}
+          </p>
+        )}
         {view.dbState?.kind === "failed" && (
           <DbFailure state={view.dbState} words={words} />
         )}
@@ -2259,12 +2390,12 @@ function TimerPage({
           </p>
         )}
         {notice && (
-          <p data-part="notice" role="status" data-no-timer>
+          <p data-part="notice" data-no-timer>
             {notice}
           </p>
         )}
         {!notice && hint && (
-          <p data-part="notice" data-kind="hint" role="status" data-no-timer>
+          <p data-part="notice" data-kind="hint" data-no-timer>
             {words.gestures.hint[hint]}
             <button
               type="button"

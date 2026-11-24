@@ -16,6 +16,7 @@ import {
 import type { AppState, AppView } from "../app-state";
 import { backupFileName, download } from "../backup-file";
 import type { BackupMeta, NativeBackups } from "../db/native";
+import "../design/settings.css";
 
 const exportFormats = {
   cstimer: { kind: "cstimer", extension: "txt", type: "text/plain" },
@@ -32,12 +33,14 @@ import {
   validateBindings,
 } from "../keys/keymap";
 import { isMacPlatform, keyLabel } from "../keys/label";
+import { canKeepAwake } from "../phone-app";
 import { drillName } from "../scramble/training-client";
 import { slotKey } from "../session-stats";
 import { eventNamed } from "../session-switch";
 import { coloursInPlay, isLayout, type Settings as Values } from "../settings";
 import type { Text } from "../text";
 import { isThemeChoice } from "../theme";
+import { appVersion } from "../version";
 import {
   DEFAULT_SIZES,
   SIZE_MAX,
@@ -325,7 +328,11 @@ export function Settings({
     setBusy(true);
     setResult("");
     try {
-      download(backupFileName(), await app.exportBackup());
+      const writing = download(backupFileName(), await app.exportBackup());
+      if (writing) {
+        await writing;
+        setResult(t.savedToDownloads);
+      }
     } catch {
       setResult(t.backupFailed);
     } finally {
@@ -372,8 +379,13 @@ export function Settings({
     setResult("");
     try {
       const saved = await app.exportFile(format, sessionId);
-      download(backupFileName(new Date(), kind, extension), saved.text, type);
-      setResult(t.exported(saved));
+      const writing = download(
+        backupFileName(new Date(), kind, extension),
+        saved.text,
+        type,
+      );
+      if (writing) await writing;
+      setResult(t.exported(saved, writing ? t.savedToDownloads : undefined));
     } catch {
       setResult(t.backupFailed);
     } finally {
@@ -527,7 +539,7 @@ export function Settings({
     </li>
   );
   return (
-    <section data-part="settings" data-no-timer>
+    <main data-part="settings" data-no-timer>
       <a href="#/" data-action="settings-close">
         {words.backToTimer}
       </a>
@@ -690,119 +702,117 @@ export function Settings({
           </>
         )}
         {section === "timer" && (
-          <>
-            <ul>
-              {row("startMode", t.startMode, (id) => (
+          <ul>
+            {row("startMode", t.startMode, (id) => (
+              <select
+                id={id}
+                value={values.startMode}
+                disabled={!enabled}
+                onChange={(event) =>
+                  set(
+                    "startMode",
+                    event.currentTarget.value === "two-hand"
+                      ? "two-hand"
+                      : "space",
+                  )
+                }
+              >
+                <option value="space">{t.startSpace}</option>
+                <option value="two-hand">{t.startTwoHand}</option>
+              </select>
+            ))}
+            {row("holdMs", t.holdMs, (id) => (
+              <select
+                id={id}
+                value={values.holdMs}
+                disabled={!enabled}
+                onChange={(e) => set("holdMs", Number(e.currentTarget.value))}
+              >
+                {(holdChoices.includes(values.holdMs)
+                  ? holdChoices
+                  : [...holdChoices, values.holdMs].sort((a, b) => a - b)
+                ).map((ms) => (
+                  <option key={ms} value={ms}>
+                    {t.holdValue(ms)}
+                  </option>
+                ))}
+              </select>
+            ))}
+            {row("running", t.running, (id) => (
+              <select
+                id={id}
+                value={values.running}
+                disabled={!enabled}
+                onChange={(e) => {
+                  const value = e.currentTarget.value;
+                  set(
+                    "running",
+                    value === "hundredths" ||
+                      value === "tenths" ||
+                      value === "hidden"
+                      ? value
+                      : "seconds",
+                  );
+                }}
+              >
+                <option value="tenths">{t.runningChoices.tenths}</option>
+                <option value="hundredths">
+                  {t.runningChoices.hundredths}
+                </option>
+                <option value="seconds">{t.runningChoices.seconds}</option>
+                <option value="hidden">{t.runningChoices.hidden}</option>
+              </select>
+            ))}
+            {row("calls", t.calls, (id) => (
+              <select
+                id={id}
+                value={values.calls}
+                disabled={!enabled}
+                onChange={(e) => {
+                  const value = e.currentTarget.value;
+                  set(
+                    "calls",
+                    value === "voice"
+                      ? "voice"
+                      : value === "off"
+                        ? "off"
+                        : "tick",
+                  );
+                }}
+              >
+                <option value="tick">{t.callChoices.tick}</option>
+                <option value="voice">{t.callChoices.voice}</option>
+                <option value="off">{t.callChoices.off}</option>
+              </select>
+            ))}
+            {row("precision", t.precision, (id) => (
+              <select
+                id={id}
+                value={values.precision}
+                disabled={!enabled}
+                onChange={(e) =>
+                  set("precision", e.currentTarget.value === "3" ? 3 : 2)
+                }
+              >
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            ))}
+            {canKeepAwake() &&
+              row("awake", t.awake, (id) => (
                 <select
                   id={id}
-                  value={values.startMode}
+                  value={values.awake ? "on" : "off"}
                   disabled={!enabled}
                   onChange={(event) =>
-                    set(
-                      "startMode",
-                      event.currentTarget.value === "two-hand"
-                        ? "two-hand"
-                        : "space",
-                    )
+                    set("awake", event.currentTarget.value === "on")
                   }
                 >
-                  <option value="space">{t.startSpace}</option>
-                  <option value="two-hand">{t.startTwoHand}</option>
+                  <option value="on">{t.recordCueChoices.on}</option>
+                  <option value="off">{t.recordCueChoices.off}</option>
                 </select>
               ))}
-              {row("holdMs", t.holdMs, (id) => (
-                <select
-                  id={id}
-                  value={values.holdMs}
-                  disabled={!enabled}
-                  onChange={(e) => set("holdMs", Number(e.currentTarget.value))}
-                >
-                  {(holdChoices.includes(values.holdMs)
-                    ? holdChoices
-                    : [...holdChoices, values.holdMs].sort((a, b) => a - b)
-                  ).map((ms) => (
-                    <option key={ms} value={ms}>
-                      {t.holdValue(ms)}
-                    </option>
-                  ))}
-                </select>
-              ))}
-              {row("running", t.running, (id) => (
-                <select
-                  id={id}
-                  value={values.running}
-                  disabled={!enabled}
-                  onChange={(e) => {
-                    const value = e.currentTarget.value;
-                    set(
-                      "running",
-                      value === "hundredths" ||
-                        value === "tenths" ||
-                        value === "hidden"
-                        ? value
-                        : "seconds",
-                    );
-                  }}
-                >
-                  <option value="tenths">{t.runningChoices.tenths}</option>
-                  <option value="hundredths">
-                    {t.runningChoices.hundredths}
-                  </option>
-                  <option value="seconds">{t.runningChoices.seconds}</option>
-                  <option value="hidden">{t.runningChoices.hidden}</option>
-                </select>
-              ))}
-              {row("calls", t.calls, (id) => (
-                <select
-                  id={id}
-                  value={values.calls}
-                  disabled={!enabled}
-                  onChange={(e) => {
-                    const value = e.currentTarget.value;
-                    set(
-                      "calls",
-                      value === "voice"
-                        ? "voice"
-                        : value === "off"
-                          ? "off"
-                          : "tick",
-                    );
-                  }}
-                >
-                  <option value="tick">{t.callChoices.tick}</option>
-                  <option value="voice">{t.callChoices.voice}</option>
-                  <option value="off">{t.callChoices.off}</option>
-                </select>
-              ))}
-              {row("precision", t.precision, (id) => (
-                <select
-                  id={id}
-                  value={values.precision}
-                  disabled={!enabled}
-                  onChange={(e) =>
-                    set("precision", e.currentTarget.value === "3" ? 3 : 2)
-                  }
-                >
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </select>
-              ))}
-              {"wakeLock" in navigator &&
-                row("awake", t.awake, (id) => (
-                  <select
-                    id={id}
-                    value={values.awake ? "on" : "off"}
-                    disabled={!enabled}
-                    onChange={(event) =>
-                      set("awake", event.currentTarget.value === "on")
-                    }
-                  >
-                    <option value="on">{t.recordCueChoices.on}</option>
-                    <option value="off">{t.recordCueChoices.off}</option>
-                  </select>
-                ))}
-            </ul>
-          </>
+          </ul>
         )}
         {section === "look" && (
           <>
@@ -819,8 +829,13 @@ export function Settings({
                     )
                   }
                 >
-                  <option value="en">{t.languages.en}</option>
-                  <option value="ru">{t.languages.ru}</option>
+                  {/* Each language's name is written in that language, and read in it. */}
+                  <option value="en" lang="en">
+                    {t.languages.en}
+                  </option>
+                  <option value="ru" lang="ru">
+                    {t.languages.ru}
+                  </option>
                 </select>
               ))}
               {row("theme", t.theme, (id) => (
@@ -992,10 +1007,11 @@ export function Settings({
           <>
             <ul data-part="data">
               <li data-setting="backup">
-                <span>{t.backup}</span>{" "}
+                <span id="data-backup">{t.backup}</span>{" "}
                 <button
                   type="button"
                   data-action="backup-save"
+                  aria-describedby="data-backup"
                   disabled={!dataEnabled || busy}
                   onClick={() => void saveBackup()}
                 >
@@ -1003,12 +1019,13 @@ export function Settings({
                 </button>
               </li>
               <li data-setting="restore">
-                <span>{t.restore}</span>{" "}
+                <span id="data-restore">{t.restore}</span>{" "}
                 <label data-action="backup-restore">
                   {t.restoreChoose}
                   <input
                     type="file"
                     accept=".json,application/json"
+                    aria-describedby="data-restore"
                     disabled={!dataEnabled || busy}
                     onChange={({ currentTarget }) => {
                       const file = currentTarget.files?.[0];
@@ -1020,10 +1037,11 @@ export function Settings({
               </li>
               {earlier && (
                 <li data-setting="earlier">
-                  <span>{t.earlier}</span>{" "}
+                  <span id="data-earlier">{t.earlier}</span>{" "}
                   <button
                     type="button"
                     data-action="earlier-add"
+                    aria-describedby="data-earlier"
                     disabled={busy}
                     onClick={() => void addEarlier()}
                   >
@@ -1066,11 +1084,12 @@ export function Settings({
                 </label>
               </li>
               <li data-setting="export-cstimer">
-                <span>{t.exportCsTimer}</span>{" "}
+                <span id="data-export-cstimer">{t.exportCsTimer}</span>{" "}
                 <span data-part="export-choice">
                   <button
                     type="button"
                     data-action="export-cstimer-session"
+                    aria-describedby="data-export-cstimer"
                     disabled={!exportEnabled || busy || !view.current}
                     onClick={() => void saveExport("cstimer", view.current?.id)}
                   >
@@ -1079,6 +1098,7 @@ export function Settings({
                   <button
                     type="button"
                     data-action="export-cstimer"
+                    aria-describedby="data-export-cstimer"
                     disabled={!exportEnabled || busy}
                     onClick={() => void saveExport("cstimer")}
                   >
@@ -1087,11 +1107,12 @@ export function Settings({
                 </span>
               </li>
               <li data-setting="export-csv">
-                <span>{t.exportCsv}</span>{" "}
+                <span id="data-export-csv">{t.exportCsv}</span>{" "}
                 <span data-part="export-choice">
                   <button
                     type="button"
                     data-action="export-csv-session"
+                    aria-describedby="data-export-csv"
                     disabled={!exportEnabled || busy || !view.current}
                     onClick={() => void saveExport("csv", view.current?.id)}
                   >
@@ -1100,6 +1121,7 @@ export function Settings({
                   <button
                     type="button"
                     data-action="export-csv"
+                    aria-describedby="data-export-csv"
                     disabled={!exportEnabled || busy}
                     onClick={() => void saveExport("csv")}
                   >
@@ -1107,6 +1129,9 @@ export function Settings({
                   </button>
                 </span>
               </li>
+              {!(
+                view.dbState?.kind === "persistent" && view.dbState.backups
+              ) && <AboutRows words={t} />}
             </ul>
             {preview && (
               <ImportPreviewPanel
@@ -1132,10 +1157,64 @@ export function Settings({
                 words={words}
               />
             )}
+            {view.dbState?.kind === "persistent" && view.dbState.backups && (
+              <ul data-part="data">
+                <AboutRows words={t} />
+              </ul>
+            )}
           </>
         )}
       </div>
-    </section>
+    </main>
+  );
+}
+
+/**
+ * The last rows of Data: the two pages beside the app (real links: the page has its own
+ * way back), then the version.
+ */
+function AboutRows({
+  words,
+}: {
+  words: {
+    privacy: string;
+    support: string;
+    keysOpen: string;
+    version: string;
+  };
+}) {
+  return (
+    <>
+      <li data-setting="privacy">
+        <span id="data-privacy">{words.privacy}</span>{" "}
+        <a
+          href="privacy.html"
+          data-action="page-open"
+          aria-describedby="data-privacy"
+        >
+          {words.keysOpen}
+        </a>
+      </li>
+      <li data-setting="support">
+        <span id="data-support">{words.support}</span>{" "}
+        <a
+          href="support.html"
+          data-action="page-open"
+          aria-describedby="data-support"
+        >
+          {words.keysOpen}
+        </a>
+      </li>
+      <VersionRow label={words.version} />
+    </>
+  );
+}
+
+function VersionRow({ label }: { label: string }) {
+  return (
+    <li data-setting="version">
+      <span>{label}</span> <span data-part="version-value">{appVersion()}</span>
+    </li>
   );
 }
 
@@ -1225,9 +1304,13 @@ function BackupSettings({
         await app.flushPending();
         await backups.restore(copy.id);
         location.reload();
-      } catch {
+      } catch (error) {
         setAsking(null);
-        setStatus(t.restoreFailed);
+        setStatus(
+          error === "newer_backup_schema"
+            ? t.restoreProblem.newer
+            : t.restoreFailed,
+        );
       }
     });
 

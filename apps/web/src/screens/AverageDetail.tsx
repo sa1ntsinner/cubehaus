@@ -10,6 +10,7 @@ import {
 import { actionKey, type Keymap } from "../keys/keymap";
 import type { Settings } from "../settings";
 import type { Text } from "../text";
+import "../design/average-detail.css";
 
 const pageSize = 24;
 
@@ -118,8 +119,17 @@ export function AverageDetail({
           {words.backToTimer}
         </button>
         <h1 id={heading}>{detail?.title ?? request.name}</h1>
+        <p data-heard role="status">
+          {!detail
+            ? rows
+              ? labels.unavailable
+              : labels.loading
+            : copy?.kind === "copied"
+              ? labels.copied
+              : ""}
+        </p>
         {!detail ? (
-          <p role="status">{rows ? labels.unavailable : labels.loading}</p>
+          <p>{rows ? labels.unavailable : labels.loading}</p>
         ) : copy?.kind === "fallback" ? (
           <label>
             {labels.fallback}
@@ -139,7 +149,7 @@ export function AverageDetail({
             >
               {labels.copy}
             </button>
-            {copy?.kind === "copied" && <p role="status">{labels.copied}</p>}
+            {copy?.kind === "copied" && <p>{labels.copied}</p>}
             <ol start={first + 1}>
               {detail.lines
                 .slice(first, first + pageSize)

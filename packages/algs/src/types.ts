@@ -3,6 +3,7 @@ import type { Metrics } from "./metrics";
 export type LastLayerSet = "pll" | "oll" | "coll";
 export type SetId =
   | LastLayerSet
+  | "cmll"
   | "f2l"
   | "f2l-left"
   | "f2l-back"
@@ -47,7 +48,7 @@ export type TrainerCaseData = {
    */
   idea?: { en: string; ru: string } | null;
   subsets: readonly string[];
-  /** 2×2 and last slot: drill scrambles made at build time, each leading to the case. */
+  /** 2×2, last slot and CMLL: drill scrambles made at build time, each leading to the case. */
   scrambles?: readonly string[];
   /**
    * Last slot only: the case's pictures, `top` as the OLL pictures (21 letters), `slot` as
@@ -56,3 +57,19 @@ export type TrainerCaseData = {
    */
   pictures?: { top: string; slot: string };
 };
+
+/**
+ * An OLLCP case (ollcp.ts): the last layer oriented and its corners placed in one
+ * algorithm. `oll` is the OLL case it belongs to (1 to 57, 0 for the skip's two) and
+ * `group` that case's label, for a grouped list. Not among the trainer's sets yet.
+ */
+export type OllcpCaseData = TrainerCaseData & {
+  oll: number;
+  scrambles: readonly string[];
+};
+
+/** An OLLCP case without its algorithms: enough to list it and draw its picture. */
+export type OllcpEntry = Pick<
+  OllcpCaseData,
+  "id" | "label" | "group" | "oll" | "state"
+>;

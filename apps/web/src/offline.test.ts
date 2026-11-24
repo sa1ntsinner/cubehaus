@@ -124,7 +124,9 @@ test("a navigator without service workers is unsupported", () => {
 test("the files are fetched for offline use only once the page says it is ready", async () => {
   const { services, change } = setup();
   let ready!: () => void;
-  watchOffline(change, new Promise<void>((resolve) => (ready = resolve)));
+  watchOffline(change, {
+    ready: new Promise<void>((resolve) => (ready = resolve)),
+  });
   await Promise.resolve();
   // The first scramble is not on screen yet: nothing competes with the first load.
   expect(services.register).not.toHaveBeenCalled();
@@ -132,4 +134,57 @@ test("the files are fetched for offline use only once the page says it is ready"
   await Promise.resolve();
   await Promise.resolve();
   expect(services.register).toHaveBeenCalledTimes(1);
+});
+
+test("a page that turns hidden to reload or close does not take the waiting update", async () => {
+  vi.useFakeTimers();
+  try {
+    const { registration, services } = setup();
+    const page = Object.assign(new EventTarget(), { hidden: false });
+    vi.stubGlobal("window", Object.assign(new EventTarget(), { setInterval }));
+    vi.stubGlobal("document", page);
+    registration.active = services.controller = worker();
+    const next = worker();
+    registration.waiting = next;
+    watchOffline(vi.fn());
+    window.dispatchEvent(new Event("keydown"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(next.postMessage).not.toHaveBeenCalled();
+
+    // Reloading: the old worker already answered with the old page, so a new worker
+    // taken now would leave that page on the old version with nothing to offer.
+    page.hidden = true;
+    page.dispatchEvent(new Event("visibilitychange"));
+    expect(next.postMessage).not.toHaveBeenCalled();
+
+    // Still alive and hidden a while later: a tab in the background.
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(next.postMessage.mock.calls).toEqual([["SKIP_WAITING"]]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("a failed update is said and goes once the next install succeeds", async () => {
+  const { registration, services, change } = setup();
+  registration.active = services.controller = worker();
+  watchOffline(change);
+  await Promise.resolve();
+
+  const broken = worker();
+  registration.installing = broken;
+  registration.dispatchEvent(new Event("updatefound"));
+  registration.installing = null;
+  broken.state = "redundant";
+  broken.dispatchEvent(new Event("statechange"));
+  expect(change).toHaveBeenLastCalledWith("update-failed");
+
+  const next = worker();
+  registration.installing = next;
+  registration.dispatchEvent(new Event("updatefound"));
+  registration.installing = null;
+  registration.waiting = next;
+  next.state = "installed";
+  next.dispatchEvent(new Event("statechange"));
+  expect(change).toHaveBeenLastCalledWith("update-waiting");
 });

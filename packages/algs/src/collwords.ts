@@ -23,6 +23,7 @@ export function cornerPairs(picture: string): Partial<Record<Side, Pairing>> {
 
 const SHAPE = {
   en: {
+    O: "All corners up",
     H: "H shape",
     Pi: "Pi shape",
     U: "U shape",
@@ -32,6 +33,7 @@ const SHAPE = {
     AS: "Antisune shape",
   },
   ru: {
+    O: "Все углы смотрят вверх",
     H: "Форма H",
     Pi: "Форма Пи",
     U: "Форма U",

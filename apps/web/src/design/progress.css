@@ -5,6 +5,7 @@
  */
 
 main[data-part="progress"] {
+  animation: sheet-in 110ms var(--ease);
   --column: 960px;
   box-sizing: border-box;
   width: min(var(--column), 100%);
@@ -42,7 +43,11 @@ main[data-part="progress"] h1 {
   line-height: 1.15;
 }
 main[data-part="progress"]
-  > :is([role="status"], [role="alert"], [data-part="db-state"]) {
+  > :is(
+    [data-part="progress-loading"],
+    [role="alert"],
+    [data-part="db-state"]
+  ) {
   margin: 0 0 var(--s4);
   color: var(--dim);
 }
@@ -516,7 +521,14 @@ main[data-part="progress"] > [role="alert"] {
 [data-part="progress-target"] {
   margin-top: var(--s3);
 }
-[data-part="progress-target"] summary > span:first-child {
+[data-part="progress-target"][open] [data-part="progress-target-folded"],
+[data-part="progress-target"]:not([open])
+  [data-part="progress-target-title"]:has(
+    + [data-part="progress-target-folded"]
+  ) {
+  display: none;
+}
+[data-part="progress-target-folded"] > span:first-child {
   color: var(--ink);
 }
 [data-part="progress-target-answer"] {

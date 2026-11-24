@@ -153,6 +153,7 @@ g[data-part="picture-body"] {
   position: fixed;
   inset: 0;
   z-index: 9;
+  outline: none;
 }
 [data-part="picture-veil"] {
   background: var(--ground);

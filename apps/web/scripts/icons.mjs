@@ -7,6 +7,11 @@
 //   mark-16.svg  drawn for the 16 px grid: sticker 2, gap 1
 // The desktop source (1024 px, macOS plate on a transparent square) then feeds
 // `pnpm --filter @cubehaus/desktop exec tauri icon src-tauri/app-icon.png`.
+// tauri scales the full mark down for the small sizes; afterwards put the pixel cuts into
+// the Mac file: `iconutil -c iconset icons/icon.icns`, copy public/favicon-16.png over
+// icon_16x16.png and public/favicon-32.png over icon_16x16@2x.png and icon_32x32.png (and
+// over icons/32x32.png), then `iconutil -c icns`.
+// The iPhone app's icons are apps/mobile/icon*.png, written here too.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
@@ -21,13 +26,16 @@ const colours = { ground: "#000000", ink: "#ffffff" };
 const CORNER = 230.4;
 
 // ground: "square" fills the square (the system rounds it), "round" is a rounded plate
-// with clear corners (browser tabs), "mac" is the macOS plate (824 of 1024, radius 185).
+// with clear corners (browser tabs), "mac" is the macOS plate (824 of 1024, radius 185),
+// "clear" is the mark alone on a transparent square.
 // scale shrinks the mark about the centre.
 function svg(name, ground, scale = 1) {
   const plate =
-    ground === "mac"
-      ? `<rect x="100" y="100" width="824" height="824" rx="185" fill="${colours.ground}" stroke="#262626" stroke-width="4"/>`
-      : `<rect width="1024" height="1024"${ground === "round" ? ` rx="${CORNER}"` : ""} fill="${colours.ground}"/>`;
+    ground === "clear"
+      ? ""
+      : ground === "mac"
+        ? `<rect x="100" y="100" width="824" height="824" rx="185" fill="${colours.ground}" stroke="#262626" stroke-width="4"/>`
+        : `<rect width="1024" height="1024"${ground === "round" ? ` rx="${CORNER}"` : ""} fill="${colours.ground}"/>`;
   const at = 512 * (1 - scale);
   const place =
     scale === 1 ? "" : ` transform="translate(${at} ${at}) scale(${scale})"`;
@@ -42,6 +50,13 @@ const icons = [
   ["icon-512.png", 512, "mark", "square"],
   // Maskable: the mark inside the safe circle (80 % of the square).
   ["icon-maskable-512.png", 512, "mark", "square", 0.8],
+  // iPhone app: the mark on a full black square, which iOS rounds itself
+  // (apps/mobile/icon.png feeds the app icon set).
+  ["../../mobile/icon.png", 1024, "mark", "square"],
+  // Its dark appearance: the mark alone on a transparent square, over the background the
+  // system draws. Its tinted appearance: a grayscale image, which the default already is.
+  ["../../mobile/icon-dark.png", 1024, "mark", "clear"],
+  ["../../mobile/icon-tinted.png", 1024, "mark", "square"],
   // Desktop source: the mark on the macOS plate.
   ["../../desktop/src-tauri/app-icon.png", 1024, "mark", "mac", 824 / 1024],
 ];

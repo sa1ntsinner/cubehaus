@@ -1,0 +1,66 @@
+/* ---- the key list: two columns of key and action on a wide screen ---- */
+[data-part="keys-help"] dl {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  columns: 2 300px;
+  column-gap: var(--s7);
+}
+[data-part="keys-help"] dl > div {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: var(--s4);
+  padding-block: 6px;
+  break-inside: avoid;
+}
+[data-part="keys-help"] dt {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 var(--s2);
+}
+[data-part="keys-help"] dd {
+  margin: 0;
+}
+
+[data-part="keys-help"] > [data-action="commands-open"] {
+  position: absolute;
+  top: calc(
+    max(var(--s4), calc(12vh - 44px - var(--s4))) +
+    env(safe-area-inset-top)
+  );
+  right: max(var(--close-left), env(safe-area-inset-right));
+  min-height: 44px;
+  color: var(--dim);
+}
+@media (hover: hover) {
+  [data-part="keys-help"] > [data-action="commands-open"]:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+}
+
+/* The gestures in place of the keys: one column, what it does in ink over how in dim. */
+[data-part="keys-help"] dl[data-list="gestures"] {
+  width: min(560px, 100%);
+  columns: auto;
+}
+[data-part="keys-help"] dl[data-list="gestures"] > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding-block: var(--s2);
+}
+[data-part="keys-help"] dl[data-list="gestures"] dt {
+  display: block;
+  font-size: 14px;
+  color: var(--dim);
+}
+@media (max-width: 699px) {
+  dialog[data-part="keys-help"] {
+    padding: calc(var(--s4) + 44px + var(--s2) + env(safe-area-inset-top))
+      max(var(--s4), env(safe-area-inset-right))
+      calc(var(--s6) + env(safe-area-inset-bottom))
+      max(var(--s4), env(safe-area-inset-left));
+  }
+}

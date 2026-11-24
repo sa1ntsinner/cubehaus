@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The app's privacy manifest. cubehaus tracks
+  nobody, collects nothing (the history stays on the device) and its own code calls no
+  required-reason API: no UserDefaults, file timestamps, disk space, boot time or active
+  keyboards. Capacitor and Cordova carry their own manifests, which declare nothing either.
+  Checked against the imported symbols of the release build; check again when Swift code
+  or a plugin is added.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

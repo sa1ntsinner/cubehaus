@@ -36,7 +36,6 @@ export function ProgressTarget({
   const [target, setTarget] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
   const [invalid, setInvalid] = useState(false);
-  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -125,17 +124,13 @@ export function ProgressTarget({
   // Folded, the line is the whole answer. Opened, it names the part and the answer
   // moves beside the field, so the target time is never printed twice.
   return (
-    <details
-      data-part="progress-target"
-      onToggle={(toggle) => setOpen(toggle.currentTarget.open)}
-    >
+    <details data-part="progress-target">
       <summary>
-        {target === null || open ? (
-          labels.title
-        ) : (
-          <>
+        <span data-part="progress-target-title">{labels.title}</span>
+        {target !== null && (
+          <span data-part="progress-target-folded">
             <span>{labels.under(formatTime(target))}</span> {answerLine}
-          </>
+          </span>
         )}
       </summary>
       <div>
@@ -159,7 +154,7 @@ export function ProgressTarget({
             if (input.key === "Escape") input.currentTarget.blur();
           }}
         />
-        {open && target !== null && answerLine}
+        {target !== null && answerLine}
         {result && (
           <p data-part="progress-target-basis">
             {slope && (

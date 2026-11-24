@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Help with cubehaus: where to report a bug or an idea, and answers about moving, restoring and importing your solves." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>Support · cubehaus</title>
+    <style>
+      /* A static page: no script, nothing from another origin. Colours are the app's
+         tokens (src/design/tokens.css), the face is the app's own Roboto. */
+      @font-face {
+        font-family: "Roboto";
+        src: url("fonts/roboto.woff2") format("woff2");
+        font-weight: 400 600;
+        font-display: swap;
+      }
+      :root {
+        color-scheme: light dark;
+        --ground: #ffffff;
+        --ink: #000000;
+        --dim: #454545;
+        --gutter: #636363;
+        --line: #f2f2f2;
+        --double: #0349a0;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ground: #000000;
+          --ink: #ffffff;
+          --dim: #c8c8c8;
+          --gutter: #929292;
+          --line: #1a1a1a;
+          --double: #9ccbff;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        /* Inside the phone app the page fills the screen: keep clear of the status bar
+           and the home indicator. In a browser the insets are zero. */
+        padding: calc(32px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+          calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        background: var(--ground);
+        color: var(--ink);
+        font: 400 17px/1.55 "Roboto", Arial, sans-serif;
+        overflow-wrap: break-word;
+      }
+      main,
+      header {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 24px;
+        margin-bottom: 48px;
+      }
+      a {
+        color: inherit;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.2em;
+      }
+      a:focus-visible {
+        outline: 2px solid var(--double);
+        outline-offset: 3px;
+      }
+      header a {
+        display: inline-block;
+        padding: 10px 0;
+        color: var(--dim);
+        text-decoration: none;
+      }
+      header a:hover,
+      header a[aria-current] {
+        color: var(--ink);
+      }
+      header a[aria-current],
+      header .name {
+        font-weight: 600;
+      }
+      header .name {
+        color: var(--ink);
+        margin-right: auto;
+      }
+      h1 {
+        margin: 0 0 16px;
+        font-size: 32px;
+        line-height: 1.2;
+        font-weight: 600;
+      }
+      h2 {
+        margin: 48px 0 8px;
+        font-size: 20px;
+        line-height: 1.3;
+        font-weight: 600;
+      }
+      p,
+      ul {
+        margin: 0 0 16px;
+      }
+      ul {
+        padding-left: 20px;
+      }
+      li {
+        margin-bottom: 8px;
+      }
+      .lead {
+        font-size: 20px;
+        line-height: 1.45;
+      }
+      .note {
+        color: var(--dim);
+      }
+      code {
+        font: inherit;
+        color: var(--dim);
+        overflow-wrap: anywhere;
+      }
+      hr {
+        margin: 64px 0;
+        border: 0;
+        border-top: 1px solid var(--line);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="name" href="./">← cubehaus</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="support.html" aria-current="page">Support</a>
+      <a href="#ru" lang="ru">По-русски</a>
+    </header>
+
+    <main>
+      <h1>Support</h1>
+      <p class="lead">
+        Found a bug, or something is missing or in your way? Write an issue at
+        <a href="https://github.com/sa1ntsinner/cubehaus/issues">github.com/sa1ntsinner/cubehaus/issues</a>.
+        A sentence is enough.
+      </p>
+      <p>Issues are read and answered there. They are public and need a free GitHub account, so leave out anything private.</p>
+
+      <h2>What helps in a report</h2>
+      <ul>
+        <li>Where it happened: the website, the iPhone or iPad app, or the Mac app, and the device.</li>
+        <li>The version, from Settings › Data › Version.</li>
+        <li>What you did, what you expected, and what happened instead.</li>
+      </ul>
+
+      <h2>Common questions</h2>
+      <ul>
+        <li><b>Moving your solves to another device.</b> Settings › Data › All data as one file › Save. On the other device: Settings › Data › Restore from a file. Restoring the same file twice adds nothing twice.</li>
+        <li><b>A new or restored iPhone starts empty.</b> Settings › Data › Restore from a file › Choose › On My iPhone › cubehaus › <code>cubehaus-backup.json</code>. The phone's own backup carries that file.</li>
+        <li><b>Bringing solves from another timer.</b> Settings › Data › Solves from another timer. It reads files from csTimer, CubeTime, Twisty Timer and CubeDesk, and shows a preview before anything is added.</li>
+        <li><b>Something was deleted by mistake.</b> Deleted solves and sessions wait in the trash for 30 days and can be put back.</li>
+        <li><b>Is my data sent anywhere?</b> No. See <a href="privacy.html">Privacy</a>.</li>
+      </ul>
+
+      <h2>The code</h2>
+      <p>cubehaus is free and open source under MPL-2.0: <a href="https://github.com/sa1ntsinner/cubehaus">github.com/sa1ntsinner/cubehaus</a>.</p>
+
+      <hr />
+
+      <div id="ru" lang="ru">
+        <p><a href="./">← cubehaus</a></p>
+        <h1>Поддержка</h1>
+        <p class="lead">
+          Нашли ошибку, чего-то не хватает или что-то мешает? Напишите на
+          <a href="https://github.com/sa1ntsinner/cubehaus/issues">github.com/sa1ntsinner/cubehaus/issues</a>.
+          Одного предложения достаточно.
+        </p>
+        <p>Обращения читают и на них отвечают там же. Они видны всем, и нужен бесплатный аккаунт GitHub, поэтому не пишите ничего личного.</p>
+
+        <h2>Что полезно указать</h2>
+        <ul>
+          <li>Где это случилось: сайт, приложение для iPhone или iPad, приложение для Mac, и какое устройство.</li>
+          <li>Версию: Настройки › Данные › Версия.</li>
+          <li>Что вы сделали, чего ждали и что произошло.</li>
+        </ul>
+
+        <h2>Частые вопросы</h2>
+        <ul>
+          <li><b>Перенести сборки на другое устройство.</b> Настройки › Данные › Все данные одним файлом › Сохранить. На другом устройстве: Настройки › Данные › Восстановить из файла. Повторное восстановление того же файла ничего не добавляет дважды.</li>
+          <li><b>Новый или восстановленный iPhone открывается пустым.</b> Настройки › Данные › Восстановить из файла › Выбрать › На iPhone › cubehaus › <code>cubehaus-backup.json</code>. Этот файл входит в резервную копию телефона.</li>
+          <li><b>Перенести сборки из другого таймера.</b> Настройки › Данные › Сборки из другого таймера. Читаются файлы csTimer, CubeTime, Twisty Timer и CubeDesk, и перед добавлением показывается предпросмотр.</li>
+          <li><b>Что-то удалено по ошибке.</b> Удалённые сборки и сессии 30 дней лежат в корзине, и их можно вернуть.</li>
+          <li><b>Отправляются ли куда-то мои данные?</b> Нет. См. <a href="privacy.html#ru">Приватность</a>.</li>
+        </ul>
+
+        <h2>Код</h2>
+        <p>cubehaus бесплатный и открытый, лицензия MPL-2.0: <a href="https://github.com/sa1ntsinner/cubehaus">github.com/sa1ntsinner/cubehaus</a>.</p>
+      </div>
+    </main>
+  </body>
+</html>

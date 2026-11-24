@@ -44,7 +44,7 @@ function rankPerm(p: readonly number[]): number {
 // Corner coordinate: the permutation of the seven movable corners among their places, and
 // the twists of the first six (the seventh follows).
 const CORNER_SIZE = 5040 * 729;
-function cornerIndex(s: Full): number {
+export function cornerIndex(s: Full): number {
   const local = CORNERS.map((place) =>
     CORNERS.indexOf(s.corners.pieces[place] as number),
   );
@@ -322,16 +322,25 @@ export function searchLL(
 export function searchFrom(
   t: Tables,
   start: Full,
-  options: { maxDepth: number; extra: number; limit: number; startU?: boolean },
+  options: {
+    maxDepth: number;
+    extra: number;
+    limit: number;
+    startU?: boolean;
+    /** Another goal's admissible bound (cmll.ts), zero exactly at that goal. */
+    bound?: (s: Full) => number;
+  },
 ): string[] {
   const found: string[] = [];
   const path: number[] = [];
-  const bound = (s: Full) =>
-    Math.max(
-      t.corner[cornerIndex(s)] as number,
-      t.edge[edgeIndex(s)] as number,
-      t.flip[flipIndex(s)] as number,
-    );
+  const bound =
+    options.bound ??
+    ((s: Full) =>
+      Math.max(
+        t.corner[cornerIndex(s)] as number,
+        t.edge[edgeIndex(s)] as number,
+        t.flip[flipIndex(s)] as number,
+      ));
   let first = -1;
   const dfs = (s: Full, depth: number, lastFace: number): void => {
     if (found.length >= options.limit) return;

@@ -12,6 +12,10 @@
   color: var(--error);
 }
 /* In Settings the same line says why the rows are off: a step apart from the first row. */
+/* The failure banner after its readable copy was written: that line is no error. */
+[data-part="db-message"][data-feedback="savedToDownloads"] {
+  color: var(--dim);
+}
 [data-part="settings"] > [data-part="db-state"] {
   margin-bottom: var(--s4);
 }

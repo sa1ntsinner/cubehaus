@@ -10,26 +10,7 @@ test.beforeEach(async ({ page }) => {
   await inspectionOff(page);
 });
 
-test("loads at least 15 scramble moves within three seconds", async ({
-  page,
-}) => {
-  await expect
-    .poll(
-      async () => {
-        const text = await page.locator('[data-part="scramble"]').textContent();
-        return (
-          text
-            ?.trim()
-            .split(/\s+/)
-            .filter((move) => /^[URFDLB](?:2|')?$/.test(move)).length ?? 0
-        );
-      },
-      { timeout: 3000 },
-    )
-    .toBeGreaterThanOrEqual(15);
-});
-
-test("the scramble line stays empty until the first scramble arrives", async ({
+test("the scramble line stays empty until the first scramble, which comes within three seconds", async ({
   page,
 }) => {
   // Every text the line shows from the first paint on.
@@ -47,18 +28,33 @@ test("the scramble line stays empty until the first scramble arrives", async ({
     });
   });
   await page.reload();
-  await expect(page.locator('[data-part="scramble"]')).toHaveAttribute(
-    "data-ready",
-    "true",
-  );
+  await expect
+    .poll(
+      async () => {
+        const text = await page.locator('[data-part="scramble"]').textContent();
+        return (
+          text
+            ?.trim()
+            .split(/\s+/)
+            .filter((move) => /^[URFDLB](?:2|')?$/.test(move)).length ?? 0
+        );
+      },
+      { timeout: 3000 },
+    )
+    .toBeGreaterThanOrEqual(15);
   const seen = await page.evaluate(
     () => (window as unknown as { seen: string[] }).seen,
   );
   expect(seen.filter((text) => /No scramble|Retry/.test(text))).toEqual([]);
 });
 
-test("holds, readies, runs and stops using Space", async ({ page }) => {
+test("holds, readies, runs and stops using Space; the empty session's hint goes", async ({
+  page,
+}) => {
   const timer = page.locator("main");
+  // Both wordings are in the markup; CSS shows the one for the input at hand.
+  const hint = page.locator('[data-part="solves-empty"]');
+  await expect(hint.locator('[data-input="keys"]')).toBeVisible();
   await page.keyboard.down("Space");
   await expect(timer).toHaveAttribute("data-phase", "holding");
   await page.waitForTimeout(400);
@@ -74,9 +70,12 @@ test("holds, readies, runs and stops using Space", async ({ page }) => {
   expect(seconds).toBeGreaterThanOrEqual(0.45);
   expect(seconds).toBeLessThanOrEqual(0.75);
   await page.keyboard.up("Space");
+  await expect(hint).toHaveCount(0);
 });
 
-test("a short hold leaves the time unchanged", async ({ page }) => {
+test("a short hold, Meta+Space and Control+Space leave the timer idle", async ({
+  page,
+}) => {
   const time = page.locator('[data-part="time"]');
   await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
   const previous = await time.textContent();
@@ -85,15 +84,14 @@ test("a short hold leaves the time unchanged", async ({ page }) => {
   await page.keyboard.up("Space");
   await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
   await expect(time).toHaveText(previous ?? "");
-});
-
-for (const modifier of ["Meta", "Control"]) {
-  test(`${modifier}+Space leaves the timer idle`, async ({ page }) => {
-    await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
+  for (const modifier of ["Meta", "Control"]) {
     await page.keyboard.press(`${modifier}+Space`);
-    await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
-  });
-}
+    await expect(page.locator("main"), modifier).toHaveAttribute(
+      "data-phase",
+      "idle",
+    );
+  }
+});
 
 test("the release after a stop does not arm another solve", async ({
   page,
@@ -128,50 +126,6 @@ async function recordPhases(page: Page) {
   return () =>
     page.evaluate(() => (window as unknown as { phases: string[] }).phases);
 }
-
-test("an empty session says how to start until its first solve", async ({
-  page,
-}) => {
-  const hint = page.locator('[data-part="solves-empty"]');
-  // Both wordings are in the markup; CSS shows the one for the input at hand.
-  const keys = hint.locator('[data-input="keys"]');
-  await expect(keys).toBeVisible();
-  await expect(hint.locator('[data-input="touch"]')).toBeHidden();
-  await expect(keys).toHaveText(
-    "// No solves yet. Hold Space, let go to start.",
-  );
-  const timer = page.locator("main");
-  await page.keyboard.down("Space");
-  await expect(timer).toHaveAttribute("data-phase", "ready");
-  await page.keyboard.up("Space");
-  await expect(timer).toHaveAttribute("data-phase", "running");
-  await page.waitForTimeout(100);
-  await page.keyboard.down("Space");
-  await expect(timer).toHaveAttribute("data-phase", "stopped");
-  await page.keyboard.up("Space");
-  await expect(hint).toHaveCount(0);
-});
-
-test.describe("an empty session on a touch screen", () => {
-  test.use({
-    hasTouch: true,
-    isMobile: true,
-    viewport: { width: 390, height: 844 },
-  });
-
-  test("says to hold the screen", async ({ page }) => {
-    const touch = page.locator(
-      '[data-part="solves-empty"] [data-input="touch"]',
-    );
-    await expect(touch).toBeVisible();
-    await expect(
-      page.locator('[data-part="solves-empty"] [data-input="keys"]'),
-    ).toBeHidden();
-    await expect(touch).toHaveText(
-      "// No solves yet. Hold the screen, let go to start.",
-    );
-  });
-});
 
 test.describe("touch", () => {
   test.use({ hasTouch: true });

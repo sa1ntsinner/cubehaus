@@ -1,4 +1,5 @@
 import { type ReactNode, type RefObject, useLayoutEffect, useRef } from "react";
+import { keepFocusInside } from "../input/tab-loop";
 import { placeZoom } from "./picture";
 
 export type ZoomState = "open" | "closing" | null;
@@ -18,6 +19,7 @@ export function PictureZoom({
   source,
   line,
   aspect,
+  label,
   closing,
   onClosed,
   children,
@@ -25,10 +27,16 @@ export function PictureZoom({
   source: RefObject<SVGSVGElement | null>;
   line: RefObject<HTMLParagraphElement | null>;
   aspect: number;
+  label: string;
   closing: boolean;
   onClosed: () => void;
   children: ReactNode;
 }) {
+  const zoomRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    zoomRef.current?.focus({ preventScroll: true });
+  }, []);
+
   const veilRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const placementRef = useRef<Placement>(null);
@@ -115,7 +123,20 @@ export function PictureZoom({
   }, [closing, onClosed, source]);
 
   return (
-    <div data-part="picture-zoom" data-no-timer>
+    <div
+      ref={zoomRef}
+      data-part="picture-zoom"
+      data-no-timer
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+      tabIndex={-1}
+      onBlur={keepFocusInside}
+      onKeyDown={(event) => {
+        // The drawing has no controls to move to.
+        if (event.key === "Tab") event.preventDefault();
+      }}
+    >
       <div
         ref={veilRef}
         data-part="picture-veil"

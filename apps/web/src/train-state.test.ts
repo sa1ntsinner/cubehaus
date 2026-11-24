@@ -13,6 +13,8 @@ import {
   learntChoices,
   memberOf,
   myAlg,
+  ollcpGroupOf,
+  ollcpMember,
   otherAlgs,
   parseChoices,
   setOfSlot,
@@ -218,7 +220,7 @@ test("the set row stays short: F2L, last slot and the 2×2's top in one go each 
 
 test("F2L reads in the learner's order, numbered 1 to 41 in it, in four groups", () => {
   for (const set of ["f2l", "f2l-left", "f2l-back", "f2l-back-left"] as const) {
-    const labels = caseLabels(set);
+    const labels = caseLabels(set, trainerSet(set));
     const groups = learnGroups(set);
     const ids = groups?.flatMap((g) => g.ids) ?? [];
     expect(ids.map((id) => labels.get(id))).toEqual(
@@ -239,9 +241,9 @@ test("F2L reads in the learner's order, numbered 1 to 41 in it, in four groups",
   }
   // Other sets keep their own names and one list.
   expect(learnGroups("pll")).toBeNull();
-  expect(caseLabels("ls-right").get("ls-right-1011")).toBe(
-    trainerSet("ls-right").find((c) => c.id === "ls-right-1011")?.label,
-  );
+  expect(
+    caseLabels("ls-right", trainerSet("ls-right")).get("ls-right-1011"),
+  ).toBe(trainerSet("ls-right").find((c) => c.id === "ls-right-1011")?.label);
 });
 
 test("the 2×2's swapped bottoms are named in the interface's language, in the set row's words", () => {
@@ -251,7 +253,7 @@ test("the 2×2's swapped bottoms are named in the interface's language, in the s
       ["two-adj", words.adj],
       ["two-diag", words.diag],
     ] as const) {
-      const labels = caseLabels(set, words);
+      const labels = caseLabels(set, trainerSet(set), words);
       const cases = trainerSet(set);
       expect(cases.map((c) => labels.get(c.id))).toEqual(
         cases.map((_, i) => `${word} ${i + 1}`),
@@ -259,13 +261,17 @@ test("the 2×2's swapped bottoms are named in the interface's language, in the s
     }
     // The solved bottom's cases keep CLL, as the set row's word says.
     expect(
-      caseLabels("two-cll", words).get(trainerSet("two-cll")[0]?.id ?? ""),
+      caseLabels("two-cll", trainerSet("two-cll"), words).get(
+        trainerSet("two-cll")[0]?.id ?? "",
+      ),
     ).toBe("CLL 1");
   }
   expect(
-    caseLabels("two-adj", texts.ru.train.memberWords["two-cll"]).get(
-      trainerSet("two-adj")[2]?.id ?? "",
-    ),
+    caseLabels(
+      "two-adj",
+      trainerSet("two-adj"),
+      texts.ru.train.memberWords["two-cll"],
+    ).get(trainerSet("two-adj")[2]?.id ?? ""),
   ).toBe("Сосед 3");
 });
 
@@ -284,4 +290,29 @@ test("a case whose main algorithm changed keeps the one chosen as mine, and says
   expect(texts.ru.train.more(others.length)).toBe("Ещё 3");
   // Nothing chosen: the new main leads, three more.
   expect(otherAlgs(e, {}, "pll")).toHaveLength(3);
+});
+
+test("OLLCP stands under OLL, its cases named by their number in a group", () => {
+  expect(familyOf("ollcp")).toBe("oll");
+  expect(familyOf("oll")).toBe("oll");
+  expect(memberOf("oll", "ollcp")).toBe("ollcp");
+  expect(storedMember("oll", null)).toBe("oll");
+  expect(ollcpMember("OLL 27-3")).toBe("3");
+  expect(ollcpMember("Skip 2")).toBe("2");
+  const cases = [
+    { id: "ollcp-a", label: "OLL 27-3" },
+    { id: "ollcp-b", label: "OLL skip-2" },
+  ] as never;
+  // The group with nothing to orient takes the interface's word, as the 2×2's bottoms do.
+  expect([
+    ...caseLabels("ollcp", cases, undefined, "Пропуск").values(),
+  ]).toEqual(["OLL 27-3", "Пропуск 2"]);
+});
+
+test("an OLLCP route names a group by its OLL case, 0 for the skip", () => {
+  expect(ollcpGroupOf("27")).toBe(27);
+  expect(ollcpGroupOf("0")).toBe(0);
+  expect(ollcpGroupOf("58")).toBeNull();
+  expect(ollcpGroupOf("x")).toBeNull();
+  expect(ollcpGroupOf(undefined)).toBeNull();
 });

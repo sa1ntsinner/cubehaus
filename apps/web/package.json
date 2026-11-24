@@ -12,6 +12,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@capacitor/core": "8.6.2",
     "@cubehaus/algs": "workspace:*",
     "@cubehaus/core": "workspace:*",
     "@cubehaus/cube": "workspace:*",

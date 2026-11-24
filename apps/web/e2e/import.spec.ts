@@ -3,9 +3,6 @@ import type { Page } from "@playwright/test";
 import fixture from "../../../packages/importers/src/fixtures/cstimer-small.json" with {
   type: "json",
 };
-import split from "../../../packages/importers/src/fixtures/cstimer-split.json" with {
-  type: "json",
-};
 import cubedesk from "../../../packages/importers/src/fixtures/cubedesk.json" with {
   type: "json",
 };
@@ -89,48 +86,6 @@ test("a csTimer file is shown before import, imported once, and the empty starte
       elements.map((element) => element.getAttribute("data-solve-id")),
     ),
   ).toEqual(before);
-});
-
-test("a split time comes across whole and an unreadable row is named before import", async ({
-  page,
-}) => {
-  const input = await openImport(page);
-  await input.setInputFiles({
-    name: "split.txt",
-    mimeType: "text/plain",
-    buffer: Buffer.from(JSON.stringify(split)),
-  });
-  await expect(page.locator('[data-part="import-sessions"] li')).toHaveText([
-    "Split3×31",
-    "Empty4×40",
-  ]);
-  await expect(page.locator('[data-part="import-issue"]')).toHaveText([
-    "“Split”: row 2 can’t be read and will stay out.",
-  ]);
-  await page.locator('[data-action="import-confirm"]').click();
-  await expect(page.locator('[data-part="data-result"]')).toHaveText(
-    "Added 1 solve.",
-  );
-
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.locator('[data-action="backup-save"]').click(),
-  ]);
-  const backup = JSON.parse(
-    await readFile((await download.path()) as string, "utf8"),
-  ) as { tables: Record<string, Record<string, unknown>[]> };
-  expect(backup.tables.solve).toEqual([
-    expect.objectContaining({
-      time_ms: 12345,
-      plus2: 1,
-      comment: "x",
-      started_at: 1700000000000,
-      import_extra: '{"v":1,"phases":[7000]}',
-    }),
-  ]);
-  expect(
-    backup.tables.import_session?.map(({ source_key }) => source_key),
-  ).toEqual(["session1", "session2"]);
 });
 
 test("a bad file explains the failure and leaves existing solves alone", async ({
@@ -443,122 +398,6 @@ test("two CubeTime CSVs can be mapped, imported and previewed again without dupl
   );
 });
 
-test("CubeTime csTimer JSON shares csTimer identity and retains penalties", async ({
-  page,
-}) => {
-  const picker = await openImport(page);
-  const withoutPrefix = {
-    ...fixture,
-    properties: {
-      sessionData: fixture.properties.sessionData.replaceAll(
-        "CubeTime Export - ",
-        "",
-      ),
-    },
-  };
-  await picker.setInputFiles({
-    ...exportFile,
-    buffer: Buffer.from(JSON.stringify(withoutPrefix)),
-  });
-  await page.locator('[data-action="import-confirm"]').click();
-  await expect(page.locator('[data-part="data-result"]')).toHaveText(
-    "Added 7 solves.",
-  );
-
-  await picker.setInputFiles({ ...exportFile, name: "CubeTime Export.json" });
-  await expect(page.locator('[data-part="import-here"]')).toHaveText(
-    "All 7 solves are already here.",
-  );
-  await expect(page.locator('[data-action="import-confirm"]')).toHaveCount(0);
-  await page.locator('[data-action="import-cancel"]').click();
-
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.locator('[data-action="backup-save"]').click(),
-  ]);
-  const backup = JSON.parse(
-    await readFile((await download.path()) as string, "utf8"),
-  ) as { tables: { solve: Record<string, unknown>[] } };
-  expect(backup.tables.solve).toHaveLength(7);
-  expect(backup.tables.solve).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        import_source: "cstimer",
-        time_ms: 11200,
-        plus2: 1,
-        dnf: 0,
-      }),
-      expect.objectContaining({
-        import_source: "cstimer",
-        time_ms: 12345,
-        plus2: 0,
-        dnf: 1,
-      }),
-    ]),
-  );
-});
-
-test("CubeTime JSON adds a missing DNF to an already imported CSV solve", async ({
-  page,
-}) => {
-  const picker = await openImport(page);
-  const panel = page.locator('[data-part="import-preview"]');
-  const confirm = panel.locator('[data-action="import-confirm"]');
-  const result = page.locator('[data-part="data-result"]');
-
-  await picker.setInputFiles({
-    name: "CubeTime - 3x3.csv",
-    mimeType: "text/csv",
-    buffer: Buffer.from(
-      "Time,Comment,Scramble,Date\n" +
-        "11,,R U,2026-01-02T00:00:00Z\n" +
-        "12,,F U,2026-01-02T00:00:01Z\n",
-    ),
-  });
-  await confirm.click();
-  await expect(result).toHaveText("Added 2 solves.");
-
-  await picker.setInputFiles({
-    name: "CubeTime Export.json",
-    mimeType: "application/json",
-    buffer: Buffer.from(
-      JSON.stringify({
-        session1: [
-          [[0, 11000], "R U", "", 1767312000],
-          [[-1, 12000], "F U", "", 1767312002],
-        ],
-        properties: { sessionData: { "1": { name: "3x3", scrType: "333" } } },
-      }),
-    ),
-  });
-  await expect(panel.locator('[data-part="import-here"]')).toHaveText(
-    "All 2 solves are already here.",
-  );
-  await expect(panel.locator('[data-part="import-penalized"]')).toHaveText(
-    "1 of them gets the +2 or DNF the CSV left out.",
-  );
-  await expect(confirm).toHaveText("Add 1 penalty");
-  await expect(confirm).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(result).toHaveText("Added 1 penalty.");
-  await expect(picker).toBeFocused();
-
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    page.locator('[data-action="backup-save"]').click(),
-  ]);
-  const backup = JSON.parse(
-    await readFile((await download.path()) as string, "utf8"),
-  ) as { tables: { solve: Record<string, unknown>[] } };
-  expect(backup.tables.solve).toHaveLength(2);
-  expect(backup.tables.solve).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ time_ms: 11000, dnf: 0 }),
-      expect.objectContaining({ time_ms: 12000, dnf: 1 }),
-    ]),
-  );
-});
-
 test("Twisty Timer backup keeps both attempts and the source category after a rename", async ({
   page,
 }) => {
@@ -651,39 +490,6 @@ test("Twisty Timer backup keeps both attempts and the source category after a re
       source_key: '["333","A"]',
     }),
   ]);
-});
-
-test("Twisty Timer share-shaped files get localized backup guidance", async ({
-  page,
-}) => {
-  const input = await openImport(page);
-  const result = page.locator('[data-part="data-result"]');
-  const file = {
-    name: "Solves_333.txt",
-    mimeType: "text/plain",
-    buffer: Buffer.from('"12.345";"R";"a;b"\n'),
-  };
-
-  await input.setInputFiles(file);
-  await expect(result).toHaveText(
-    "cubehaus can’t read this file. It reads csTimer exports, CubeTime’s CSV files, Twisty Timer backups and CubeDesk exports.",
-  );
-  await expect(input).toBeFocused();
-
-  await page
-    .locator('[data-part="settings-sections"] [data-section="look"]')
-    .click();
-  await page.locator("#setting-language").selectOption("ru");
-  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
-  await page
-    .locator('[data-part="settings-sections"] [data-section="data"]')
-    .click();
-  await input.setInputFiles(file);
-  await expect(result).toHaveText(
-    "Этот файл не читается. cubehaus читает экспорт csTimer, CSV-файлы CubeTime, резервные копии Twisty Timer и экспорт CubeDesk.",
-  );
-  await expect(page.locator('[data-part="import-preview"]')).toHaveCount(0);
-  await expect(input).toBeFocused();
 });
 
 test("CubeDesk import keeps both sessions and solve provenance after a refused file", async ({

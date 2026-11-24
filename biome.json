@@ -10,7 +10,10 @@
       "!!**/playwright-report",
       "!!**/test-results",
       "!!packages/algs/src/data",
-      "!!packages/algs/src/candidates/*.json"
+      "!!packages/algs/src/candidates/*.json",
+      "!!apps/desktop/src-tauri/target",
+      "!!apps/desktop/src-tauri/gen",
+      "!!apps/mobile/ios"
     ]
   },
   "formatter": {

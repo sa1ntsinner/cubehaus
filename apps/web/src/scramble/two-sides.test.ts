@@ -2,7 +2,7 @@ import { pictureOf, trainerSet } from "@cubehaus/algs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { TwoDiagram, TwoSides } from "./Training";
+import { TwoDiagram, TwoSides } from "./TrainingDiagrams";
 
 /**
  * What a PBL tile in Learn lets a person read: for each layer, on how many of the four

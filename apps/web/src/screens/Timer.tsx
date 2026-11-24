@@ -13,12 +13,14 @@ import {
   Fragment,
   type ReactNode,
   type Ref,
+  type RefObject,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import type { RepeatView } from "../app-state";
+import { isTouchPhone } from "../input/touch-screen";
 import { formatRunning, inspectionDisplay } from "../running";
 import { Picture } from "../scramble/Picture.tsx";
 import type { ZoomState } from "../scramble/PictureZoom";
@@ -28,6 +30,191 @@ import { type Text, text } from "../text";
 import { DEFAULT_SIZES, type ViewSizes } from "../view-size";
 import { CrossCells } from "./CrossCells";
 import { formatFileResult, spokenResult } from "./file-result";
+
+/** Keep the figure in flow with its notes, with a centred axis when the phone has room. */
+export function usePhoneTimeLayout(
+  page: RefObject<HTMLElement | null>,
+  phone: boolean,
+): void {
+  useLayoutEffect(() => {
+    const main = page.current;
+    if (!main || !phone) return;
+    const parts =
+      ':is(output[data-part="time"], [data-part="scramble"], [data-part="scramble-picture"], [data-part="drill"], [data-part="cross"], [data-part="hand-keys"], [data-part="entry"])';
+
+    const measure = () => {
+      const time = main.querySelector<HTMLOutputElement>(
+        ':scope > output[data-part="time"]',
+      );
+      if (!time) {
+        main.style.removeProperty("--phone-time-room");
+        return;
+      }
+      const style = getComputedStyle(main);
+      const track = Number(style.getPropertyValue("--phone-time-track"));
+      if (!track) {
+        main.style.removeProperty("--phone-time-room");
+        main.style.removeProperty("--phone-time-offset");
+        main.removeAttribute("data-time-over-picture");
+        return;
+      }
+      // Only the natural-height tracks above the spacer contribute to the minimum.
+      // The spacer then grows to the axis, or stays small if the scramble needs the room.
+      const rows = style.gridTemplateRows.split(" ");
+      const top = rows
+        .slice(0, track - 1)
+        .reduce((height, row) => height + Number.parseFloat(row), 0);
+      const centre = main.clientHeight / 2;
+      const halfTime = time.getBoundingClientRect().height / 2;
+      const naturalCentre =
+        Number.parseFloat(style.paddingTop) +
+        top +
+        track * Number.parseFloat(style.rowGap) +
+        halfTime;
+      const above = main.querySelectorAll<HTMLElement>(
+        ':scope > :is([data-part="drill"], [data-part="cross"], [data-part="hand-keys"])',
+      );
+      const entryHeight =
+        track === 3
+          ? (main.querySelector<HTMLElement>(':scope > [data-part="entry"]')
+              ?.offsetHeight ?? 0)
+          : 0;
+      const room = Math.max(
+        entryHeight,
+        centre - naturalCentre,
+        ...Array.from(above, (part) => part.offsetHeight),
+      );
+      const offset = centre - naturalCentre - room + main.scrollTop;
+      main.style.setProperty("--phone-time-room", `${room}px`);
+      main.style.setProperty("--phone-time-offset", `${offset}px`);
+      const picture = main.querySelector<HTMLElement>(
+        ':scope > [data-part="scramble-picture"]',
+      );
+      const pictureBottom = picture
+        ? picture.offsetTop + picture.offsetHeight
+        : 0;
+      main.toggleAttribute(
+        "data-time-over-picture",
+        track === 3 && pictureBottom > centre - halfTime - 8,
+      );
+    };
+    measure();
+    const resize = new ResizeObserver(measure);
+    const watch = (node: Node) => {
+      if (node instanceof HTMLElement && node.matches(parts))
+        resize.observe(node);
+    };
+    for (const child of main.children) watch(child);
+    resize.observe(main);
+    // Some pictures are drawn asynchronously and join the grid after the scramble.
+    const children = new MutationObserver((changes) => {
+      for (const change of changes) {
+        for (const node of change.removedNodes)
+          if (node instanceof Element) resize.unobserve(node);
+        for (const node of change.addedNodes) watch(node);
+      }
+      measure();
+    });
+    children.observe(main, { childList: true });
+    main.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      resize.disconnect();
+      children.disconnect();
+      main.removeEventListener("scroll", measure);
+      main.style.removeProperty("--phone-time-room");
+      main.style.removeProperty("--phone-time-offset");
+      main.removeAttribute("data-time-over-picture");
+    };
+  }, [page, phone]);
+}
+
+/**
+ * C on a touch phone: the comment's line waits, unseen, high on the screen while the keys
+ * come up, so iOS finds the field in view and pans nothing; then it stands just above the
+ * keys (`data-comment-placed`). Where the figure would reach that line, the figure and its
+ * notes rise once (`--comment-lift`); where even that leaves no room (a phone on its side)
+ * they step out (`data-comment-cramped`), and the line's own time stands for them.
+ */
+export function usePhoneCommentBar(
+  page: RefObject<HTMLElement | null>,
+  active: boolean,
+): void {
+  useLayoutEffect(() => {
+    const main = page.current;
+    const viewport = window.visualViewport;
+    if (!main || !active) return;
+    const root = document.documentElement;
+    const place = (fallback: boolean) => {
+      const inset = Number.parseFloat(
+        root.style.getPropertyValue("--keyboard-inset"),
+      );
+      // What the keys, or a hardware keyboard's bar alone, cover at the foot.
+      const covered =
+        viewport && Math.abs(viewport.scale - 1) < 0.01
+          ? Math.round(root.clientHeight - viewport.height - viewport.offsetTop)
+          : 0;
+      if (covered > 0)
+        main.style.setProperty("--comment-bottom", `${covered}px`);
+      else main.style.removeProperty("--comment-bottom");
+      if (
+        !(inset > 0) &&
+        !fallback &&
+        !main.hasAttribute("data-comment-placed")
+      )
+        return;
+      main.setAttribute("data-comment-placed", "");
+      const bar = main.querySelector<HTMLElement>('[data-part="comment-bar"]');
+      const time = main.querySelector<HTMLElement>(
+        ':scope > output[data-part="time"]',
+      );
+      if (!bar || !time) return;
+      const under = main.querySelector<HTMLElement>(
+        ':scope > [data-part="time-under"]',
+      );
+      // Measured where they stand without the lift.
+      const lift =
+        Number.parseFloat(main.style.getPropertyValue("--comment-lift")) || 0;
+      const top = time.getBoundingClientRect().top - lift;
+      let bottom = time.getBoundingClientRect().bottom - lift;
+      for (const part of under?.children ?? [])
+        if (part !== bar && part instanceof HTMLElement && part.offsetHeight)
+          bottom = Math.max(bottom, part.getBoundingClientRect().bottom - lift);
+      const barTop = bar.getBoundingClientRect().top;
+      const ceiling = (viewport?.offsetTop ?? 0) + 8;
+      const needed = Math.min(0, barTop - 16 - bottom);
+      const cramped = top + needed < ceiling;
+      main.toggleAttribute("data-comment-cramped", cramped);
+      main.style.setProperty("--comment-lift", `${cramped ? 0 : needed}px`);
+      // The scramble and its picture step out only where the risen figure would meet them.
+      let above = 0;
+      for (const part of main.querySelectorAll<HTMLElement>(
+        ':scope > :is([data-part="scramble"], [data-part="scramble-picture"])',
+      ))
+        if (part.offsetHeight)
+          above = Math.max(above, part.getBoundingClientRect().bottom);
+      main.toggleAttribute(
+        "data-comment-lifted",
+        !cramped && needed < 0 && top + needed < above + 8,
+      );
+    };
+    const update = () => place(false);
+    viewport?.addEventListener("resize", update);
+    viewport?.addEventListener("scroll", update);
+    // A hardware keyboard brings no keys up: the line takes its place anyway.
+    const fallback = window.setTimeout(() => place(true), 900);
+    update();
+    return () => {
+      window.clearTimeout(fallback);
+      viewport?.removeEventListener("resize", update);
+      viewport?.removeEventListener("scroll", update);
+      main.removeAttribute("data-comment-placed");
+      main.removeAttribute("data-comment-cramped");
+      main.removeAttribute("data-comment-lifted");
+      main.style.removeProperty("--comment-lift");
+      main.style.removeProperty("--comment-bottom");
+    };
+  }, [page, active]);
+}
 
 /** Each colour's shortest cross after a scramble, and the colour the solve was built on. */
 export type CrossLine = {
@@ -61,7 +248,7 @@ export function Timer({
   record = false,
   precision = 2,
   shownNo,
-  commenting = false,
+  commenting,
   onCommentDone,
   feedback = null,
   repeat,
@@ -95,7 +282,7 @@ export function Timer({
   /** A past solve is shown in place of the newest: its number in the session. */
   shownNo?: number;
   /** C: the comment line under the time is a field. */
-  commenting?: boolean;
+  commenting?: Solve | undefined;
   /** The field's end: the text to keep (empty clears it), or undefined to leave it. */
   onCommentDone?: (comment: string | undefined) => void;
   /** An action that cannot apply: the figures nudge, the reason goes to the status. */
@@ -128,10 +315,13 @@ export function Timer({
   const pictureVisible =
     showPicture &&
     scramble !== null &&
+    (isTouchPhone() || (phase !== "ready" && phase !== "running")) &&
+    pictureSupport(event) === "flat";
+  const canStep =
+    pictureVisible &&
     phase !== "ready" &&
     phase !== "running" &&
-    pictureSupport(event) === "flat";
-  const canStep = pictureVisible && event !== "sq1";
+    event !== "sq1";
   const stepKey = canStep ? `${event}:${scramble}` : null;
   const [step, setStep] = useState<{ key: string; upto: number | null }>();
   const currentStep = step?.key === stepKey ? step : undefined;
@@ -379,7 +569,7 @@ function TimeUnder({
   precision: Settings["precision"];
   no: number | undefined;
   words: Text;
-  commenting: boolean;
+  commenting: Solve | undefined;
   onCommentDone: ((comment: string | undefined) => void) | undefined;
   repeat:
     | {
@@ -446,12 +636,19 @@ function TimeUnder({
         )
       )}
       {commenting ? (
-        <CommentField
-          key={solve.id}
-          initial={solve.comment ?? ""}
-          label={words.comment}
-          onDone={(value) => onCommentDone?.(value)}
-        />
+        // On a touch phone one line above the keys, the solve's time at its left
+        // (design/timer.css); elsewhere the field alone, in the comment's place.
+        <div data-part="comment-bar">
+          <span data-part="comment-bar-time" aria-hidden="true">
+            {formatFileResult(commenting, precision)}
+          </span>
+          <CommentField
+            key={commenting.id}
+            initial={commenting.comment ?? ""}
+            label={words.comment}
+            onDone={(value) => onCommentDone?.(value)}
+          />
+        </div>
       ) : (
         solve.comment !== null && (
           <p data-part="time-comment">

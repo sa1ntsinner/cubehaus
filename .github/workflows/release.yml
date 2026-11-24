@@ -199,7 +199,7 @@ jobs:
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Linux: no update signature::TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PASSWORD is not set. The packages are built, the AppImage gets no update signature, and no draft release will be created."
+            echo "::warning title=Linux: no update signature::TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PASSWORD is not set. The packages are built, the AppImage and the .deb get no update signature, and no draft release will be created."
           fi
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -227,7 +227,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/release"
           cp "$RUNNER_TEMP"/linux/amd64/*.deb "$RUNNER_TEMP"/linux/amd64/*.AppImage "$RUNNER_TEMP/release/"
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY_PATH" ]; then
-            cp "$RUNNER_TEMP"/linux/amd64/*.AppImage.sig "$RUNNER_TEMP/release/"
+            cp "$RUNNER_TEMP"/linux/amd64/*.AppImage.sig "$RUNNER_TEMP"/linux/amd64/*.deb.sig "$RUNNER_TEMP/release/"
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

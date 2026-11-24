@@ -509,3 +509,126 @@ test("the cross colour goes round a backup; a schema 8 backup restores it unknow
     { n: 0 },
   ]);
 });
+
+/** The seed plus the trainer's tables: every table a backup carries has rows. */
+async function seedAll(db: Db) {
+  await seed(db);
+  await db.batch([
+    insert("trainer_case", {
+      set_id: "pll",
+      case_id: "pll-T",
+      card: '{"due":1}',
+      due_at: 900,
+      added_at: 800,
+      updated_at: 850,
+      removed_at: null,
+    }),
+    insert("trainer_case", {
+      set_id: "oll",
+      case_id: "oll-21",
+      card: '{"due":2}',
+      due_at: 901,
+      added_at: 801,
+      updated_at: 851,
+      removed_at: 860,
+    }),
+    insert("trainer_attempt", {
+      id: "t1",
+      set_id: "pll",
+      case_id: "pll-T",
+      mode: "picture",
+      auf: 1,
+      scramble: null,
+      recog_ms: 640,
+      exec_ms: 1830,
+      missed: 0,
+      grade: "good",
+      at: 870,
+      updated_at: 870,
+      split: 1,
+    }),
+    insert("setting", {
+      key: "trainer.algs",
+      value: '{"pll-T":1}',
+      updated_at: 9,
+    }),
+  ]);
+}
+
+test("every table goes round one backup file, whichever app wrote it", async () => {
+  // The web's worker, the desktop's native file and the phone's copy in Documents all
+  // write this one snapshot as JSON text; any of them restores anywhere.
+  const source = await fresh();
+  await seedAll(source);
+  const text = JSON.stringify(await snapshot(source, () => 1));
+  for (const [name] of backupTables())
+    expect(JSON.parse(text).tables[name].length, name).toBeGreaterThan(0);
+
+  const target = await fresh();
+  expect(await restore(target, JSON.parse(text))).toMatchObject({
+    updated: 0,
+    unchanged: 0,
+  });
+  expect(await dump(target)).toEqual(await dump(source));
+  // The target's own backup is the same file, its time aside.
+  expect(JSON.stringify(await snapshot(target, () => 1))).toBe(text);
+});
+
+test("a first start that only drilled cases still takes a backup of the same cases", async () => {
+  const source = await fresh();
+  await seedAll(source);
+  const backup = JSON.parse(JSON.stringify(await snapshot(source)));
+  const target = await fresh();
+  // A new browser: the generated session, and a case drilled before the restore.
+  await target.batch([
+    insert("session", {
+      id: "generated",
+      name: "3×3",
+      event: "333",
+      order_key: "a0",
+      folder_id: null,
+      archived: 0,
+      created_at: 1,
+      updated_at: 1,
+      deleted_at: null,
+    }),
+    insert("trainer_case", {
+      set_id: "pll",
+      case_id: "pll-T",
+      card: '{"due":0}',
+      due_at: 1,
+      added_at: 1,
+      updated_at: 1,
+      removed_at: null,
+    }),
+  ]);
+  expect(await restore(target, backup)).toMatchObject({ updated: 1 });
+  expect(await dump(target)).toEqual(await dump(source));
+});
+
+test("a backup of every older schema restores into the current one", async () => {
+  const source = await fresh();
+  await seedAll(source);
+  const current = await snapshot(source);
+  for (let schema = 3; schema <= SCHEMA_VERSION; schema++) {
+    const old = {
+      ...current,
+      schema,
+      tables: Object.fromEntries(
+        backupTables(schema).map(([name, { columns }]) => [
+          name,
+          (current.tables[name] ?? []).map((row) =>
+            Object.fromEntries(columns.map((column) => [column, row[column]])),
+          ),
+        ]),
+      ),
+    };
+    const target = await fresh();
+    const rows = Object.values(old.tables).flat().length;
+    expect(await restore(target, old), `schema ${schema}`).toEqual({
+      inserted: rows,
+      updated: 0,
+      unchanged: 0,
+    });
+  }
+});

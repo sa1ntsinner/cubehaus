@@ -7,12 +7,16 @@ import {
 import { type FaceLetter, frontsFor } from "@cubehaus/cube/holding";
 import { eventOfScrType } from "@cubehaus/importers";
 import {
+  lazy,
   type ReactNode,
+  Suspense,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { flushSync } from "react-dom";
 import type { AppState, AppView } from "../app-state";
 import { backupFileName, download } from "../backup-file";
 import type { BackupMeta, NativeBackups } from "../db/native";
@@ -24,6 +28,12 @@ const exportFormats = {
 } as const;
 
 import type { ImportInput, ImportPreview } from "../import";
+import { keysShown, watchKeys } from "../input/hardware-keys";
+import {
+  isTouchPhone,
+  isTouchScreen,
+  watchTouchPhone,
+} from "../input/touch-screen";
 import { ACTIONS } from "../keys/actions";
 import {
   actionKey,
@@ -38,7 +48,7 @@ import { drillName } from "../scramble/training-client";
 import { slotKey } from "../session-stats";
 import { eventNamed } from "../session-switch";
 import { coloursInPlay, isLayout, type Settings as Values } from "../settings";
-import type { Text } from "../text";
+import { gestureList, type Text } from "../text";
 import { isThemeChoice } from "../theme";
 import { appVersion } from "../version";
 import {
@@ -55,6 +65,9 @@ const sizeChoices = Array.from(
   { length: (SIZE_MAX - SIZE_MIN) / SIZE_STEP + 1 },
   (_, i) => SIZE_MIN + i * SIZE_STEP,
 );
+const GestureHelp = lazy(() =>
+  import("../keys/Help").then(({ Help }) => ({ default: Help })),
+);
 const holdChoices = [0, 100, 200, 300, 400, 500, 550, 700, 1000];
 
 function ShortcutSettings({
@@ -62,14 +75,23 @@ function ShortcutSettings({
   view,
   words,
   enabled,
+  keys,
 }: {
   app: AppState;
   view: AppView;
   words: Text;
   enabled: boolean;
+  /** Keys at hand: the commands and their bindings; otherwise only the gestures. */
+  keys: boolean;
 }) {
   const t = words.settings;
   const language = view.settings.language;
+  const [gesturesOpen, setGesturesOpen] = useState(false);
+  const gestureButton = useRef<HTMLButtonElement>(null);
+  const closeGestures = () => {
+    flushSync(() => setGesturesOpen(false));
+    gestureButton.current?.focus({ preventScroll: true });
+  };
   const [capture, setCapture] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
@@ -119,97 +141,138 @@ function ShortcutSettings({
       <p data-part="keymap-notice" role="status">
         {notice}
       </p>
+      {gesturesOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: Escape closes the open dialog.
+        <div
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            closeGestures();
+          }}
+        >
+          <Suspense fallback={null}>
+            <GestureHelp
+              bindings={[]}
+              language={language}
+              title={words.gestures.title}
+              gestures={gestureList(words, isTouchPhone())}
+              closeLabel={t.title}
+              onClose={closeGestures}
+            />
+          </Suspense>
+        </div>
+      )}
       <div id="keymap-list" data-part="keymap-list">
         <ul>
-          <li data-setting="commands">
-            <span>{words.paletteTitle}</span>{" "}
-            <a href="#/commands" data-action="commands-open">
-              {t.keysOpen}
-            </a>
-          </li>
-          <li data-setting="keyboard-reset">
-            <span>{t.keysAll}</span>{" "}
-            <button
-              type="button"
-              data-action="keyboard-reset"
-              disabled={!enabled || saving}
-              onClick={() => void save({}, null)}
-            >
-              {t.keysReset}
-            </button>
-            {noticeLine(null)}
-          </li>
-        </ul>
-        <ul data-part="bindings">
-          {ACTIONS.map((spec) => {
-            const keys = keysFor(view.keymap, spec.id);
-            const active = capture === spec.id;
-            const title = spec.title[language];
-            const shown = keys.length
-              ? keys.map(label).join(" · ")
-              : t.keysUnbound;
-            return (
-              <li
-                key={spec.id}
-                data-binding={spec.id}
-                data-capturing={active || undefined}
+          {isTouchScreen() && (
+            <li data-setting="gestures">
+              <span>{words.gestures.title}</span>{" "}
+              <button
+                ref={gestureButton}
+                type="button"
+                data-action="settings-gestures"
+                onClick={() => setGesturesOpen(true)}
               >
-                <span data-part="binding-name">{title}</span>
+                {t.keysOpen}
+              </button>
+            </li>
+          )}
+          {keys && (
+            <>
+              <li data-setting="commands">
+                <span>{words.paletteTitle}</span>{" "}
+                <a href="#/commands" data-action="commands-open">
+                  {t.keysOpen}
+                </a>
+              </li>
+              <li data-setting="keyboard-reset">
+                <span>{t.keysAll}</span>{" "}
                 <button
                   type="button"
-                  data-action="binding-remove"
-                  disabled={!enabled || saving || keys.length === 0}
-                  aria-label={`${t.keysRemove} · ${title}`}
-                  onClick={() =>
-                    void save({ ...view.keymap, [spec.id]: [] }, spec.id)
-                  }
-                >
-                  {t.keysRemove}
-                </button>
-                <button
-                  type="button"
-                  data-action="binding-change"
-                  data-unbound={keys.length === 0 || undefined}
+                  data-action="keyboard-reset"
                   disabled={!enabled || saving}
-                  aria-label={`${title}: ${active ? t.keysPress : shown}. ${t.keysChange}`}
-                  onClick={(event) => {
-                    event.currentTarget.focus();
-                    setNotice("");
-                    setCapture(active ? null : spec.id);
-                  }}
-                  onBlur={() =>
-                    setCapture((current) =>
-                      current === spec.id ? null : current,
-                    )
-                  }
-                  onKeyDown={(event) => {
-                    if (!active || event.code === "Tab" || event.repeat) return;
-                    if (event.code === "Escape") {
+                  onClick={() => void save({}, null)}
+                >
+                  {t.keysReset}
+                </button>
+                {noticeLine(null)}
+              </li>
+            </>
+          )}
+        </ul>
+        {keys && (
+          <ul data-part="bindings">
+            {ACTIONS.map((spec) => {
+              const keys = keysFor(view.keymap, spec.id);
+              const active = capture === spec.id;
+              const title = spec.title[language];
+              const shown = keys.length
+                ? keys.map(label).join(" · ")
+                : t.keysUnbound;
+              return (
+                <li
+                  key={spec.id}
+                  data-binding={spec.id}
+                  data-capturing={active || undefined}
+                >
+                  <span data-part="binding-name">{title}</span>
+                  <button
+                    type="button"
+                    data-action="binding-remove"
+                    disabled={!enabled || saving || keys.length === 0}
+                    aria-label={`${t.keysRemove} · ${title}`}
+                    onClick={() =>
+                      void save({ ...view.keymap, [spec.id]: [] }, spec.id)
+                    }
+                  >
+                    {t.keysRemove}
+                  </button>
+                  <button
+                    type="button"
+                    data-action="binding-change"
+                    data-unbound={keys.length === 0 || undefined}
+                    disabled={!enabled || saving}
+                    aria-label={`${title}: ${active ? t.keysPress : shown}. ${t.keysChange}`}
+                    onClick={(event) => {
+                      event.currentTarget.focus();
+                      setNotice("");
+                      setCapture(active ? null : spec.id);
+                    }}
+                    onBlur={() =>
+                      setCapture((current) =>
+                        current === spec.id ? null : current,
+                      )
+                    }
+                    onKeyDown={(event) => {
+                      if (!active || event.code === "Tab" || event.repeat)
+                        return;
+                      if (event.code === "Escape") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setCapture(null);
+                        say(spec.id, t.keysCancel, "note");
+                        return;
+                      }
+                      const binding = captureKey(event, !!spec.input);
+                      if (!binding) return;
                       event.preventDefault();
                       event.stopPropagation();
-                      setCapture(null);
-                      say(spec.id, t.keysCancel, "note");
-                      return;
-                    }
-                    const binding = captureKey(event, !!spec.input);
-                    if (!binding) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    void save(
-                      { ...view.keymap, [spec.id]: [binding] },
-                      spec.id,
-                    );
-                  }}
-                >
-                  <span data-part="binding-keys">
-                    {active ? t.keysPress : shown}
-                  </span>
-                </button>
-                {noticeLine(spec.id)}
-              </li>
-            );
-          })}
-        </ul>
+                      void save(
+                        { ...view.keymap, [spec.id]: [binding] },
+                        spec.id,
+                      );
+                    }}
+                  >
+                    <span data-part="binding-keys">
+                      {active ? t.keysPress : shown}
+                    </span>
+                  </button>
+                  {noticeLine(spec.id)}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </section>
   );
@@ -221,13 +284,17 @@ function ShortcutSettings({
 /** The six colours, white and yellow first, then round the sides. */
 const COLOUR_ORDER: readonly FaceLetter[] = ["U", "D", "F", "R", "B", "L"];
 
-/** Settings is five short lists, one on screen at a time, picked from a row of tiles. */
+/**
+ * Settings is five short lists, one on screen at a time, picked from a row of tiles. A
+ * phone has no keys: its fifth is More, the rows of second rank folded together.
+ */
 export const SETTINGS_SECTIONS = [
   "session",
   "timer",
   "look",
   "keys",
   "data",
+  "more",
 ] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 /** Each tile's picture is a character of the thing itself, in the app's own faces. */
@@ -237,6 +304,7 @@ const SECTION_GLYPH: Record<SettingsSection, string> = {
   look: "Aa",
   keys: "⇧",
   data: "↓",
+  more: "…",
 };
 
 const SECTION_KEY = "cubehaus.settings.section";
@@ -259,8 +327,16 @@ export function Settings({
   words: Text;
   route: string;
 }) {
-  const sections = SETTINGS_SECTIONS.filter(
-    (id) => id !== "session" || view.current,
+  const phone = useSyncExternalStore(watchTouchPhone, isTouchPhone);
+  const keys = useSyncExternalStore(watchKeys, keysShown);
+  const sections = SETTINGS_SECTIONS.filter((id) =>
+    id === "session"
+      ? !!view.current
+      : id === "keys"
+        ? !phone
+        : id === "more"
+          ? phone
+          : true,
   );
   // Opened without a section, Settings shows the one the person left it on.
   const asked = route.slice("#/settings/".length) || lastSection();
@@ -538,6 +614,204 @@ export function Settings({
       {control(`setting-${key}`)}
     </li>
   );
+  const startModeRow = row("startMode", t.startMode, (id) => (
+    <select
+      id={id}
+      value={values.startMode}
+      disabled={!enabled}
+      onChange={(event) =>
+        set(
+          "startMode",
+          event.currentTarget.value === "two-hand" ? "two-hand" : "space",
+        )
+      }
+    >
+      <option value="space">{t.startSpace}</option>
+      <option value="two-hand">{t.startTwoHand}</option>
+    </select>
+  ));
+  const precisionRow = row("precision", t.precision, (id) => (
+    <select
+      id={id}
+      value={values.precision}
+      disabled={!enabled}
+      onChange={(e) => set("precision", e.currentTarget.value === "3" ? 3 : 2)}
+    >
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+  ));
+  const awakeRow =
+    canKeepAwake() &&
+    row("awake", t.awake, (id) => (
+      <select
+        id={id}
+        value={values.awake ? "on" : "off"}
+        disabled={!enabled}
+        onChange={(event) => set("awake", event.currentTarget.value === "on")}
+      >
+        <option value="on">{t.recordCueChoices.on}</option>
+        <option value="off">{t.recordCueChoices.off}</option>
+      </select>
+    ));
+  const recordCueRow = row("recordCue", t.recordCue, (id) => (
+    <select
+      id={id}
+      value={values.recordCue ? "on" : "off"}
+      disabled={!enabled}
+      onChange={(event) => set("recordCue", event.currentTarget.value === "on")}
+    >
+      <option value="on">{t.recordCueChoices.on}</option>
+      <option value="off">{t.recordCueChoices.off}</option>
+    </select>
+  ));
+  const todayRow = row("today", t.today, (id) => (
+    <select
+      id={id}
+      value={values.today ? "on" : "off"}
+      disabled={!enabled}
+      onChange={(event) => set("today", event.currentTarget.value === "on")}
+    >
+      <option value="on">{t.recordCueChoices.on}</option>
+      <option value="off">{t.recordCueChoices.off}</option>
+    </select>
+  ));
+  const holdingTopRow = row("holdingTop", t.holdingTop, (id) => (
+    <select
+      id={id}
+      value={values.holding[0]}
+      disabled={!enabled}
+      onChange={(e) => {
+        const top = e.currentTarget.value as FaceLetter;
+        const front = values.holding[1] as FaceLetter;
+        const fronts = frontsFor(top);
+        set("holding", `${top}${fronts.includes(front) ? front : fronts[0]}`);
+      }}
+    >
+      {COLOUR_ORDER.map((face) => (
+        <option key={face} value={face}>
+          {colourName(face)}
+        </option>
+      ))}
+    </select>
+  ));
+  const holdingFrontRow = row("holdingFront", t.holdingFront, (id) => (
+    <select
+      id={id}
+      value={values.holding[1]}
+      disabled={!enabled}
+      onChange={(e) =>
+        set("holding", `${values.holding[0]}${e.currentTarget.value}`)
+      }
+    >
+      {frontsFor(values.holding[0] as FaceLetter).map((face) => (
+        <option key={face} value={face}>
+          {colourName(face)}
+        </option>
+      ))}
+    </select>
+  ));
+  const resetAveragesButton = Object.hasOwn(
+    values.statSlots,
+    slotKey(session?.event ?? "333", values.layout),
+  ) && (
+    <button
+      type="button"
+      data-action="reset-averages"
+      onClick={() => void app.resetStatSlots()}
+    >
+      {words.resetAverages}
+    </button>
+  );
+  const sizeRows = (
+    <>
+      <h2>{words.sizes.title}</h2>
+      <ul data-part="sizes">
+        {VIEW_PARTS.map((part) =>
+          row(`size-${part}`, words.sizes.part[part], (id) => (
+            <select
+              id={id}
+              data-size-control={part}
+              value={values.sizes[part]}
+              disabled={!enabled}
+              onChange={(event) =>
+                set("sizes", {
+                  ...values.sizes,
+                  [part]: Number(event.currentTarget.value),
+                })
+              }
+            >
+              {sizeChoices.map((percent) => (
+                <option key={percent} value={percent}>
+                  {percent} %
+                </option>
+              ))}
+            </select>
+          )),
+        )}
+      </ul>
+      {VIEW_PARTS.some((part) => values.sizes[part] !== 100) && (
+        <button
+          type="button"
+          data-action="reset-sizes"
+          disabled={!enabled}
+          onClick={() => set("sizes", DEFAULT_SIZES)}
+        >
+          {words.sizes.reset}
+        </button>
+      )}
+    </>
+  );
+  const exportRows = (
+    <>
+      <li data-setting="export-cstimer">
+        <span id="data-export-cstimer">{t.exportCsTimer}</span>{" "}
+        <span data-part="export-choice">
+          <button
+            type="button"
+            data-action="export-cstimer-session"
+            aria-describedby="data-export-cstimer"
+            disabled={!exportEnabled || busy || !view.current}
+            onClick={() => void saveExport("cstimer", view.current?.id)}
+          >
+            {t.exportSession}
+          </button>
+          <button
+            type="button"
+            data-action="export-cstimer"
+            aria-describedby="data-export-cstimer"
+            disabled={!exportEnabled || busy}
+            onClick={() => void saveExport("cstimer")}
+          >
+            {t.exportAll}
+          </button>
+        </span>
+      </li>
+      <li data-setting="export-csv">
+        <span id="data-export-csv">{t.exportCsv}</span>{" "}
+        <span data-part="export-choice">
+          <button
+            type="button"
+            data-action="export-csv-session"
+            aria-describedby="data-export-csv"
+            disabled={!exportEnabled || busy || !view.current}
+            onClick={() => void saveExport("csv", view.current?.id)}
+          >
+            {t.exportSession}
+          </button>
+          <button
+            type="button"
+            data-action="export-csv"
+            aria-describedby="data-export-csv"
+            disabled={!exportEnabled || busy}
+            onClick={() => void saveExport("csv")}
+          >
+            {t.exportAll}
+          </button>
+        </span>
+      </li>
+    </>
+  );
   return (
     <main data-part="settings" data-no-timer>
       <a href="#/" data-action="settings-close">
@@ -584,7 +858,7 @@ export function Settings({
                 ? eventInfo(session.event).label
                 : SECTION_GLYPH[id]}
             </span>
-            {t.sections[id]}
+            {id === "keys" && !keys ? words.gestures.title : t.sections[id]}
           </a>
         ))}
       </nav>
@@ -703,24 +977,7 @@ export function Settings({
         )}
         {section === "timer" && (
           <ul>
-            {row("startMode", t.startMode, (id) => (
-              <select
-                id={id}
-                value={values.startMode}
-                disabled={!enabled}
-                onChange={(event) =>
-                  set(
-                    "startMode",
-                    event.currentTarget.value === "two-hand"
-                      ? "two-hand"
-                      : "space",
-                  )
-                }
-              >
-                <option value="space">{t.startSpace}</option>
-                <option value="two-hand">{t.startTwoHand}</option>
-              </select>
-            ))}
+            {keys && startModeRow}
             {row("holdMs", t.holdMs, (id) => (
               <select
                 id={id}
@@ -785,33 +1042,8 @@ export function Settings({
                 <option value="off">{t.callChoices.off}</option>
               </select>
             ))}
-            {row("precision", t.precision, (id) => (
-              <select
-                id={id}
-                value={values.precision}
-                disabled={!enabled}
-                onChange={(e) =>
-                  set("precision", e.currentTarget.value === "3" ? 3 : 2)
-                }
-              >
-                <option value="2">2</option>
-                <option value="3">3</option>
-              </select>
-            ))}
-            {canKeepAwake() &&
-              row("awake", t.awake, (id) => (
-                <select
-                  id={id}
-                  value={values.awake ? "on" : "off"}
-                  disabled={!enabled}
-                  onChange={(event) =>
-                    set("awake", event.currentTarget.value === "on")
-                  }
-                >
-                  <option value="on">{t.recordCueChoices.on}</option>
-                  <option value="off">{t.recordCueChoices.off}</option>
-                </select>
-              ))}
+            {!phone && precisionRow}
+            {!phone && awakeRow}
           </ul>
         )}
         {section === "look" && (
@@ -870,86 +1102,12 @@ export function Settings({
                   <option value="focus">{t.layouts.focus}</option>
                 </select>
               ))}
-              {row("recordCue", t.recordCue, (id) => (
-                <select
-                  id={id}
-                  value={values.recordCue ? "on" : "off"}
-                  disabled={!enabled}
-                  onChange={(event) =>
-                    set("recordCue", event.currentTarget.value === "on")
-                  }
-                >
-                  <option value="on">{t.recordCueChoices.on}</option>
-                  <option value="off">{t.recordCueChoices.off}</option>
-                </select>
-              ))}
-              {row("today", t.today, (id) => (
-                <select
-                  id={id}
-                  value={values.today ? "on" : "off"}
-                  disabled={!enabled}
-                  onChange={(event) =>
-                    set("today", event.currentTarget.value === "on")
-                  }
-                >
-                  <option value="on">{t.recordCueChoices.on}</option>
-                  <option value="off">{t.recordCueChoices.off}</option>
-                </select>
-              ))}
-              {row("holdingTop", t.holdingTop, (id) => (
-                <select
-                  id={id}
-                  value={values.holding[0]}
-                  disabled={!enabled}
-                  onChange={(e) => {
-                    const top = e.currentTarget.value as FaceLetter;
-                    const front = values.holding[1] as FaceLetter;
-                    const fronts = frontsFor(top);
-                    set(
-                      "holding",
-                      `${top}${fronts.includes(front) ? front : fronts[0]}`,
-                    );
-                  }}
-                >
-                  {COLOUR_ORDER.map((face) => (
-                    <option key={face} value={face}>
-                      {colourName(face)}
-                    </option>
-                  ))}
-                </select>
-              ))}
-              {row("holdingFront", t.holdingFront, (id) => (
-                <select
-                  id={id}
-                  value={values.holding[1]}
-                  disabled={!enabled}
-                  onChange={(e) =>
-                    set(
-                      "holding",
-                      `${values.holding[0]}${e.currentTarget.value}`,
-                    )
-                  }
-                >
-                  {frontsFor(values.holding[0] as FaceLetter).map((face) => (
-                    <option key={face} value={face}>
-                      {colourName(face)}
-                    </option>
-                  ))}
-                </select>
-              ))}
+              {!phone && recordCueRow}
+              {!phone && todayRow}
+              {!phone && holdingTopRow}
+              {!phone && holdingFrontRow}
             </ul>
-            {Object.hasOwn(
-              values.statSlots,
-              slotKey(session?.event ?? "333", values.layout),
-            ) && (
-              <button
-                type="button"
-                data-action="reset-averages"
-                onClick={() => void app.resetStatSlots()}
-              >
-                {words.resetAverages}
-              </button>
-            )}
+            {!phone && resetAveragesButton}
             {values.theme === "custom" && view.customTheme && (
               <ThemeEditor
                 app={app}
@@ -958,41 +1116,7 @@ export function Settings({
                 words={words}
               />
             )}
-            <h2>{words.sizes.title}</h2>
-            <ul data-part="sizes">
-              {VIEW_PARTS.map((part) =>
-                row(`size-${part}`, words.sizes.part[part], (id) => (
-                  <select
-                    id={id}
-                    data-size-control={part}
-                    value={values.sizes[part]}
-                    disabled={!enabled}
-                    onChange={(event) =>
-                      set("sizes", {
-                        ...values.sizes,
-                        [part]: Number(event.currentTarget.value),
-                      })
-                    }
-                  >
-                    {sizeChoices.map((percent) => (
-                      <option key={percent} value={percent}>
-                        {percent} %
-                      </option>
-                    ))}
-                  </select>
-                )),
-              )}
-            </ul>
-            {VIEW_PARTS.some((part) => values.sizes[part] !== 100) && (
-              <button
-                type="button"
-                data-action="reset-sizes"
-                disabled={!enabled}
-                onClick={() => set("sizes", DEFAULT_SIZES)}
-              >
-                {words.sizes.reset}
-              </button>
-            )}
+            {!phone && sizeRows}
           </>
         )}
         {section === "keys" && (
@@ -1001,7 +1125,34 @@ export function Settings({
             view={view}
             words={words}
             enabled={enabled}
+            keys={keys}
           />
+        )}
+        {section === "more" && (
+          // A phone's second rank: the gestures, then what is set once and left.
+          <>
+            <ShortcutSettings
+              app={app}
+              view={view}
+              words={words}
+              enabled={enabled}
+              keys={false}
+            />
+            <ul>
+              {precisionRow}
+              {awakeRow}
+              {recordCueRow}
+              {todayRow}
+              {holdingTopRow}
+              {holdingFrontRow}
+            </ul>
+            {resetAveragesButton}
+            {sizeRows}
+            <ul data-part="data" data-group="about">
+              {exportRows}
+              <AboutRows words={t} />
+            </ul>
+          </>
         )}
         {section === "data" && (
           <>
@@ -1083,55 +1234,11 @@ export function Settings({
                   />
                 </label>
               </li>
-              <li data-setting="export-cstimer">
-                <span id="data-export-cstimer">{t.exportCsTimer}</span>{" "}
-                <span data-part="export-choice">
-                  <button
-                    type="button"
-                    data-action="export-cstimer-session"
-                    aria-describedby="data-export-cstimer"
-                    disabled={!exportEnabled || busy || !view.current}
-                    onClick={() => void saveExport("cstimer", view.current?.id)}
-                  >
-                    {t.exportSession}
-                  </button>
-                  <button
-                    type="button"
-                    data-action="export-cstimer"
-                    aria-describedby="data-export-cstimer"
-                    disabled={!exportEnabled || busy}
-                    onClick={() => void saveExport("cstimer")}
-                  >
-                    {t.exportAll}
-                  </button>
-                </span>
-              </li>
-              <li data-setting="export-csv">
-                <span id="data-export-csv">{t.exportCsv}</span>{" "}
-                <span data-part="export-choice">
-                  <button
-                    type="button"
-                    data-action="export-csv-session"
-                    aria-describedby="data-export-csv"
-                    disabled={!exportEnabled || busy || !view.current}
-                    onClick={() => void saveExport("csv", view.current?.id)}
-                  >
-                    {t.exportSession}
-                  </button>
-                  <button
-                    type="button"
-                    data-action="export-csv"
-                    aria-describedby="data-export-csv"
-                    disabled={!exportEnabled || busy}
-                    onClick={() => void saveExport("csv")}
-                  >
-                    {t.exportAll}
-                  </button>
-                </span>
-              </li>
-              {!(
-                view.dbState?.kind === "persistent" && view.dbState.backups
-              ) && <AboutRows words={t} />}
+              {!phone && exportRows}
+              {!phone &&
+                !(
+                  view.dbState?.kind === "persistent" && view.dbState.backups
+                ) && <AboutRows words={t} />}
             </ul>
             {preview && (
               <ImportPreviewPanel
@@ -1157,11 +1264,13 @@ export function Settings({
                 words={words}
               />
             )}
-            {view.dbState?.kind === "persistent" && view.dbState.backups && (
-              <ul data-part="data">
-                <AboutRows words={t} />
-              </ul>
-            )}
+            {!phone &&
+              view.dbState?.kind === "persistent" &&
+              view.dbState.backups && (
+                <ul data-part="data">
+                  <AboutRows words={t} />
+                </ul>
+              )}
           </>
         )}
       </div>

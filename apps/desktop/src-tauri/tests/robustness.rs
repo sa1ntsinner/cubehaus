@@ -468,11 +468,13 @@ fn a_full_disk_loses_nothing() {
     let _ = std::fs::remove_dir_all(data);
 }
 
-/// The window opens where the system puts it: no saved position is carried between
-/// sessions (no window-state plugin, no x or y in the configuration), so a monitor that
-/// was unplugged cannot leave it off screen.
+/// The configuration fixes no place, full screen or maximised state: the first start opens
+/// where the system puts it. Later starts take the size and place the window was left at
+/// (tauri-plugin-window-state), and the plugin sets a saved place only when it lies on a
+/// monitor that is connected now, so an unplugged monitor cannot leave the window off
+/// screen.
 #[test]
-fn the_window_is_never_placed_from_a_saved_position() {
+fn the_configuration_places_the_window_nowhere() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let config: Value =
         serde_json::from_str(&std::fs::read_to_string(root.join("tauri.conf.json")).unwrap())
@@ -486,6 +488,4 @@ fn the_window_is_never_placed_from_a_saved_position() {
             "{key} is set"
         );
     }
-    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).unwrap();
-    assert!(!manifest.contains("window-state"));
 }

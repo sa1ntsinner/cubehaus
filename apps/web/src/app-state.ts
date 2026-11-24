@@ -99,6 +99,7 @@ export interface AppView {
   newestIsBest: boolean;
   records: Records;
   canUndo: boolean;
+  undoDeletedAt: number | undefined;
   settings: Settings;
   keymap: Keymap;
   /** The custom theme as stored, or null when none was made. */
@@ -289,6 +290,7 @@ export function createAppState(
       newestIsBest,
       records,
       canUndo: history.size > 0,
+      undoDeletedAt: history.deletedAt,
       settings,
       keymap,
       customTheme,
@@ -798,6 +800,9 @@ export function createAppState(
       return published ?? snapshot();
     },
     session: () => current,
+    /** The open session's whole series, oldest first (a DNF is Infinity); null without a database. */
+    sessionSeries: async () =>
+      store && current ? (await store.solves.series(current.id)).values : null,
     /** The algorithm trainer's storage, once a database is open. */
     trainer: () => store?.trainer ?? null,
     /** Stored settings (in the backup), for screens that keep their own choices. */
@@ -1122,6 +1127,16 @@ export function createAppState(
         }
       });
     },
+    /** Live solves in every session, archived ones too. */
+    async solveTotal(): Promise<number> {
+      let total = 0;
+      await run(async () => {
+        if (!store) return;
+        for (const session of await store.sessions.switchRows())
+          total += await store.solves.count(session.id);
+      });
+      return total;
+    },
     /** Every session with its newest solve, for the switch. */
     async switchRows(): Promise<(Session & { last: Solve | null })[]> {
       let rows: (Session & { last: Solve | null })[] = sessions.map(
@@ -1401,6 +1416,7 @@ export function createAppState(
           await rereadRepeats(db, rootId, before);
           history.push({
             label: text.undoSolve,
+            deletedAt: performance.now(),
             async undo() {
               await db.repeats.restore(target.id);
               await rereadRepeats(db, rootId, target.id);
@@ -1439,6 +1455,7 @@ export function createAppState(
         else await locateShown(db);
         history.push({
           label: text.undoSolve,
+          deletedAt: performance.now(),
           async undo() {
             const location =
               solve.sessionId === current?.id
@@ -1708,6 +1725,7 @@ export function createAppState(
         await reread(db, after);
         history.push({
           label: text.undoSolves,
+          deletedAt: performance.now(),
           async undo() {
             for (const id of ids) await db.solves.restore(id);
             const returned = wasShown && (await db.solves.get(wasShown.id));
@@ -1805,9 +1823,9 @@ export function createAppState(
     expireTrash(at = Date.now()): Promise<number> {
       return store ? store.trash.expire(at) : Promise.resolve(0);
     },
-    undo(): Promise<void> {
+    undo(deletedAt?: number): Promise<void> {
       return edit(async (db) => {
-        await history.undo();
+        await history.undo(deletedAt);
         await locateShown(db);
         if (again && !(await db.solves.get(again.root.id))) again = null;
       });

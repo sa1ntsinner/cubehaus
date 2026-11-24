@@ -1,0 +1,13 @@
+/* The widgets' few words (docs/release/ios.md, Widgets). Stat names (ao5) are not words. */
+"Algorithms" = "Algorithms";
+"One set's progress: the cases in your drills. Choose the set in Algorithms: hold its word." = "One set's progress: the cases in your drills. Choose the set in Algorithms: hold its word.";
+"Times" = "Times";
+"The open session's recent results as a line, with the current value." = "The open session's recent results as a line, with the current value.";
+"Line" = "Line";
+"Single" = "Single";
+"Mean of 3" = "Mean of 3";
+"Average of 5" = "Average of 5";
+"Average of 12" = "Average of 12";
+"single" = "single";
+"Next: %@" = "Next: %@";
+"Drill" = "Drill";

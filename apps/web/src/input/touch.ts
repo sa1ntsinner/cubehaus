@@ -98,7 +98,9 @@ export function bindTouch(
     event.preventDefault();
     event.stopImmediatePropagation();
   };
-  // A long press can open the context menu and swallow the release.
+  // A long press opens the context menu, which swallows the release. Android Chrome sends
+  // contextmenu half a second into every held touch: prevented, no menu opens, the release
+  // still comes and the hold goes on. Only a menu that cannot be prevented ends the hold.
   const menu = (event: Event) => {
     const pointer = event as PointerEvent;
     if (pointer.pointerType === "mouse") return;
@@ -110,6 +112,7 @@ export function bindTouch(
     )
       return;
     event.preventDefault();
+    if (event.cancelable) return;
     if (pointerId === null || (contact && contact.type !== pointerType)) return;
     pointerId = null;
     dispatch({ type: "cancel", at: event.timeStamp });

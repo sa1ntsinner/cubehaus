@@ -1,10 +1,11 @@
 import Capacitor
 import UIKit
+import WidgetKit
 
 /// What the page cannot do in a WKWebView, called from apps/web/src/phone-app.ts:
 /// haptics for the inspection calls and the session grid, keeping the screen on, the
-/// status bar and the ground following the theme, a file handed to the share sheet, and
-/// the copy of the history in Documents.
+/// status bar and the ground following the theme, a file handed to the share sheet, the
+/// copy of the history in Documents, and what the Home Screen widgets show.
 @objc(CubehausPlugin)
 public class CubehausPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CubehausPlugin"
@@ -17,6 +18,8 @@ public class CubehausPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "keepCopy", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "copySettled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "copyInfo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "widgetSnapshot", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openedRoute", returnType: CAPPluginReturnPromise),
     ]
 
     /// A vibration pattern as the web writes it (on, off, on… in ms): one tap at the start
@@ -113,6 +116,7 @@ public class CubehausPlugin: CAPPlugin, CAPBridgedPlugin {
     private var leaving = UIBackgroundTaskIdentifier.invalid
 
     override public func load() {
+        Self.live = self
         NotificationCenter.default.addObserver(
             self, selector: #selector(didEnterBackground),
             name: UIApplication.didEnterBackgroundNotification, object: nil)
@@ -170,6 +174,57 @@ public class CubehausPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         call.resolve(["solves": (tables["solve"] as? [Any])?.count ?? 0])
+    }
+
+    /// What the widgets show (apps/web/src/widget-snapshot.ts), as the page computed it:
+    /// written whole into the App Group container, where the widget extension reads it,
+    /// and the widgets are asked to draw again.
+    @objc func widgetSnapshot(_ call: CAPPluginCall) {
+        guard let json = call.getString("json"), let url = SnapshotFile.url else {
+            call.reject("no snapshot, or no App Group container")
+            return
+        }
+        do {
+            try Data(json.utf8).write(to: url, options: .atomic)
+            WidgetCenter.shared.reloadAllTimelines()
+            call.resolve()
+        } catch {
+            call.reject("could not write the snapshot")
+        }
+    }
+
+    /// A widget's link (`cubehaus://train/<set>/drill`) as the page's route, or nil for
+    /// anything else: the trainer's drill is the only screen a widget opens.
+    static func route(of url: URL) -> String? {
+        guard url.scheme == "cubehaus", url.host == "train" else { return nil }
+        let route = "#/train" + url.path
+        return route.range(of: "^#/train/[a-z0-9-]+/drill$", options: .regularExpression) == nil
+            ? nil : route
+    }
+
+    private static weak var live: CubehausPlugin?
+    /// A route the app was opened with before the page asked for it. Main thread only.
+    private static var waiting: String?
+    private var pageAsked = false
+
+    /// The app was opened by a widget's link (SceneDelegate). A page already running
+    /// goes there now; one still loading asks with `openedRoute`.
+    static func open(route: String) {
+        guard let plugin = live, plugin.pageAsked else {
+            waiting = route
+            return
+        }
+        // The route matched the pattern in `route(of:)`: no quote or backslash in it.
+        plugin.bridge?.webView?.evaluateJavaScript("location.hash = '\(route)'")
+    }
+
+    /// The route the app was opened with ("" when none); later ones set the hash.
+    @objc func openedRoute(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.pageAsked = true
+            call.resolve(["route": Self.waiting ?? ""])
+            Self.waiting = nil
+        }
     }
 }
 

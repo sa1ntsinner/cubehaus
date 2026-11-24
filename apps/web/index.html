@@ -44,13 +44,28 @@
       })();
     </script>
     <link rel="preload" href="/fonts/roboto-solid.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Only the time's face is preloaded (it is drawn only once it has loaded). The words'
+         face swaps in over a fallback of the same metrics, so it does not take bandwidth
+         from the app's script on a slow connection. -->
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>cubehaus</title>
+    <!-- The link's preview in a chat (Telegram, WhatsApp) and in search. A preview needs
+         the image's full address. -->
+    <meta name="description" content="A speedcubing timer for the browser." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="cubehaus" />
+    <meta property="og:title" content="cubehaus" />
+    <meta property="og:description" content="A speedcubing timer for the browser." />
+    <meta property="og:url" content="https://cubehaus.imslide.workers.dev/" />
+    <meta property="og:image" content="https://cubehaus.imslide.workers.dev/social.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The cubehaus house: a 3×3 cube under a roof" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>

@@ -117,6 +117,11 @@ const en = {
   train: {
     crossOn: (colour: string) => `F2L for a ${colour} cross`,
     title: "Algorithms",
+    // The phone app: a long press on a set's word, for the Home Screen widget.
+    widgetShow: "Show in widget",
+    widgetRemove: "Remove from widget",
+    // The narrowest phone: the sets' list opened from the open set's word.
+    sets: "Sets",
     // The status line's word on the narrowest phones, where the session's name needs room.
     short: "Algs",
     modes: { learn: "Learn", drill: "Drill", review: "Review" },
@@ -235,13 +240,14 @@ const en = {
     needs: (n: number) => `An average needs ${n} solves.`,
     colours: "By cross colour",
     colourNeeds: (n: number) => `An average needs ${n} solves of the colour`,
-    none: "No solves yet.",
+    none: "Times show here after the first solve.",
     solveAt: (solve: string, date: string) => `Solve ${solve} · ${date}`,
     trend: (average: string, from: string, to: string) =>
       `${average} trend, from ${from} to ${to}`,
     calendar: "Days with solves",
     today: "today",
     distribution: "Distribution",
+    views: { trend: "Trend", bests: "Bests", days: "Days" },
     dnf: "DNF",
     mean: "mean",
     solveCount: (n: number) =>
@@ -291,6 +297,13 @@ const en = {
     "Solves from the earlier version are kept apart. Settings › Data can add them.",
   dbCopy:
     "A copy of your solves is on this device: Settings › Data › Restore from a file.",
+  safety: {
+    copy: "Your solves are kept only in this browser.",
+    home: "Safari may clear your solves after 7 days away. Add cubehaus to the Home Screen to keep them.",
+    save: "Save a copy",
+    wiped:
+      "The browser cleared the solves kept here. A saved copy brings them back: Settings › Data › Restore from a file.",
+  },
   unsaved: (n: number) =>
     n === 1
       ? "1 solve is not saved anywhere: the browser refused to store it."
@@ -327,7 +340,6 @@ const en = {
   scramble: "Scramble",
   attempt: "Attempt",
   penalty: "Penalty",
-  empty: "No solves yet",
   emptyHintKey: "Hold Space, let go to start",
   leftHand: "Left Ctrl",
   rightHand: "Right Ctrl",
@@ -335,8 +347,6 @@ const en = {
   /** The start keys when they are not Space alone. */
   emptyHintKeys: (keys: string) => `Hold ${keys}, let go to start`,
   emptyHintHands: "Hold both keys, let go to start",
-  /** The first visit's empty file: where old solves come in. */
-  emptyImport: "Solves from another timer:",
   drill: {
     title: "Drill scrambles",
     kind: {
@@ -512,10 +522,17 @@ const en = {
   /** Touch gestures: the hint said where each works, and the list in place of the keys. */
   gestures: {
     title: "Gestures",
+    deleted: "Deleted.",
+    undo: "Undo",
+    comment: ["Swipe the time ↑", "Comment on the solve"] as readonly [
+      string,
+      string,
+    ],
     hint: {
       "time-left": "Swipe the time left to delete it",
       "time-right": "Swipe the time right for +2",
       "time-down": "Swipe the time down for DNF",
+      "time-up": "Swipe the time up to comment",
       scramble: "Swipe the scramble for the next one",
       "row-left": "Swipe a line left to delete it",
       session: "Swipe the session name for the next session",
@@ -810,6 +827,7 @@ const en = {
       look: "Look",
       keys: "Keys",
       data: "Data",
+      more: "More",
     },
     everySession: "Every session",
     crossChoices: { any: "Any", assigned: "Assigned" },
@@ -996,6 +1014,9 @@ const ru: Text = {
   train: {
     crossOn: (colour: string) => `F2L для креста: ${colour}`,
     title: "Алгоритмы",
+    widgetShow: "Показывать в виджете",
+    widgetRemove: "Убрать из виджета",
+    sets: "Наборы",
     short: "Алги",
     modes: { learn: "Учить", drill: "Отработка", review: "Повтор" },
     all: "Все",
@@ -1103,13 +1124,14 @@ const ru: Text = {
       `Для среднего нужно ${n} ${plural(n, "сборка", "сборки", "сборок")} этого цвета`,
     needs: (n: number) =>
       `Для среднего ${plural(n, "нужна", "нужны", "нужно")} ${n} ${plural(n, "сборка", "сборки", "сборок")}.`,
-    none: "Сборок пока нет.",
+    none: "Здесь появится время после первой сборки.",
     solveAt: (solve: string, date: string) => `Сборка ${solve} · ${date}`,
     trend: (average: string, from: string, to: string) =>
       `Тренд ${average}: от ${from} до ${to}`,
     calendar: "Дни со сборками",
     today: "сегодня",
     distribution: "Разброс",
+    views: { trend: "Тренд", bests: "Рекорды", days: "Дни" },
     dnf: "DNF",
     mean: "ср",
     solveCount: (n: number) =>
@@ -1158,6 +1180,13 @@ const ru: Text = {
     "Сборки из прежней версии хранятся отдельно. Добавить их можно в Настройках › Данные.",
   dbCopy:
     "На устройстве есть копия сборок: Настройки › Данные › Восстановить из файла.",
+  safety: {
+    copy: "Сборки хранятся только в этом браузере.",
+    home: "Safari может удалить сборки, если не открывать сайт 7 дней. Добавьте cubehaus на экран «Домой», чтобы их сохранить.",
+    save: "Сохранить копию",
+    wiped:
+      "Браузер удалил сборки, хранившиеся здесь. Сохранённая копия вернёт их: Настройки › Данные › Восстановить из файла.",
+  },
   unsaved: (n: number) =>
     `${n} ${plural(n, "сборка", "сборки", "сборок")} пока нигде не ${plural(n, "сохранена", "сохранены", "сохранены")}: браузер отказался ${plural(n, "её", "их", "их")} записать.`,
   unsavedDownload: "Скачать",
@@ -1191,12 +1220,10 @@ const ru: Text = {
   scramble: "Скрамбл",
   attempt: "Попытка",
   penalty: "Штраф",
-  empty: "Сборок пока нет",
   emptyHintKey: "Зажмите пробел и отпустите",
   leftHand: "Левый Ctrl",
   rightHand: "Правый Ctrl",
   emptyHintTouch: "Зажмите экран и отпустите",
-  emptyImport: "Сборки из другого таймера:",
   emptyHintKeys: (keys: string) => `Зажмите ${keys} и отпустите`,
   emptyHintHands: "Зажмите обе клавиши и отпустите",
   drill: {
@@ -1372,10 +1399,14 @@ const ru: Text = {
   keysTitle: "Клавиши",
   gestures: {
     title: "Жесты",
+    deleted: "Удалено.",
+    undo: "Вернуть",
+    comment: ["Смахните время ↑", "Оставить комментарий к сборке"] as const,
     hint: {
       "time-left": "Смахните время влево, чтобы удалить",
       "time-right": "Смахните время вправо: +2",
       "time-down": "Смахните время вниз: DNF",
+      "time-up": "Смахните время вверх, чтобы оставить комментарий",
       scramble: "Смахните скрамбл, чтобы сменить его",
       "row-left": "Смахните строку влево, чтобы удалить её",
       session: "Смахните название сессии, чтобы перейти к соседней",
@@ -1656,6 +1687,7 @@ const ru: Text = {
       look: "Вид",
       keys: "Клавиши",
       data: "Данные",
+      more: "Ещё",
     },
     everySession: "Все сессии",
     crossChoices: { any: "Любой", assigned: "Назначенный" },
@@ -1687,3 +1719,9 @@ export function eventName(
 
 // The English table, for code that does not know the language yet.
 export const text: Text = en;
+
+/** The phone has a fourth direction on the time, after the three solve actions. */
+export function gestureList(words: Text, phone: boolean) {
+  const { list, comment } = words.gestures;
+  return phone ? list.toSpliced(5, 0, comment) : list;
+}

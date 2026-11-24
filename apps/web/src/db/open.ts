@@ -168,11 +168,7 @@ export function openDatabase({
           restoreBackup: client.restoreBackup,
           progress: client.progress,
         });
-        try {
-          if (!memory) void navigator.storage?.persist?.().catch(() => {});
-        } catch {
-          /* Best effort. */
-        }
+        // Persistence is asked for once there are solves to keep (db/safety.ts).
       } catch (error) {
         fail(error);
       }

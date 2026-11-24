@@ -629,3 +629,40 @@ main[data-part="progress"] > [role="alert"] {
   stroke-linejoin: round;
   stroke-linecap: round;
 }
+
+/* A phone's views (2026-11-24): one on screen at a time, picked from a row of words on a
+   hairline; the one in view in `ink` with a 2 px rule on the hairline. */
+[data-part="progress-views"] {
+  display: flex;
+  gap: var(--s4);
+  margin-top: var(--s2);
+  box-shadow: inset 0 -1px var(--line);
+}
+[data-part="progress-views"] > button {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 0;
+  color: var(--dim);
+  white-space: nowrap;
+}
+[data-part="progress-views"] > button[aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--ink);
+  box-shadow: inset 0 -2px var(--ink);
+}
+main[data-part="progress"] [data-part="progress-views"] + * {
+  margin-top: var(--s5);
+}
+/* The spread's own view is open: its word is the view's. */
+main[data-view="spread"] [data-part="progress-more"] > summary {
+  display: none;
+}
+@media (max-height: 430px) and (orientation: landscape) and (pointer: coarse) {
+  main[data-part="progress"] {
+    padding-top: calc(var(--s3) + env(safe-area-inset-top));
+  }
+  main[data-part="progress"] h1 {
+    margin: 0 0 var(--s2);
+    font-size: 20px;
+  }
+}

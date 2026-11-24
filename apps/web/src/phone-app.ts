@@ -25,6 +25,8 @@ interface CubehausPlugin {
   keepCopy(options: { text: string }): Promise<void>;
   copySettled(options: Record<string, never>): Promise<void>;
   copyInfo(options: Record<string, never>): Promise<{ solves: number }>;
+  widgetSnapshot(options: { json: string }): Promise<void>;
+  openedRoute(options: Record<string, never>): Promise<{ route: string }>;
 }
 
 // The plugin is a proxy that answers every property, `then` too: a promise resolved with
@@ -108,6 +110,23 @@ export async function copySettled(): Promise<void> {
 /** How many solves the phone's copy holds (0: none, or no copy). */
 export async function copySolves(): Promise<number> {
   return (await callNative("copyInfo", {})).solves;
+}
+
+/** Hands the widgets' snapshot (widget-snapshot.ts) to the app, which writes it for them. */
+export async function writeWidgetSnapshot(json: string): Promise<void> {
+  await callNative("widgetSnapshot", { json });
+}
+
+/** A route a widget may open: the trainer's drill for a set, nothing else. */
+const WIDGET_ROUTE = /^#\/train\/[a-z0-9-]+\/drill$/;
+
+/**
+ * Follows a widget's link into the app (`cubehaus://train/<set>/drill`): the route it
+ * was opened with, and each later one while it runs (the app sets `location.hash` then).
+ */
+export async function followWidgetRoute(go: (hash: string) => void) {
+  const { route } = await callNative("openedRoute", {});
+  if (WIDGET_ROUTE.test(route)) go(route);
 }
 
 type CopyHost = {

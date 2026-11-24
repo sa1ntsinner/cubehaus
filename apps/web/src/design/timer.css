@@ -22,7 +22,10 @@ main:has(> [data-part="scramble"]) {
   overflow-y: auto;
   display: grid;
   grid-template-columns: var(--side) minmax(0, 1fr) var(--side);
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto var(--phone-time-room, minmax(0, 1fr)) auto auto auto minmax(
+      0,
+      1fr
+    ) auto;
   grid-template-areas:
     "scramble scramble scramble"
     ".        .        file"
@@ -569,6 +572,13 @@ main > [data-part="time-under"] {
 [data-part="time-comment-input"]::placeholder {
   color: var(--gutter);
 }
+/* Off a touch phone the comment's line is the field alone, where the comment stands. */
+[data-part="comment-bar"] {
+  display: contents;
+}
+[data-part="comment-bar-time"] {
+  display: none;
+}
 /* Said to a screen reader only: why an action did nothing. */
 main > :is([data-part="time-status"], [data-part="time-said"]) {
   position: absolute;
@@ -741,7 +751,8 @@ main > [data-part="file"] > [data-part="solves"] {
   font-size: max(var(--text-floor), calc(14px * var(--size-times, 1)));
   color: var(--gutter);
 }
-/* An empty session: how to start, as a comment where the first line will stand. */
+/* An empty session before the first solve: how to start, as a comment where the first
+   line will stand. */
 [data-part="solves-empty"] {
   margin: 0;
   padding: 2px var(--s2);
@@ -752,38 +763,14 @@ main > [data-part="file"] > [data-part="solves"] {
   text-wrap: balance;
 }
 @media (max-width: 699px) {
-  /* The phone's file is a centred column. */
+  /* The phone's file is a centred column; the line keeps to one row where it fits. */
   [data-part="solves-empty"] {
+    padding-inline: 0;
     text-align: center;
   }
 }
 [data-part="solves-empty"] > [data-input="touch"] {
   display: none;
-}
-/* The first visit's second comment line: where old solves come in. */
-[data-part="solves-import"] {
-  display: block;
-  margin-top: var(--s2);
-}
-[data-part="solves-import"] a {
-  color: var(--dim);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-decoration-color: var(--gutter);
-  text-underline-offset: 0.25em;
-}
-@media (hover: hover) {
-  [data-part="solves-import"] a:hover {
-    color: var(--ink);
-  }
-}
-@media (hover: none), (pointer: coarse) {
-  /* A finger's target, without moving the line's text. */
-  [data-part="solves-import"] a {
-    display: inline-block;
-    padding-block: 12px;
-    margin-block: -12px;
-  }
 }
 /* Gone while the timer is busy: inspecting, held or running. */
 main:not([data-phase="idle"], [data-phase="stopped"])
@@ -928,6 +915,17 @@ li[data-penalty="dnf"] [data-part="solve-time"] {
 }
 [data-part="comment-form"] button {
   color: var(--dim);
+}
+/* A touch tablet keeps the file's editor: its two words get a finger's room. */
+@media (hover: none) and (pointer: coarse) and (min-width: 700px) and (
+    min-height: 431px
+  ) {
+  [data-part="comment-form"] button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    text-align: start;
+  }
 }
 @media (hover: hover) {
   [data-part="comment-form"] button:hover {
@@ -1271,7 +1269,10 @@ main[data-inspecting]:is([data-phase="holding"], [data-phase="ready"])
        what is free: at large sizes it gives way (its totals, then itself, SolveList's fit)
        so the actions and the status line always stay on the screen. */
     grid-template-rows:
-      auto auto minmax(0, 1fr) auto auto auto minmax(0, 3fr)
+      auto auto var(--phone-time-room, minmax(0, 1fr)) auto auto auto minmax(
+        0,
+        3fr
+      )
       auto auto;
     grid-template-areas:
       "scramble"
@@ -1407,7 +1408,10 @@ main[data-inspecting]:is([data-phase="holding"], [data-phase="ready"])
     :has(> [data-part="scramble"])
   ) {
     grid-template-rows:
-      auto auto minmax(0, 1fr) auto auto auto minmax(min-content, 3fr)
+      auto auto var(--phone-time-room, minmax(0, 1fr)) auto auto auto minmax(
+        min-content,
+        3fr
+      )
       auto auto;
   }
   main > [data-part="file"] {
@@ -1958,7 +1962,7 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
 @media (max-width: 699px) {
   main:has(> [data-part="time-under"][data-repeat]) {
     grid-template-rows:
-      auto auto minmax(0, 1fr) auto minmax(
+      auto auto var(--phone-time-room, minmax(0, 1fr)) auto minmax(
         calc(3 * 44px + var(--s1)),
         max-content
       )
@@ -2009,5 +2013,371 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
       [data-event="777"]
     ) {
     font-weight: 600;
+  }
+}
+
+/* Two ways to read the portrait scramble at the same type size. The normal spaces stay
+   in the copyable text; word spacing tightens the fixed columns. */
+@media (max-width: 699px) and (min-height: 431px) and (hover: none) and (
+    pointer: coarse
+  ) {
+  main > [data-part="scramble"][data-ready="true"] {
+    --per: 7;
+    --slot: 2.65;
+    --gap: 0.65;
+    --max: 24px;
+    --plines: 3;
+    --cap: 36dvh;
+    justify-self: center;
+    align-content: end;
+    width: calc(var(--per) * var(--slot) * 1ch + 0.15ch);
+    max-width: 100%;
+    font-size: max(
+      var(--text-floor),
+      min(
+        var(--max) *
+        var(--size-scramble, 1),
+        100cqi /
+        ((var(--per) * var(--slot) + 0.15) * 0.601),
+        var(--cap) /
+        (var(--plines) * 1.35)
+      )
+    );
+    word-spacing: calc((var(--gap) - 1) * 1ch);
+  }
+  main > [data-part="scramble"] [data-move] {
+    min-width: calc((var(--slot) - var(--gap, 1)) * 1ch);
+  }
+  main
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="222"],
+      [data-event="skewb"],
+      [data-event="pyram"]
+    ) {
+    --per: 8;
+    --plines: 2;
+  }
+  main > [data-part="scramble"][data-ready="true"][data-event="333bf"] {
+    --per: 8;
+    --slot: 3.65;
+  }
+  main
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="333fm"],
+      [data-event="fto"]
+    ) {
+    --per: 8;
+    --plines: 4;
+  }
+  main > [data-part="scramble"][data-ready="true"][data-event="fto"] {
+    --slot: 3.65;
+    --max: 19px;
+  }
+  main
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="444"],
+      [data-event="444bf"]
+    ) {
+    --per: 9;
+    --slot: 3.65;
+    --max: 17px;
+    --plines: 6;
+  }
+  main
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="555"],
+      [data-event="555bf"],
+      [data-event="666"],
+      [data-event="777"]
+    ) {
+    --per: 9;
+    --slot: 4.65;
+    --max: 14px;
+    --plines: 7;
+  }
+  main > [data-part="scramble"][data-ready="true"][data-event="666"] {
+    --plines: 9;
+  }
+  main > [data-part="scramble"][data-ready="true"][data-event="777"] {
+    --plines: 12;
+  }
+  main > [data-part="scramble"][data-ready="true"][data-event="minx"] {
+    --per: 11;
+    --slot: 3.65;
+    --max: 15px;
+    --plines: 7;
+  }
+  main > [data-part="scramble"][data-ready="true"][data-event="clock"] {
+    --per: 7;
+    --slot: 5.65;
+    --max: 16px;
+  }
+  main > [data-part="scramble"][data-ready="true"][data-event="sq1"] {
+    --per: 4;
+    --slot: 8.2;
+    --gap: 1;
+    --max: 17px;
+    --plines: 5;
+  }
+  main > [data-part="scramble"][data-ready="true"][data-event="333mbf"] {
+    --per: 13;
+    --max: 12.5px;
+    --plines: 1;
+    width: calc((var(--per) * var(--slot) + 3.15) * 1ch);
+    min-height: min-content;
+  }
+  main:has(> [data-part="scramble"]) > [data-part="scramble-picture"] {
+    justify-self: center;
+    margin-top: calc(var(--s2) - var(--s3));
+  }
+  main > [data-part="scramble"][data-ready="false"] {
+    justify-self: center;
+  }
+}
+@media (max-width: 699px) and (max-height: 740px) and (min-height: 431px) and (
+    hover: none
+  ) and (pointer: coarse) {
+  main:has(> [data-part="scramble"]) > [data-part="scramble-picture"] {
+    margin-top: 0;
+  }
+  main:has(> [data-part="scramble"]:is([data-event="666"], [data-event="777"]))
+    > [data-part="scramble-picture"] {
+    display: block;
+  }
+}
+
+[data-word="comment-existing"] {
+  display: none;
+}
+
+/* The spacer is the third track in the single column and the second in the wide
+   landscape grid. Match both side insets so the middle is the full screen's axis. */
+@media (max-width: 699px) and (min-height: 431px) and (hover: none) and (
+    pointer: coarse
+  ),
+  (max-width: 699px) and (max-height: 430px) and (orientation: landscape) and (
+    hover: none
+  ) and (pointer: coarse) {
+  main:has(> output[data-part="time"]) {
+    --phone-time-track: 3;
+    padding-inline: max(
+      var(--s4),
+      env(safe-area-inset-left),
+      env(safe-area-inset-right)
+    );
+  }
+}
+@media (min-width: 700px) and (max-height: 430px) and (
+    orientation: landscape
+  ) and (hover: none) and (pointer: coarse) {
+  main:has(> output[data-part="time"]) {
+    --phone-time-track: 2;
+    padding-inline: max(
+      var(--s6),
+      env(safe-area-inset-left),
+      env(safe-area-inset-right)
+    );
+  }
+  main > footer[data-part="status-line"] {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 699px) and (min-height: 431px) and (hover: none) and (
+    pointer: coarse
+  ),
+  (max-height: 430px) and (orientation: landscape) and (hover: none) and (
+    pointer: coarse
+  ) {
+  main > output[data-part="time"] {
+    /* The figure's cap height sits a pixel above the middle of its line box. */
+    position: relative;
+    top: 1px;
+    transform: translateY(var(--phone-time-lift, 0px));
+    transition: transform 160ms ease-out;
+  }
+  main:is(
+      [data-inspecting],
+      [data-phase="holding"],
+      [data-phase="ready"],
+      [data-phase="running"]
+    )
+    > output[data-part="time"] {
+    --phone-time-lift: var(--phone-time-offset, 0px);
+  }
+  main[data-time-over-picture][data-inspecting]
+    > [data-part="scramble-picture"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+  main > output[data-part="time"][data-swiping] {
+    transition: none;
+  }
+  main > output[data-part="time"][data-swipe-settling] {
+    transition: translate 300ms cubic-bezier(0.25, 1.25, 0.4, 1);
+  }
+
+  /* The individual solve actions stay in the tab order and accessibility tree.
+     The same clipping pattern as data-heard takes their row out of the grid. */
+  main > [data-part="last-actions"]:not([data-selecting]) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  main
+    > [data-part="status-line"]
+    > nav:last-child
+    [data-action="train"]
+    [data-word="long"] {
+    display: inline;
+  }
+  main
+    > [data-part="status-line"]
+    > nav:last-child
+    [data-action="train"]
+    [data-word="short"] {
+    display: none;
+  }
+  [data-part="solves"]
+    :is([data-part="solve-comment"], [data-word="comment-placeholder"]),
+  [data-part="solves"] [data-action="comment-edit"]:not([data-existing]) {
+    display: none;
+  }
+  [data-part="solves"] [data-action="comment-edit"][data-existing] {
+    display: block;
+    opacity: 1;
+  }
+  [data-part="solves"]
+    [data-action="comment-edit"][data-existing]
+    > [data-word="comment-existing"] {
+    display: inline;
+  }
+  /* C on a touch phone (2026-11-24): one calm line just above the keys, the solve's time
+     dim at its left, the field the rest of the width inside the page margins. Until the
+     keys are up it waits unseen near the top, where iOS finds the field in view and pans
+     nothing (screens/Timer.tsx, usePhoneCommentBar). */
+  main > [data-part="time-under"] > [data-part="comment-bar"] {
+    position: fixed;
+    z-index: 2;
+    inset-inline: 0;
+    top: max(var(--s3), env(safe-area-inset-top));
+    display: flex;
+    align-items: baseline;
+    gap: var(--s3);
+    padding: var(--s2) max(var(--s4), env(safe-area-inset-right)) var(--s2)
+      max(var(--s4), env(safe-area-inset-left));
+    background: var(--ground);
+    opacity: 0;
+    pointer-events: none;
+  }
+  main[data-comment-placed]
+    > [data-part="time-under"]
+    > [data-part="comment-bar"] {
+    top: auto;
+    bottom: var(
+      --comment-bottom,
+      var(--keyboard-inset, env(safe-area-inset-bottom))
+    );
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 160ms ease-out;
+  }
+  [data-part="comment-bar"] > [data-part="comment-bar-time"] {
+    display: inline;
+    flex: none;
+    font-variant-numeric: tabular-nums;
+    font-size: 16px;
+    color: var(--dim);
+  }
+  [data-part="comment-bar"] > [data-part="time-comment-input"] {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    padding-block: var(--s2);
+    text-align: start;
+  }
+  /* While the line is open the status line, the file and the averages step back; the
+     figure stays where it is, or rises once where the line would reach it. */
+  main[data-commenting]
+    > :is(
+      footer[data-part="status-line"],
+      [data-part="file"],
+      [data-part="stats"],
+      [data-part="last-actions"]
+    ),
+  main[data-commenting] > [data-part="time-under"] > [data-part="time-meta"],
+  main[data-comment-lifted]
+    > :is([data-part="scramble"], [data-part="scramble-picture"]),
+  main[data-comment-cramped]
+    > :is(
+      output[data-part="time"],
+      [data-part="time-under"] > :not([data-part="comment-bar"]),
+      [data-part="scramble"],
+      [data-part="scramble-picture"]
+    ) {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 140ms ease,
+      visibility 0s 140ms;
+  }
+  main[data-commenting] > output[data-part="time"] {
+    --phone-time-lift: var(--comment-lift, 0px);
+    transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  main > [data-part="time-under"] {
+    position: relative;
+    top: var(--comment-lift, 0px);
+    transition: top 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  main > footer[data-part="status-line"] > [data-kind="undo-delete"] {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    padding-block: 0;
+  }
+  [data-kind="undo-delete"] > button {
+    min-width: 44px;
+    min-height: 44px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  [data-part="status-line"]:has(> [data-kind="undo-delete"])
+    > [data-part="notice"]:not([data-kind="undo-delete"]) {
+    display: none;
+  }
+}
+/* Keep the longer Russian links and the session name legible on the narrowest phones. */
+@media (max-width: 360px) and (min-height: 431px) and (hover: none) and (
+    pointer: coarse
+  ) {
+  :root:lang(ru)
+    main
+    > [data-part="status-line"]
+    > nav
+    [data-action="train"]
+    [data-word="long"] {
+    display: none;
+  }
+  :root:lang(ru)
+    main
+    > [data-part="status-line"]
+    > nav
+    [data-action="train"]
+    [data-word="short"] {
+    display: inline;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main
+    > output[data-part="time"]:is(
+      [data-swiping],
+      [data-swipe-settling],
+      [data-size-part="time"]
+    ) {
+    transition: none;
   }
 }

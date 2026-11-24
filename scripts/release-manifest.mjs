@@ -7,8 +7,13 @@
 //   cubehaus.app.tar.gz                 darwin-aarch64 and darwin-x86_64 (one universal app)
 //   cubehaus_<v>_amd64.AppImage         linux-x86_64
 //   cubehaus_<v>_aarch64.AppImage       linux-aarch64
+//   cubehaus_<v>_amd64.deb              linux-x86_64-deb
+//   cubehaus_<v>_arm64.deb              linux-aarch64-deb
 //   cubehaus_<v>_x64-setup.exe          windows-x86_64
-// and fails when a `.sig` is missing or the folder has no update file at all. The
+// An app installed from the .deb looks for `linux-<arch>-deb` first and installs that
+// package (the updater runs dpkg through pkexec); without it, it would fall back to the
+// AppImage entry and refuse it as not a .deb. The AppImage reads `linux-<arch>`.
+// It fails when a `.sig` is missing or the folder has no update file at all. The
 // signature is the contents of the `.sig` file, not its path.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -29,6 +34,8 @@ const rules = [
   [/^cubehaus\.app\.tar\.gz$/, ["darwin-aarch64", "darwin-x86_64"]],
   [/_(amd64|x86_64)\.AppImage$/, ["linux-x86_64"]],
   [/_aarch64\.AppImage$/, ["linux-aarch64"]],
+  [/_amd64\.deb$/, ["linux-x86_64-deb"]],
+  [/_arm64\.deb$/, ["linux-aarch64-deb"]],
   [/_x64-setup\.exe$/, ["windows-x86_64"]],
   [/_arm64-setup\.exe$/, ["windows-aarch64"]],
 ];

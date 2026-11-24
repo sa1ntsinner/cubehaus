@@ -95,10 +95,16 @@ worker.addEventListener("activate", (event) => {
 worker.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+  // A precached file is the same file under any query: the icons are addressed with their
+  // hash (vite.config.ts). A page load of a file's own address is that file, an icon for
+  // example, never the app.
+  const bare = request.url.replace(/[?#].*$/, "");
   const key =
     request.mode === "navigate" && request.url.startsWith(scope)
-      ? (pages.get(request.url.replace(/[?#].*$/, "")) ?? shell)
-      : request.url;
+      ? (pages.get(bare) ?? (files.has(bare) ? bare : shell))
+      : files.has(bare)
+        ? bare
+        : request.url;
   if (!files.has(key)) {
     if (request.url.startsWith(assets))
       event.respondWith(

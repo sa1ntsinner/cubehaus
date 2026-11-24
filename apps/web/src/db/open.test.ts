@@ -90,7 +90,7 @@ function deferLock() {
   return () => grant();
 }
 
-test("persistent open migrates, asks persist once, and holds the lock until pagehide", async () => {
+test("persistent open migrates, leaves persistence to the first solve, and holds the lock until pagehide", async () => {
   const { openDatabase } = await import("./open");
   const first = openDatabase();
   expect(openDatabase()).toBe(first);
@@ -101,7 +101,8 @@ test("persistent open migrates, asks persist once, and holds the lock until page
     { signal: expect.any(AbortSignal) },
     expect.any(Function),
   );
-  expect(persist).toHaveBeenCalledTimes(1);
+  // Firefox asks the person: not on a first visit, only once there are solves (safety.ts).
+  expect(persist).not.toHaveBeenCalled();
   expect(released).not.toHaveBeenCalled();
   page.dispatchEvent(new Event("pagehide"));
   await vi.waitFor(() => expect(released).toHaveBeenCalledTimes(1));

@@ -191,6 +191,35 @@ test.describe("touch", () => {
     await expect(timer).toHaveAttribute("data-phase", "idle");
   });
 
+  test("the phone timer runs at the viewport centre in both orientations", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "Chromium emulates a coarse pointer");
+    for (const [width, height] of [
+      [393, 852],
+      [852, 393],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await page.goto("/?state=running");
+      await expect(page.locator("main")).toHaveAttribute(
+        "data-phase",
+        "running",
+      );
+      const time = page.locator('main > output[data-part="time"]');
+      await expect
+        .poll(async () => {
+          const box = await time.boundingBox();
+          if (!box) return Number.POSITIVE_INFINITY;
+          return Math.max(
+            Math.abs(box.x + box.width / 2 - width / 2),
+            Math.abs(box.y + box.height / 2 - height / 2),
+          );
+        })
+        .toBeLessThanOrEqual(2);
+    }
+  });
+
   // A phone follows a tap with a click on what lies under the finger, and the controls are
   // only faded while the timer runs: in iOS Safari the release that started a solve opened
   // the stat picker under it (which unbinds the touch, so the solve could not be stopped),
@@ -233,8 +262,11 @@ test.describe("touch", () => {
     // Long enough for the click a tap brings to have landed.
     await page.waitForTimeout(300);
     expect(await clicks()).toEqual([]);
-    // A tap on a control is still a click.
-    await page.locator('[data-action="penalty-dnf"]').tap();
+    // The visually hidden action is still operable from the hardware keyboard.
+    const dnf = page.locator('[data-action="penalty-dnf"]');
+    await dnf.focus();
+    await expect(dnf).toBeFocused();
+    await dnf.press("Enter");
     await expect(
       page.locator('main > output[data-part="time"]'),
     ).toHaveAttribute("data-penalty", "dnf");

@@ -7,10 +7,17 @@ import {
   formatTime,
 } from "@cubehaus/core";
 import type { ColourSeries, ProgressScope } from "@cubehaus/storage";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { AppView } from "../app-state";
 import { localDayKey } from "../day";
 import { DbFailure } from "../db/DbFailure";
+import { isTouchPhone, watchTouchPhone } from "../input/touch-screen";
 import { actionKey } from "../keys/keymap";
 import {
   formatProgressDifference,
@@ -46,6 +53,9 @@ function sampleWidth() {
   return Math.max(1, Math.min(960, viewport) - (viewport < 700 ? 32 : 48) - 52);
 }
 
+/** A phone's views of Progress, one on screen at a time. */
+type PhoneView = "trend" | "bests" | "days" | "spread";
+
 export function Progress({
   view,
   dbMessage,
@@ -76,6 +86,7 @@ export function Progress({
     recalled?.included,
   );
   const [stat, setStat] = useState<ProgressStat | null>(null);
+  const [phoneView, setPhoneView] = useState<PhoneView>("trend");
   const [width, setWidth] = useState(sampleWidth);
   const [now] = useState(Date.now);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -300,8 +311,27 @@ export function Progress({
         ? formatMoves
         : formatTime;
 
+  // A phone shows one view at a time, picked from a row of words under the scope.
+  const phone = useSyncExternalStore(watchTouchPhone, isTouchPhone);
+  const views: PhoneView[] = details
+    ? [
+        ...(current || kind !== "multi" ? (["trend"] as const) : []),
+        ...(details.records.length > 0 || colourSeries
+          ? (["bests"] as const)
+          : []),
+        "days",
+        ...(kind !== "multi" ? (["spread"] as const) : []),
+      ]
+    : [];
+  const shown: PhoneView | null = phone
+    ? views.includes(phoneView)
+      ? phoneView
+      : (views[0] ?? null)
+    : null;
+  const shows = (each: PhoneView) => shown === null || shown === each;
+
   return (
-    <main data-no-timer data-part="progress">
+    <main data-no-timer data-part="progress" data-view={shown ?? undefined}>
       <nav>
         <a href="#/">{text.backToTimer}</a>
       </nav>
@@ -484,7 +514,7 @@ export function Progress({
             </div>
           </details>
         )}
-      {details && mode !== "session" && (
+      {details && details.count > 0 && mode !== "session" && (
         <p data-part="progress-scope-count">
           {labels.scope.count(details.count)}
         </p>
@@ -492,7 +522,22 @@ export function Progress({
       {details?.count === 0 && <p data-part="progress-empty">{labels.none}</p>}
       {details && details.count > 0 && (
         <>
-          {current ? (
+          {phone && views.length > 1 && (
+            <nav data-part="progress-views" aria-label={labels.title}>
+              {views.map((each) => (
+                <button
+                  key={each}
+                  type="button"
+                  data-view={each}
+                  aria-pressed={each === shown}
+                  onClick={() => setPhoneView(each)}
+                >
+                  {each === "spread" ? labels.distribution : labels.views[each]}
+                </button>
+              ))}
+            </nav>
+          )}
+          {!shows("trend") ? null : current ? (
             <div data-part="progress-now">
               <span data-part="progress-average-name">
                 {text[current.name]}
@@ -519,7 +564,7 @@ export function Progress({
               </p>
             )
           )}
-          {current?.record && (
+          {shows("trend") && current?.record && (
             <ProgressTrend
               keymap={view.keymap}
               key={details.key}
@@ -534,7 +579,7 @@ export function Progress({
               labels={labels}
             />
           )}
-          {details.records.length > 0 && (
+          {shows("bests") && details.records.length > 0 && (
             <dl data-part="progress-pbs">
               {details.records.map(({ name, value, at }) => (
                 <div key={name} data-name={name}>
@@ -551,30 +596,33 @@ export function Progress({
               ))}
             </dl>
           )}
-          {colourSeries && (
+          {shows("bests") && colourSeries && (
             <ProgressColours series={colourSeries} words={text} />
           )}
-          <ProgressPractice
-            days={details.days}
-            run={details.practice.longestRun?.days ?? 0}
-            today={details.today}
-            locale={text.locale}
-            numbers={numbers}
-            dates={dates}
-            labels={labels}
-            totals={details.totals}
-            mean={kind === "multi" ? null : average}
-          />
-          {kind !== "multi" && (
+          {shows("days") && (
+            <ProgressPractice
+              days={details.days}
+              run={details.practice.longestRun?.days ?? 0}
+              today={details.today}
+              locale={text.locale}
+              numbers={numbers}
+              dates={dates}
+              labels={labels}
+              totals={details.totals}
+              mean={kind === "multi" ? null : average}
+            />
+          )}
+          {shows("spread") && kind !== "multi" && (
             <ProgressDistribution
-              key={details.key}
+              opened={shown === "spread"}
+              key={`${details.key}-${shown}`}
               load={getDistribution}
               format={kind === "moves" ? formatMoves : formatTime}
               numbers={numbers}
               labels={labels}
             />
           )}
-          {kind === "time" && settingStore && (
+          {shows("trend") && kind === "time" && settingStore && (
             <ProgressTarget
               event={details.event}
               recent={details.recent}

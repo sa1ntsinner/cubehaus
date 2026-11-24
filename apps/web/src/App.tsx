@@ -4,6 +4,7 @@ import {
   type EventId,
   eventInfo,
   faceOfCrossColour,
+  formatSolve,
   hasTimePenalty,
   type Solve,
 } from "@cubehaus/core";
@@ -28,7 +29,9 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { flushSync } from "react-dom";
 import { type AppState, type AppView, createAppState } from "./app-state";
 import { formatSolveLine } from "./average-copy";
 import { backupFileName, download } from "./backup-file";
@@ -37,10 +40,16 @@ import { DbFailure } from "./db/DbFailure";
 import { backupDue } from "./db/native";
 import { openDatabase } from "./db/open";
 import { createPendingJournal, memoryStorage } from "./db/pending";
+import { SafetyLine } from "./db/SafetyLine";
 import { canFullscreen, toggleFullscreen } from "./fullscreen";
 import type { GestureId } from "./gesture-hints";
+import { keysShown } from "./input/hardware-keys";
 import { learnGesture, nudge, takeHint } from "./input/hint-store";
-import { isTouchScreen } from "./input/touch-screen";
+import {
+  isTouchPhone,
+  isTouchScreen,
+  watchTouchPhone,
+} from "./input/touch-screen";
 import { DEFAULT_SWIPE, useSwipe } from "./input/use-swipe";
 import { actionsForEvent, bindActions } from "./keys/actions";
 import type { Action } from "./keys/engine";
@@ -55,6 +64,7 @@ import {
   markCopyOffered,
   wakeLockHost,
   writeBackupCopy,
+  writeWidgetSnapshot,
 } from "./phone-app";
 import {
   aheadKey,
@@ -80,12 +90,17 @@ import { CrossCells } from "./screens/CrossCells";
 import { Entry } from "./screens/Entry";
 import { Sessions } from "./screens/Sessions";
 import { SolveList } from "./screens/SolveList";
-import { type CrossLine, Timer } from "./screens/Timer";
+import {
+  type CrossLine,
+  Timer,
+  usePhoneCommentBar,
+  usePhoneTimeLayout,
+} from "./screens/Timer";
 import { listed } from "./session-order";
 import { selectedSlots } from "./session-stats";
 import { coloursInPlay } from "./settings";
 import type { LoadedSeed } from "./testing/load";
-import { type Text, textFor } from "./text";
+import { gestureList, type Text, textFor } from "./text";
 import {
   readCustomMirror,
   readThemeMirror,
@@ -103,6 +118,13 @@ import {
   type ViewSizes,
 } from "./view-size";
 import { keepAwake } from "./wake-lock";
+import {
+  keepWidgetSnapshot,
+  WIDGET_SET_KEY,
+  widgetSnapshot,
+  widgetsChanged,
+  widgetTimes,
+} from "./widget-snapshot";
 import "./input/behavior.css";
 
 // A sheet a key opens (S, Mod+K, ?): its code is fetched right after the first paint and,
@@ -286,6 +308,62 @@ export function App({
         : undefined,
     [app, phoneCopy],
   );
+  // Phone app: what the Home Screen widgets show (widget-snapshot.ts), written a moment
+  // after the open session's numbers or the trainer's cases change, and on leaving.
+  const phoneWidgets =
+    inPhoneApp() &&
+    (view.dbState?.kind === "persistent" || view.dbState?.kind === "memory");
+  useEffect(
+    () =>
+      phoneWidgets
+        ? keepWidgetSnapshot(
+            async () => {
+              const { current, settings, records, rows } = app.view;
+              const newest = rows[0]?.solve;
+              const values = await app.sessionSeries();
+              const set = await app.storedSettings()?.get(WIDGET_SET_KEY);
+              const trainer = app.trainer();
+              return widgetSnapshot(
+                set && trainer
+                  ? await import("./widget-trainer").then((module) =>
+                      module.readWidgetTrainer(
+                        trainer,
+                        set,
+                        textFor(settings.language).train.memberWords["two-cll"],
+                      ),
+                    )
+                  : null,
+                current && values
+                  ? widgetTimes({
+                      name: current.name,
+                      event: current.event,
+                      values,
+                      precision: settings.precision,
+                      newest:
+                        newest &&
+                        formatSolve(newest, { precision: settings.precision }),
+                      records,
+                    })
+                  : null,
+              );
+            },
+            writeWidgetSnapshot,
+            document,
+          )
+        : undefined,
+    [app, phoneWidgets],
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: these are the signals.
+  useEffect(() => {
+    if (phoneWidgets) widgetsChanged();
+  }, [
+    phoneWidgets,
+    view.current?.id,
+    view.current?.name,
+    view.stats,
+    view.settings.precision,
+    view.settings.language,
+  ]);
   // A phone restored from a backup: the webview starts empty while the copy in Documents
   // came back. Said once, while the history is still empty.
   const looksEmpty =
@@ -407,6 +485,21 @@ export function App({
 let returnTo = false;
 
 /** Which screen a route shows. */
+const STARTED_KEY = "cubehaus.started";
+/** Whether this device has timed a solve: the first-start hint is not shown again. */
+function readStarted(): boolean {
+  try {
+    return window.localStorage.getItem(STARTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function markStarted() {
+  try {
+    window.localStorage.setItem(STARTED_KEY, "1");
+  } catch {}
+}
+
 /** Local storage, or a stand-in that keeps nothing where the page may not use it. */
 function safeStorage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
   try {
@@ -559,6 +652,14 @@ function TimerPage({
     event === "333" ? view.settings.training : { request: null };
   const drill = profile.request;
   const drillBlocked = !trainingReady(profile);
+  // The empty session's hint is for a first start only: gone for good after a solve.
+  const [started, setStarted] = useState(() => !seed && readStarted());
+  const hasRows = view.rows.length > 0;
+  useEffect(() => {
+    if (!hasRows || started) return;
+    if (!seed) markStarted();
+    setStarted(true);
+  }, [hasRows, started, seed]);
   // Colour neutrality (3×3, Settings › Cross colour): the colour each scramble's cross is
   // built on, from the colours in play; a cross drill is made for that colour.
   // Choosing the cross: official scrambles, inspection, a colour key; nothing is stored.
@@ -934,7 +1035,7 @@ function TimerPage({
       pendingSizes.current = null;
   }, [shownSizes]);
   // The solve whose comment line is a field (C), by its row.
-  const [commenting, setCommenting] = useState<string | null>(null);
+  const [commenting, setCommenting] = useState<Solve | null>(null);
   const [feedback, setFeedback] = useState<{
     reason: string;
     key: number;
@@ -1100,7 +1201,7 @@ function TimerPage({
       })();
     } else if (seed.state === "comment") {
       seeded.current = true;
-      setCommenting(app.view.rows[0]?.solve.id ?? null);
+      setCommenting(app.view.rows[0]?.solve ?? null);
     } else if (seed.state === "selection" || seed.state === "move") {
       // Three lines picked with Shift+↑ from the third newest.
       seeded.current = true;
@@ -1417,10 +1518,37 @@ function TimerPage({
   readyNow.current = gestureReady;
   const gesturesReady = useCallback(() => readyNow.current(), []);
   const timePenalty = target ? hasTimePenalty(target.event) : false;
+  const phone = useSyncExternalStore(watchTouchPhone, isTouchPhone);
+  usePhoneTimeLayout(timerPage, phone);
+  usePhoneCommentBar(timerPage, phone && commenting !== null);
+  const openComment = useCallback((solve: Solve) => {
+    // iOS needs the input focused synchronously in the finger's release or tap.
+    flushSync(() => setCommenting(solve));
+  }, []);
+  const deletedAt = view.undoDeletedAt;
+  const [expiredDeletion, setExpiredDeletion] = useState<number>();
+  useEffect(() => {
+    if (!phone || deletedAt === undefined) return;
+    const timeout = setTimeout(
+      () => setExpiredDeletion(deletedAt),
+      Math.max(0, deletedAt + 6000 - performance.now()),
+    );
+    return () => clearTimeout(timeout);
+  }, [deletedAt, phone]);
+  const undoDelete =
+    phone &&
+    deletedAt !== undefined &&
+    deletedAt !== expiredDeletion &&
+    performance.now() - deletedAt < 6000;
   useSwipe(timerPage, {
     config: {
       ...DEFAULT_SWIPE,
-      directions: timePenalty ? ["left", "right", "down"] : ["left", "down"],
+      directions: [
+        "left",
+        "down",
+        ...(timePenalty ? (["right"] as const) : []),
+        ...(phone ? (["up"] as const) : []),
+      ],
     },
     // The time and the row it stands in: a short result is narrow, and a finger starting
     // beside it on the ground means the time all the same.
@@ -1436,28 +1564,23 @@ function TimerPage({
     },
     enabled: () =>
       gestureReady() && editable && !!target && view.selected.size === 0,
-    word: (direction) =>
-      direction === "left"
-        ? words.deleteSolve
-        : direction === "right"
-          ? target?.plus2
-            ? words.penaltyOk
-            : words.penaltyPlus2
-          : target?.dnf
-            ? words.penaltyOk
-            : words.penaltyDnf,
-    tone: (direction) => (direction === "right" ? "warn" : "error"),
+    word: (direction) => {
+      if (direction === "up") return words.comment;
+      if (direction === "left") return words.deleteSolve;
+      if (direction === "right")
+        return target?.plus2 ? words.penaltyOk : words.penaltyPlus2;
+      return target?.dnf ? words.penaltyOk : words.penaltyDnf;
+    },
+    tone: (direction) => {
+      if (direction === "up") return undefined;
+      return direction === "right" ? "warn" : "error";
+    },
     onCommit: (direction) => {
       if (!target) return;
-      if (direction === "left") void app.deleteSolve(target);
+      if (direction === "up") openComment(target);
+      else if (direction === "left") void app.deleteSolve(target);
       else void app.penalty(target, direction === "right" ? "plus2" : "dnf");
-      learned(
-        direction === "left"
-          ? "time-left"
-          : direction === "right"
-            ? "time-right"
-            : "time-down",
-      );
+      learned(`time-${direction}`);
     },
   });
   useSwipe(timerPage, {
@@ -1489,6 +1612,7 @@ function TimerPage({
             ...(timePenalty ? (["time-right"] as const) : []),
             "time-down",
             "time-left",
+            ...(phone ? (["time-up"] as const) : []),
           ] as GestureId[])
         : []),
       ...(canStepScramble ? (["scramble"] as const) : []),
@@ -1616,7 +1740,7 @@ function TimerPage({
     "solve.comment": () => {
       if (!editable) return;
       if (!target) unavailable(words.noSolve);
-      else setCommenting(target.id);
+      else setCommenting(target);
     },
     "solve.earlier": () => {
       if (!editable) return;
@@ -1823,14 +1947,16 @@ function TimerPage({
       return fallback;
     return keyLabel(binding, isMacPlatform(), view.settings.language);
   };
-  // An empty session says how to start (DESIGN §7): the start keys when not Space alone.
+  // An empty session says how to start (DESIGN §7), until the first solve on this device:
+  // the start keys when not Space alone.
   const emptyHint = (() => {
+    if (started) return undefined;
     // A drill with no case picked cannot start: the scramble's place says why.
-    if (drillBlocked) return { keys: null, touch: null };
-    // Fewest Moves and typed results have their own fields: the first sentence only.
+    if (drillBlocked) return undefined;
+    // Fewest Moves and typed results have their own fields, which explain themselves.
     if (eventInfo(view.current?.event ?? "333").kind === "moves")
-      return { keys: null, touch: null };
-    if (view.settings.entry === "typing") return { keys: null, touch: null };
+      return undefined;
+    if (view.settings.entry === "typing") return undefined;
     const touch = words.emptyHintTouch;
     // The two keys' names stand above the time already.
     if (view.settings.startMode === "two-hand")
@@ -1866,6 +1992,7 @@ function TimerPage({
       data-no-timer={zoom !== null ? "" : undefined}
       data-phase={state.phase}
       data-inspecting={inspecting || undefined}
+      data-commenting={commenting ? "" : undefined}
       data-arrangement="c"
       data-layout={view.settings.layout}
       data-shown-solve={shownSolve?.id}
@@ -1924,7 +2051,7 @@ function TimerPage({
           input.target instanceof Element &&
           input.target.closest("button") &&
           !input.target.closest(
-            '[data-action="keys"], [data-action="dialog-close"], [data-part="stats-now"], [data-part="stat-picker"], [data-part="average-detail"], [data-action="average-inspect-best"], [data-part="training"]',
+            '[data-action="keys"], [data-action="comment-edit"][data-existing], [data-action="dialog-close"], [data-part="stats-now"], [data-part="stat-picker"], [data-part="average-detail"], [data-action="average-inspect-best"], [data-part="training"]',
           )
         )
           input.currentTarget.focus({ preventScroll: true });
@@ -2003,12 +2130,11 @@ function TimerPage({
             ? () => void app.repeat()
             : undefined
         }
-        commenting={commenting !== null && commenting === target?.id}
+        commenting={commenting ?? undefined}
         onCommentDone={(comment) => {
-          const solve = target;
           setCommenting(null);
-          if (comment !== undefined && solve)
-            void app.setComment(solve, comment);
+          if (comment !== undefined && commenting)
+            void app.setComment(commenting, comment);
           timerPage.current?.focus({ preventScroll: true });
         }}
         feedback={feedback}
@@ -2214,8 +2340,8 @@ function TimerPage({
           <Help
             bindings={bindingsFor(helpState, actions)}
             language={view.settings.language}
-            title={isTouchScreen() ? words.gestures.title : words.keysTitle}
-            gestures={isTouchScreen() ? words.gestures.list : undefined}
+            title={keysShown() ? words.keysTitle : words.gestures.title}
+            gestures={keysShown() ? undefined : gestureList(words, phone)}
             closeLabel={words.backToTimer}
             commandsLabel={words.paletteTitle}
             onCommands={() => setModal("palette")}
@@ -2279,6 +2405,7 @@ function TimerPage({
         emptyHint={emptyHint}
         gesturesReady={gesturesReady}
         onLearned={learned}
+        onPhoneComment={openComment}
       />
       {view.settings.layout === "focus" &&
         editable &&
@@ -2313,7 +2440,9 @@ function TimerPage({
         )}
       {/* The status line: the session on the left, the rest to the right. */}
       <p data-heard role="status">
-        {notice ?? (hint ? words.gestures.hint[hint] : "")}
+        {undoDelete
+          ? words.gestures.deleted
+          : (notice ?? (hint ? words.gestures.hint[hint] : ""))}
       </p>
       <footer data-part="status-line">
         <Sessions
@@ -2376,6 +2505,17 @@ function TimerPage({
               {dbMessage}
             </p>
           )}
+        <SafetyLine
+          app={app}
+          view={view}
+          words={words}
+          idle={
+            !dbMessage &&
+            view.unsaved === 0 &&
+            (state.phase === "idle" || state.phase === "stopped") &&
+            state.holdStartedAt === null
+          }
+        />
         {view.unsaved > 0 && (
           <p data-part="db-state" data-kind="unsaved" role="alert">
             {words.unsaved(view.unsaved)}{" "}
@@ -2386,6 +2526,18 @@ function TimerPage({
               onClick={() => downloadSolves(app.pendingSolves())}
             >
               {words.unsavedDownload}
+            </button>
+          </p>
+        )}
+        {undoDelete && (
+          <p data-part="notice" data-kind="undo-delete" data-no-timer>
+            {words.gestures.deleted}
+            <button
+              type="button"
+              data-action="undo-delete"
+              onClick={() => void app.undo(deletedAt)}
+            >
+              {words.gestures.undo}
             </button>
           </p>
         )}

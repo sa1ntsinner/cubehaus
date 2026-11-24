@@ -5,6 +5,9 @@
   nobody, collects nothing (the history stays on the device) and its own code calls no
   required-reason API: no UserDefaults, file timestamps, disk space, boot time or active
   keyboards. Capacitor and Cordova carry their own manifests, which declare nothing either.
+  The widget extension carries this same file: the app hands it one file in the App Group
+  container (read and written whole; no UserDefaults, no file metadata), which needs no
+  reason code either.
   Checked against the imported symbols of the release build; check again when Swift code
   or a plugin is added.
 -->

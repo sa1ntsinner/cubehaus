@@ -46,7 +46,10 @@ main[data-timer-surface]:has(> :is([data-part="drill"], [data-part="cross"])),
 main:has(> [data-part="scramble"]):has(
   > :is([data-part="drill"], [data-part="cross"])
 ) {
-  grid-template-rows: auto minmax(auto, 1fr) auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto var(--phone-time-room, minmax(auto, 1fr)) auto auto auto minmax(
+      0,
+      1fr
+    ) auto;
 }
 @media (max-width: 699px) {
   main > :is([data-part="drill"], [data-part="cross"]) {
@@ -59,7 +62,10 @@ main:has(> [data-part="scramble"]):has(
     > :is([data-part="drill"], [data-part="cross"])
   ) {
     grid-template-rows:
-      auto auto minmax(min-content, 1fr) auto auto auto minmax(min-content, 3fr)
+      auto auto var(--phone-time-room, minmax(min-content, 1fr)) auto auto auto minmax(
+        min-content,
+        3fr
+      )
       auto auto;
   }
 }

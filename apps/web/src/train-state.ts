@@ -297,6 +297,10 @@ export const FAMILIES = {
 export type Family = keyof typeof FAMILIES;
 export type Choice<F extends Family> = (typeof FAMILIES)[F]["choices"][number];
 
+/** A set's or a family's word in the set row: `OLL`, `F2L`, the 2×2's `CLL`. */
+export const setWord = (tab: string): string =>
+  tab.replace("two-", "").toUpperCase();
+
 /** The word in the set row a set stands under: its family, or itself. */
 export function familyOf(set: TrainSet): Family | TrainSet {
   for (const [family, { members }] of Object.entries(FAMILIES))

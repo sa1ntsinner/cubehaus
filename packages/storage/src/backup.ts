@@ -390,6 +390,19 @@ export async function restore(db: Db, doc: unknown): Promise<RestoreResult> {
 
   const result: RestoreResult = { inserted: 0, updated: 0, unchanged: 0 };
   const statements: Statement[] = [];
+  // A pristine target's first-start rows go; tables it may already have used (the
+  // trainer's, drilled before the restore) merge like any other target.
+  const cleared = pristine
+    ? new Set([
+        "setting",
+        "import_session",
+        "import_seen",
+        "session",
+        "folder",
+        "solve",
+        "solve_repeat",
+      ])
+    : new Set<string>();
   if (pristine)
     statements.push(
       { sql: "DELETE FROM setting" },
@@ -429,7 +442,7 @@ export async function restore(db: Db, doc: unknown): Promise<RestoreResult> {
 
   for (const [name, table] of tables) {
     const rows = rowsOf(name);
-    const here = pristine
+    const here = cleared.has(name)
       ? new Map<string, Record<string, SqlValue>>()
       : await existing(db, name, table, rows);
     const { key, columns } = table;

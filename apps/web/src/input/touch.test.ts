@@ -22,7 +22,7 @@ function setup() {
     at: number,
     fields: Record<string, unknown> = {},
   ) {
-    const event = new Event(type, { cancelable: true });
+    const event = new Event(type, { cancelable: fields.cancelable !== false });
     const all: Record<string, unknown> = {
       pointerId,
       timeStamp: at,
@@ -145,10 +145,22 @@ test("a new primary pointer replaces a pointer whose release was lost", () => {
     { type: "release", at: 30 },
   ]);
 });
-test("contextmenu is prevented and cancels the hold", () => {
+test("contextmenu is prevented and the hold goes on", () => {
+  // Android Chrome sends contextmenu half a second into every hold; prevented, no menu
+  // opens and the release still comes.
   const { inputs, emit } = setup();
   emit("pointerdown", 1, 10);
   expect(emit("contextmenu", 1, 20).defaultPrevented).toBe(true);
+  emit("pointerup", 1, 30);
+  expect(inputs).toEqual([
+    { type: "press", at: 10 },
+    { type: "release", at: 30 },
+  ]);
+});
+test("a context menu that cannot be prevented cancels the hold", () => {
+  const { inputs, emit } = setup();
+  emit("pointerdown", 1, 10);
+  emit("contextmenu", 1, 20, { cancelable: false });
   emit("pointerup", 1, 30);
   expect(inputs).toEqual([
     { type: "press", at: 10 },

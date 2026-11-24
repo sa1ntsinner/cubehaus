@@ -8,6 +8,7 @@ import {
   penaltyOf,
   type ResultKind,
   resultValue,
+  type Solve,
 } from "@cubehaus/core";
 import { parseStat, type StatId } from "@cubehaus/stats";
 import {
@@ -22,6 +23,7 @@ import {
 } from "react";
 import type { AppState, AppView, Records, SolveRow } from "../app-state";
 import type { GestureId } from "../gesture-hints";
+import { isTouchPhone } from "../input/touch-screen";
 import { DEFAULT_SWIPE, useSwipe } from "../input/use-swipe";
 import { actionKey, type Keymap } from "../keys/keymap";
 import { fitFile } from "../list/fit";
@@ -65,6 +67,7 @@ export const SolveList = memo(function SolveList({
   emptyHint,
   gesturesReady,
   onLearned,
+  onPhoneComment,
 }: {
   app: AppState;
   view: AppView;
@@ -76,10 +79,11 @@ export const SolveList = memo(function SolveList({
   onStatPicker?(open: boolean): void;
   onAverage?: InspectAverage;
   /** How to start an empty session, by keys and by touch; null: nothing to add. */
-  emptyHint?: { keys: string | null; touch: string | null };
+  emptyHint?: { keys: string | null; touch: string | null } | undefined;
   /** Whether a gesture may act now (between solves, nothing open). */
   gesturesReady?(): boolean;
   onLearned?(id: GestureId): void;
+  onPhoneComment?(solve: Solve): void;
 }) {
   const { layout, precision, recordCue } = view.settings;
   const filesVisible = layout !== "focus";
@@ -245,36 +249,27 @@ export const SolveList = memo(function SolveList({
     };
   }, [count, extendedFile, filesVisible, updateRange]);
 
-  // An empty session's comment gives way as the totals do when a short screen leaves the
-  // file too little room (a status line message on a 320 px phone): the line about old
-  // solves first, then the comment, so it never runs up into the averages. Measured with
-  // everything shown, so hiding cannot feed back into the next measure.
+  // An empty session's line gives way when a short screen leaves the file too little room
+  // (a status line message on a 320 px phone), so it never runs up into the averages.
+  // Measured with the line shown, so hiding cannot feed back into the next measure.
   useLayoutEffect(() => {
     const aside = file.current;
     const hint = aside?.querySelector<HTMLElement>(
       '[data-part="solves-empty"]',
     );
     if (!aside || !hint || count > 0) return;
-    const extra = hint.querySelector<HTMLElement>(
-      '[data-part="solves-import"]',
-    );
     function fitHint() {
       if (!aside || !hint) return;
-      extra?.removeAttribute("data-fit-hidden");
       hint.removeAttribute("data-fit-hidden");
-      // Only where the file stands under the averages (a phone): the comment may use the
-      // free room above the file, but never reach the averages' line.
+      // Only where the file stands under the averages (a phone).
       const stats = aside.parentElement?.querySelector<HTMLElement>(
         ':scope > [data-part="stats"]',
       );
       if (!stats) return;
       const above = stats.getBoundingClientRect();
       if (aside.getBoundingClientRect().top < above.top) return;
-      for (const part of [extra, hint]) {
-        if (!part || hint.getBoundingClientRect().top >= above.bottom + 8)
-          break;
-        part.setAttribute("data-fit-hidden", "");
-      }
+      if (hint.getBoundingClientRect().top < above.bottom + 8)
+        hint.setAttribute("data-fit-hidden", "");
     }
     fitHint();
     const observer = new ResizeObserver(fitHint);
@@ -620,13 +615,26 @@ export const SolveList = memo(function SolveList({
                     <button
                       type="button"
                       data-action="comment-edit"
+                      data-existing={solve.comment !== null || undefined}
                       tabIndex={-1}
                       onClick={() => {
+                        if (onPhoneComment && isTouchPhone()) {
+                          onPhoneComment(solve);
+                          return;
+                        }
                         setComment(solve.comment ?? "");
                         setEditing(solve.id);
                       }}
                     >
-                      {text.comment}
+                      <span data-word="comment-placeholder">
+                        {text.comment}
+                      </span>
+                      {solve.comment !== null && (
+                        <span data-word="comment-existing">
+                          {text.commentPrefix}
+                          {solve.comment}
+                        </span>
+                      )}
                     </button>
                   )
                 )}
@@ -637,21 +645,11 @@ export const SolveList = memo(function SolveList({
           {enabled && count === 0 && emptyHint && (
             // Where the first line will stand, as a comment; one of the two shows (CSS).
             <p data-part="solves-empty">
-              <span data-input="keys">
-                {`// ${text.empty}.${emptyHint.keys ? ` ${emptyHint.keys}.` : ""}`}
-              </span>
-              <span data-input="touch">
-                {`// ${text.empty}.${emptyHint.touch ? ` ${emptyHint.touch}.` : ""}`}
-              </span>
-              {/* The first visit (one session, nothing timed): old solves can come in.
-                  Gone with the first solve, like the rest of the comment. */}
-              {view.sessions.length === 1 && (
-                <span data-part="solves-import">
-                  {`// ${text.emptyImport} `}
-                  <a href="#/settings/data" data-action="empty-import">
-                    {`${text.settings.title} › ${text.settings.data}`}
-                  </a>
-                </span>
+              {emptyHint.keys && (
+                <span data-input="keys">{`// ${emptyHint.keys}`}</span>
+              )}
+              {emptyHint.touch && (
+                <span data-input="touch">{`// ${emptyHint.touch}`}</span>
               )}
             </p>
           )}

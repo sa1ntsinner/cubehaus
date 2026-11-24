@@ -195,3 +195,13 @@ main > [data-part="scramble"][data-over-zoom] {
     animation: none;
   }
 }
+
+/* A touch tablet on its side is short for its width: the Megaminx's two halves, the widest
+   picture, would run on into the centred time. There it keeps to the side column's room. */
+@media (hover: none) and (pointer: coarse) and (min-width: 700px) and (
+    min-height: 431px
+  ) and (orientation: landscape) {
+  main > [data-part="scramble-picture"][data-event="minx"] {
+    height: calc(min(216px, 24vh, 13vw) * var(--size-picture, 1));
+  }
+}

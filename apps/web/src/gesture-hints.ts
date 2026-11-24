@@ -8,6 +8,7 @@ export const GESTURES = [
   "time-left",
   "time-right",
   "time-down",
+  "time-up",
   "scramble",
   "row-left",
   "session",

@@ -73,7 +73,9 @@ cp "$dmg" "$out/"
 
 if [ -n "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ]; then
   version="$(node -p 'require(process.argv[1]).version' "$root/apps/desktop/src-tauri/tauri.conf.json")"
-  tar -czf "$out/cubehaus.app.tar.gz" -C "$out" cubehaus.app
+  # No AppleDouble `._*` entries (macOS tar adds them for extended attributes): the
+  # updater unpacks every entry and fails on `._cubehaus.app`, so no update installs.
+  COPYFILE_DISABLE=1 tar --no-mac-metadata -czf "$out/cubehaus.app.tar.gz" -C "$out" cubehaus.app
   (cd "$root/apps/desktop" &&
     pnpm exec tauri signer sign --app-version "$version" "$out/cubehaus.app.tar.gz")
 fi

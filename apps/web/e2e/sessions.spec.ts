@@ -898,9 +898,10 @@ for (const viewport of [{ width: 390, height: 844 }]) {
 test.describe("solve actions and input", () => {
   test.use({ hasTouch: true });
 
-  test("touch actions update rows and stats, and only pointer activation returns focus", async ({
+  test("phone solve actions remain operable from the keyboard and delete offers Undo", async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await ready(page, "333");
     for (const [index, ms] of [1000, 2000, 3000, 8000, 4000].entries()) {
@@ -910,25 +911,26 @@ test.describe("solve actions and input", () => {
     const latest = rows(page).first();
     const plus2 = action(page, "penalty-plus2");
     const dnf = action(page, "penalty-dnf");
-    const undo = action(page, "undo");
+    const undo = action(page, "undo-delete");
     await expect(rows(page)).toHaveCount(5);
     await expect(stat(page, "ao5")).toHaveText("3.00");
 
-    await plus2.tap();
+    await plus2.focus();
+    await expect(plus2).toBeFocused();
+    await plus2.press("Enter");
     await expect(timer(page)).toHaveAttribute("data-phase", "idle");
-    await expect(timer(page)).toBeFocused();
     await expect(latest).toHaveAttribute("data-plus2", "1");
     await expect(stat(page, "ao5")).toHaveText("3.67");
     await expect(latest.locator('[data-part="solve-ao5"]')).toHaveText("3.67");
 
-    await dnf.tap();
+    await dnf.press("Enter");
     await expect(timer(page)).toHaveAttribute("data-phase", "idle");
     await expect(latest).toHaveAttribute("data-penalty", "dnf");
     await expect(latest).toHaveAttribute("data-plus2", "1");
     await expect(stat(page, "ao5")).toHaveText("4.33");
 
     const id = await solveId(latest);
-    await action(page, "solve-delete").tap();
+    await action(page, "solve-delete").press("Enter");
     await expect(timer(page)).toHaveAttribute("data-phase", "idle");
     await expect(rows(page)).toHaveCount(4);
     await expect(stat(page, "ao5")).toHaveText("in 1");
@@ -937,16 +939,23 @@ test.describe("solve actions and input", () => {
     await expect(rows(page)).toHaveCount(5);
     await expect(stat(page, "ao5")).toHaveText("4.33");
     await expect(latest).toHaveAttribute("data-solve-id", id);
-    await undo.tap();
+    await action(page, "undo").press("Enter");
     await expect(latest).toHaveAttribute("data-penalty", "plus2");
     await expect(stat(page, "ao5")).toHaveText("3.67");
 
-    await latest.locator('[data-action="comment-edit"]').tap();
-    await part(page, "comment-input").fill("Practice");
-    await action(page, "comment-save").tap();
-    await expect(part(page, "solve-comment")).toHaveText("// Practice");
-    await undo.tap();
-    await expect(part(page, "solve-comment")).toHaveCount(0);
+    await timer(page).focus();
+    await page.keyboard.press("KeyC");
+    const comment = part(page, "time-comment-input");
+    await comment.fill("Practice");
+    await comment.press("Enter");
+    await expect(latest.locator('[data-word="comment-existing"]')).toHaveText(
+      "// Practice",
+    );
+    await action(page, "undo").press("Enter");
+    await expect(latest.locator('[data-word="comment-existing"]')).toHaveCount(
+      0,
+    );
+    await timer(page).focus();
 
     await expect(timer(page)).toBeFocused();
     await page.keyboard.down("Space");
@@ -955,7 +964,9 @@ test.describe("solve actions and input", () => {
     await expect(timer(page)).toHaveAttribute("data-phase", "running");
     // A stop under 0.06 s is not a solve (A6b1): let a real 100 ms pass.
     await page.waitForTimeout(100);
-    await plus2.tap();
+    await plus2.focus();
+    await expect(plus2).toBeFocused();
+    await plus2.press("Enter");
     await expect(timer(page)).toHaveAttribute("data-phase", "idle");
     await expect(rows(page)).toHaveCount(6);
 
@@ -1189,7 +1200,7 @@ test.describe("splitting on a touch screen", () => {
     await expect(part(page, "last-actions")).not.toHaveAttribute(
       "data-selecting",
     );
-    await action(page, "undo").tap();
+    await action(page, "undo").press("Enter");
     await expect(rows(page)).toHaveCount(3);
     expect(await sessionNames(page)).toEqual(["3×3"]);
   });

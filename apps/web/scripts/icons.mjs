@@ -1,6 +1,7 @@
 // Renders the app icons into public/ from the house mark (DESIGN.md, Decisions): a white
 // 3×3 cube under a roof of two bars, on black. One shape, no colour.
 // Run from apps/web: node scripts/icons.mjs [--preview <path prefix>]
+// `node scripts/icons.mjs --ico` only packs public/favicon.ico again from the two PNG cuts.
 // The mark lives in scripts/mark/ as outlines on a 1024 square, in three cuts:
 //   mark.svg     the full mark (window and door), for 64 px and up
 //   mark-32.svg  drawn for the 32 px grid: sticker 6, gap 1, roof 2, no window or door
@@ -61,6 +62,38 @@ const icons = [
   ["../../desktop/src-tauri/app-icon.png", 1024, "mark", "mac", 824 / 1024],
 ];
 
+// favicon.ico, which a browser asks for by convention whatever the page declares: the 16
+// and 32 px cuts as they are, PNG inside the ICO container (a 6-byte header, a 16-byte
+// entry per image, then the files).
+function packIco() {
+  const cuts = [16, 32].map((size) => ({
+    size,
+    png: readFileSync(here(`../public/favicon-${size}.png`)),
+  }));
+  const head = Buffer.alloc(6 + 16 * cuts.length);
+  head.writeUInt16LE(1, 2); // an icon
+  head.writeUInt16LE(cuts.length, 4);
+  let at = head.length;
+  cuts.forEach(({ size, png }, index) => {
+    const entry = 6 + 16 * index;
+    head.writeUInt8(size, entry);
+    head.writeUInt8(size, entry + 1);
+    head.writeUInt16LE(1, entry + 4); // colour planes
+    head.writeUInt16LE(32, entry + 6); // bits per pixel
+    head.writeUInt32LE(png.length, entry + 8);
+    head.writeUInt32LE(at, entry + 12);
+    at += png.length;
+  });
+  writeFileSync(
+    here("../public/favicon.ico"),
+    Buffer.concat([head, ...cuts.map(({ png }) => png)]),
+  );
+}
+if (process.argv.includes("--ico")) {
+  packIco();
+  process.exit(0);
+}
+
 const preview = process.argv.indexOf("--preview");
 const out = (name) =>
   preview === -1
@@ -87,3 +120,4 @@ for (const [name, size, mark, ground, scale] of icons) {
   await tab.close();
 }
 await browser.close();
+if (preview === -1) packIco();

@@ -1,17 +1,27 @@
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { inDesktopApp } from "./db/native";
+import { closeOnBack } from "./input/back-field";
+import { startHardwareKeys } from "./input/hardware-keys";
 import { trackKeyboardInset } from "./input/keyboard-inset";
 import { watchOffline } from "./offline";
-import { followThemeColor, inPhoneApp } from "./phone-app";
+import { followThemeColor, followWidgetRoute, inPhoneApp } from "./phone-app";
 import { type LoadedSeed, loadSeed } from "./testing/load";
 import "./design/index.css";
 
 trackKeyboardInset(window);
+startHardwareKeys();
+// Android: Back closes the comment line or a panel instead of leaving the app.
+if (!inPhoneApp() && window.matchMedia("(pointer: coarse)").matches)
+  closeOnBack(window);
 if (inPhoneApp()) {
   // input/behavior.css: in the app a long press selects nothing and opens no callout.
   document.documentElement.dataset.shell = "phone";
   followThemeColor(document);
+  // A widget's link (the trainer's Drill) opens the app on that screen.
+  void followWidgetRoute((hash) => {
+    location.hash = hash;
+  }).catch(() => {});
 }
 
 const root = document.getElementById("root");

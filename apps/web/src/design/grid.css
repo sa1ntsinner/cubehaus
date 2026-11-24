@@ -303,7 +303,8 @@ dialog[data-part="switch"][data-layout="grid"]
 }
 
 /* ---- a tile's menu: a few words under it, on the ground, edged by a hairline ---- */
-[data-layout="grid"] [data-part="switch-menu"] {
+:is([data-layout="grid"], [data-part="train-set-item"])
+  [data-part="switch-menu"] {
   position: absolute;
   top: calc(100% - var(--s2));
   left: 50%;
@@ -318,11 +319,14 @@ dialog[data-part="switch"][data-layout="grid"]
   translate: calc(-50% + var(--shift, 0px)) var(--lift, 0px);
   animation: sheet-in 110ms var(--ease);
 }
-[data-layout="grid"] [data-part="switch-menu"][data-above] {
+:is([data-layout="grid"], [data-part="train-set-item"])
+  [data-part="switch-menu"][data-above] {
   top: auto;
   bottom: calc(100% - var(--s2));
 }
-[data-layout="grid"] [data-part="switch-menu"] > button {
+:is([data-layout="grid"], [data-part="train-set-item"])
+  [data-part="switch-menu"]
+  > button {
   min-height: 36px;
   padding: 0 var(--s3);
   border-radius: 6px;
@@ -332,18 +336,31 @@ dialog[data-part="switch"][data-layout="grid"]
   text-align: start;
   white-space: nowrap;
 }
-[data-layout="grid"] [data-part="switch-menu"] > button:focus-visible {
+:is([data-layout="grid"], [data-part="train-set-item"])
+  [data-part="switch-menu"]
+  > button:focus-visible {
   background: var(--line);
   color: var(--ink);
 }
 @media (hover: hover) {
-  [data-layout="grid"] [data-part="switch-menu"] > button:hover {
+  :is([data-layout="grid"], [data-part="train-set-item"])
+    [data-part="switch-menu"]
+    > button:hover {
     background: var(--line);
     color: var(--ink);
   }
 }
-[data-layout="grid"] [data-part="switch-menu"] > [data-action="switch-delete"] {
+:is([data-layout="grid"], [data-part="train-set-item"])
+  [data-part="switch-menu"]
+  > [data-action="switch-delete"] {
   color: var(--error);
+}
+
+/* The phone app: a set's word in Algorithms carries the same menu under it (one action,
+   for the Home Screen widget). */
+[data-part="train-set-item"] {
+  position: relative;
+  display: flex;
 }
 
 /* ---- an open folder: its tiles in rows of their own under the folder's row ---- */
@@ -522,7 +539,8 @@ dialog[data-part="switch"][data-layout="grid"]
   [data-part="switch-band"],
   [data-part="switch-ghost"],
   [data-part="switch-drop-trash"],
-  [data-layout="grid"] [data-part="switch-menu"] {
+  :is([data-layout="grid"], [data-part="train-set-item"])
+    [data-part="switch-menu"] {
     animation: none;
   }
   [data-part="tile-picture"],
@@ -548,7 +566,9 @@ dialog[data-part="switch"][data-layout="grid"]
     > [data-part="switch-grid"] {
     margin-top: auto;
   }
-  [data-layout="grid"] [data-part="switch-menu"] > button {
+  :is([data-layout="grid"], [data-part="train-set-item"])
+    [data-part="switch-menu"]
+    > button {
     min-height: 44px;
   }
 }

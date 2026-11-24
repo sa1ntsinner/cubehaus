@@ -10,7 +10,7 @@
 #                          rebuilds; leave it off for a release).
 #   JOBS=6                 parallel compile jobs inside the container.
 #   TAURI_SIGNING_PRIVATE_KEY_PATH, TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-#                          optional: sign the AppImage for the updater (on this machine,
+#                          optional: sign the AppImage and the .deb for the updater (on this machine,
 #                          after the build; the key never enters the container).
 #
 # The environment is scripts/release-linux.Dockerfile (Ubuntu 22.04 pinned by digest,
@@ -84,7 +84,7 @@ build() {
   echo "== $arch: built in $((SECONDS - started)) s"
 
   if [ -n "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ]; then
-    for file in "$dest"/*.AppImage; do
+    for file in "$dest"/*.AppImage "$dest"/*.deb; do
       # --app-version binds the signature to the version (requireSignedVersion).
       (cd "$root/apps/desktop" && pnpm exec tauri signer sign --app-version "$version" "$file")
     done

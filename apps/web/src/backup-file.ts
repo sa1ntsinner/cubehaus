@@ -1,5 +1,6 @@
 import type { RestoreResult } from "@cubehaus/storage";
 import { inDesktopApp } from "./db/native";
+import { safetyMarks } from "./db/safety";
 import { inPhoneApp, shareFile } from "./phone-app";
 
 /** What restoring a backup file came to: counts, or why nothing was written. */
@@ -65,6 +66,7 @@ export function download(
   contents: string | Blob,
   type = "application/json",
 ): Promise<void> | undefined {
+  if (name.startsWith("cubehaus-backup-")) safetyMarks.noteSaved();
   // A WKWebView drops <a download>: the phone app hands the file to the share sheet.
   if (inPhoneApp()) {
     void shareFile(name, contents).catch(() => {});

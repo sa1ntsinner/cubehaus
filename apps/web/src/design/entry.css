@@ -19,7 +19,10 @@ main > [data-part="entry"] {
    a row at least as tall as itself. */
 main:has(> output[data-part="time"]):has(> [data-part="entry"]) {
   grid-template-rows:
-    auto minmax(0, 1fr) auto auto auto minmax(min-content, 1fr)
+    auto var(--phone-time-room, minmax(0, 1fr)) auto auto auto minmax(
+      min-content,
+      1fr
+    )
     auto;
 }
 main:has(> output[data-part="time"]) > [data-part="entry"] {
@@ -232,7 +235,10 @@ main > [data-part="entry"]:has([data-part="cubes-solved"]) {
      file keeps at least its totals' height, as in every event. */
   main:has(> output[data-part="time"]):has(> [data-part="entry"]) {
     grid-template-rows:
-      auto auto auto auto auto auto minmax(min-content, 1fr)
+      auto auto var(--phone-time-room, auto) auto auto auto minmax(
+        min-content,
+        1fr
+      )
       auto auto;
   }
   main:has(> output[data-part="time"]) > [data-part="entry"] {

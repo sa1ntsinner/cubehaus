@@ -12,6 +12,29 @@ function integrity(bytes: Buffer | string): string {
   return `sha256-${createHash("sha256").update(bytes).digest("base64")}`;
 }
 
+// Safari keeps a site's icon under the icon's address for a long time and does not ask
+// for it again, so each address carries its file's hash: it changes only when the icon
+// does. The worker answers it from the same precached file (sw.ts ignores the query).
+function iconVersions(): Plugin {
+  return {
+    name: "cubehaus-icon-versions",
+    transformIndexHtml: (html) =>
+      html.replace(
+        /(<link rel="(?:icon|apple-touch-icon)"[^>]* href="\.\/)([^"?]+)"/g,
+        (_, before: string, file: string) => {
+          const bytes = readFileSync(
+            new URL(`public/${file}`, import.meta.url),
+          );
+          const version = createHash("sha256")
+            .update(bytes)
+            .digest("hex")
+            .slice(0, 8);
+          return `${before}${file}?v=${version}"`;
+        },
+      ),
+  };
+}
+
 function offlinePrecache(): Plugin {
   return {
     name: "cubehaus-offline-precache",
@@ -66,7 +89,7 @@ function offlinePrecache(): Plugin {
 export default defineConfig({
   base: "./",
   define: { __CUBEHAUS_VERSION__: JSON.stringify(version) },
-  plugins: [offlinePrecache()],
+  plugins: [iconVersions(), offlinePrecache()],
   optimizeDeps: { exclude: ["@sqlite.org/sqlite-wasm"] },
   worker: { format: "es" },
   build: {

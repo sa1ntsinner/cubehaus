@@ -105,7 +105,60 @@ test.describe("touch gestures", () => {
     await inspectionOff(page);
   });
 
-  test("the time: right is +2, down DNF, a short or slow move nothing, left deletes; a hold that moves times", async ({
+  test("the comment line stands above the keys, clear of the time and the status line", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await solve(page);
+    await swipe(page, TIME, { dx: 0, dy: -120 });
+    const field = page.locator('[data-part="time-comment-input"]');
+    await expect(field).toBeFocused();
+    // The keys as iOS lays them over the page, with the QuickType bar: the visual
+    // viewport ends 380 px above the layout viewport's foot.
+    await page.evaluate(() => {
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+      Object.defineProperty(viewport, "height", {
+        configurable: true,
+        get: () => innerHeight - 380,
+      });
+      viewport.dispatchEvent(new Event("resize"));
+    });
+    const bar = page.locator('[data-part="comment-bar"]');
+    const status = page.locator('footer[data-part="status-line"]');
+    await expect(page.locator("main")).toHaveAttribute(
+      "data-comment-placed",
+      "",
+    );
+    await expect(status).toBeHidden();
+    await page.waitForTimeout(400);
+    const box = await bar.boundingBox();
+    const time = await page.locator('output[data-part="time"]').boundingBox();
+    if (!box || !time)
+      throw new Error("the comment line or the time is not laid out");
+    expect(box.y + box.height).toBeLessThanOrEqual(852 - 380 + 1);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(393);
+    expect(time.y + time.height).toBeLessThanOrEqual(box.y);
+    await field.fill("Smooth");
+    await field.press("Enter");
+    await page.evaluate(() => {
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+      Object.defineProperty(viewport, "height", {
+        configurable: true,
+        get: () => innerHeight,
+      });
+      viewport.dispatchEvent(new Event("resize"));
+    });
+    await expect(bar).toHaveCount(0);
+    await expect(status).toBeVisible();
+    await expect(page.locator('[data-part="time-comment"]')).toContainText(
+      "Smooth",
+    );
+  });
+
+  test("the time: right is +2, down DNF, up comments, a short or slow move nothing, left deletes; a hold that moves times", async ({
     page,
   }) => {
     await solve(page);
@@ -118,6 +171,12 @@ test.describe("touch gestures", () => {
     await expect(line).toHaveAttribute("data-penalty", "dnf");
     await swipe(page, TIME, { dx: 0, dy: 120 });
     await expect(line).not.toHaveAttribute("data-penalty", "dnf");
+    await swipe(page, TIME, { dx: 0, dy: -120 });
+    const comment = page.locator('[data-part="time-comment-input"]');
+    await expect(comment).toBeFocused();
+    await comment.fill("Practice");
+    await comment.press("Enter");
+    await expect(comment).toHaveCount(0);
     // A short or slow move springs back and changes nothing.
     await swipe(page, TIME, { dx: 40, ms: 600 });
     await expect(line).toHaveAttribute("data-penalty", "ok");
@@ -132,7 +191,7 @@ test.describe("touch gestures", () => {
     await expect(lines(page)).toHaveCount(0);
     // The click a timing touch may still send is swallowed for 600 ms (input/touch.ts).
     await page.waitForTimeout(700);
-    await action(page, "undo").click();
+    await action(page, "undo-delete").click();
     await expect(lines(page)).toHaveCount(1);
     await expect(page.locator("main")).toHaveAttribute("data-phase", "idle");
 
@@ -213,9 +272,7 @@ test.describe("touch gestures", () => {
     await expect(hint).toContainText("Swipe the time down for DNF");
   });
 
-  test("the status line's ? lists the gestures on a touch screen", async ({
-    page,
-  }) => {
+  test("Settings lists the gestures on a touch phone", async ({ page }) => {
     test.skip(
       !(await page.evaluate(
         () => matchMedia("(hover: none) and (pointer: coarse)").matches,
@@ -223,13 +280,24 @@ test.describe("touch gestures", () => {
       "this browser does not report a touch screen for an emulated phone",
     );
     await expect(action(page, "keys")).toBeHidden();
-    await action(page, "gestures").click();
+    await expect(action(page, "gestures")).toBeHidden();
+    await action(page, "settings").click();
+    // A phone has no Keys: the gestures open from More.
+    await page.goto("/#/settings/more");
+    await expect(
+      page.locator('[data-part="settings-sections"] [data-section="keys"]'),
+    ).toHaveCount(0);
+    await expect(page.locator('[data-setting="commands"]')).toHaveCount(0);
+    const opener = action(page, "settings-gestures");
+    await opener.click();
     const list = page.locator('dialog[data-part="keys-help"]');
     await expect(list).toHaveAttribute("aria-label", "Gestures");
     await expect(list.locator("dt").first()).toHaveText(
       "Hold the screen, let go",
     );
     await expect(list.locator("kbd")).toHaveCount(0);
+    await list.locator('[data-action="dialog-close"]').click();
+    await expect(opener).toBeFocused();
   });
 });
 

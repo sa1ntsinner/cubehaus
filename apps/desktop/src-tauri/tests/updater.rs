@@ -470,6 +470,29 @@ fn updater_stays_off_without_a_configured_key() {
     assert!(listener.accept().is_err(), "nothing connected");
 }
 
+/// Plain HTTP from this machine is for the local update rehearsal only: a build without the
+/// `update-rehearsal` feature (every release) refuses it, and even the rehearsal refuses
+/// another host or another `dangerous…` switch.
+#[test]
+fn only_the_rehearsal_build_takes_a_local_http_address() {
+    let local = json!({
+        "pubkey": "a2V5",
+        "endpoints": ["http://127.0.0.1:8765/latest.json"],
+        "dangerousInsecureTransportProtocol": true,
+    });
+    assert_eq!(
+        update::configured(Some(&local)).is_some(),
+        cfg!(feature = "update-rehearsal")
+    );
+    for refused in [
+        json!({ "pubkey": "a2V5", "endpoints": ["http://example.invalid/latest.json"], "dangerousInsecureTransportProtocol": true }),
+        json!({ "pubkey": "a2V5", "endpoints": ["http://127.0.0.1:8765/latest.json"], "dangerousAcceptInvalidCerts": true }),
+        json!({ "pubkey": "a2V5", "endpoints": ["http://127.0.0.1:"] }),
+    ] {
+        assert!(update::configured(Some(&refused)).is_none(), "{refused}");
+    }
+}
+
 /// Accepts connections and never answers: a network that swallows requests (a captive
 /// portal, a dropped route). Nothing is sent back until the test ends.
 fn black_hole() -> String {

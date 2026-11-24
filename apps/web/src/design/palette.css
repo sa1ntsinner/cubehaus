@@ -1,7 +1,6 @@
-@media (hover: none) and (pointer: coarse) {
-  dialog[data-part="palette"] kbd {
-    display: none;
-  }
+/* No keys at hand (a phone, a tablet before its keyboard): no key names. */
+:root:not([data-keys]) dialog[data-part="palette"] kbd {
+  display: none;
 }
 
 /* ---- the palette: a query line, then the actions that match ---- */

@@ -40,11 +40,10 @@ test.describe("on a phone", () => {
     );
     await inspectionOff(page);
     await keyboardSolve(page);
-    const latest = page
-      .locator('[data-part="solves"] > li[data-solve-id]')
-      .last();
-    await latest.locator('[data-action="comment-edit"]').tap();
-    const field = page.locator('[data-part="comment-input"]');
+    // The timer ignores keyboard shortcuts for 200 ms after a stop.
+    await page.waitForTimeout(250);
+    await page.keyboard.press("KeyC");
+    const field = page.locator('[data-part="time-comment-input"]');
     await expect(field).toBeVisible();
     const size = await field.evaluate((element) =>
       Number.parseFloat(getComputedStyle(element).fontSize),
@@ -119,29 +118,27 @@ test.describe("on a phone", () => {
     await expect(page).not.toHaveURL(/#\/settings/);
   });
 
-  // iOS spends the first tap on a hover that reveals something: Comment waited for one.
-  test("on a touch screen Comment stands on the line on show, one tap away", async ({
+  test("phone file shows only existing comments, editable on one tap", async ({
     page,
   }) => {
     test.skip(
       !(await page.evaluate(() => matchMedia("(hover: none)").matches)),
-      "this browser does not report hover: none for an emulated touch screen",
+      "this browser does not report hover: none for an emulated phone",
     );
     await inspectionOff(page);
     await keyboardSolve(page);
-    await keyboardSolve(page);
-    const lines = page.locator('[data-part="solves"] > li[data-solve-id]');
-    const comment = (line: number) =>
-      lines.nth(line).locator('[data-action="comment-edit"]');
-    // Newest first in the markup: the newest line offers it, the older one does not.
-    await expect(comment(0)).toHaveCSS("opacity", "1");
-    await expect(comment(1)).toHaveCSS("opacity", "0");
-    await lines.nth(1).locator('[data-action="solve-show"]').tap();
-    await expect(lines.nth(1)).toHaveAttribute("data-shown");
-    await expect(comment(1)).toHaveCSS("opacity", "1");
-    await expect(comment(0)).toHaveCSS("opacity", "0");
-    await comment(1).tap();
-    await expect(page.locator('[data-part="comment-input"]')).toBeFocused();
+    const edit = page.locator('[data-action="comment-edit"]');
+    await expect(edit).toBeHidden();
+    await page.waitForTimeout(250);
+    await page.keyboard.press("KeyC");
+    const field = page.locator('[data-part="time-comment-input"]');
+    await expect(field).toBeFocused();
+    await field.fill("Practice");
+    await field.press("Enter");
+    await expect(edit).toBeVisible();
+    await edit.tap();
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue("Practice");
   });
 
   test("while a solve runs, a finger on the file scrolls nothing", async ({

@@ -66,6 +66,7 @@ import { isTouchScreen } from "../input/touch-screen";
 import { DEFAULT_SWIPE, useSwipe } from "../input/use-swipe";
 import type { Action } from "../keys/engine";
 import { Help } from "../keys/Help";
+import { inPhoneApp, vibrate } from "../phone-app";
 import { formatRunning } from "../running";
 import {
   CaseDiagram,
@@ -101,11 +102,14 @@ import {
   ollcpMember,
   otherAlgs,
   parseChoices,
+  setWord,
   showCase,
   storedMember,
   type TrainSet,
 } from "../train-state";
+import { WIDGET_SET_KEY, widgetsChanged } from "../widget-snapshot";
 import "../design/safe-area.css";
+import "../design/sheet.css";
 import "../design/train.css";
 import "../input/train-behavior.css";
 
@@ -126,7 +130,7 @@ const SETS: readonly Tab[] = ["pll", "oll", "coll", "f2l", "ls"];
 /** The 2×2's sets, in the set row while the 2×2 is chosen. */
 const TWO_SETS: readonly Tab[] = ["two-oll", "two-pbl", "two-cll"];
 const isTwo = (set: TrainSet) => set.startsWith("two-");
-const setName = (id: Tab) => id.replace("two-", "").toUpperCase();
+const setName = (id: Tab) => setWord(id);
 const isFamily = (tab: Tab): tab is Family => tab in FAMILIES;
 /** Every set a route can open: the row's own and each family's members. */
 const ROUTE_SETS: readonly TrainSet[] = [...SETS, ...TWO_SETS].flatMap((tab) =>
@@ -499,6 +503,113 @@ export function Train({
     return () => window.removeEventListener("keydown", close);
   }, []);
 
+  // The set a word in the row opens: a family's member last chosen, or the set itself.
+  const setOfTab = (id: Tab): TrainSet =>
+    isFamily(id) ? memberOf(id, storedMember(id, members[id] ?? null)) : id;
+  // The phone's trainer widget shows one set (setting `trainer.widget`), chosen by a long
+  // press on the set's word. OLLCP is listed a group at a time, so its word gives OLL.
+  const phone = inPhoneApp();
+  const widgetSetOf = (id: Tab): string => {
+    const member = setOfTab(id);
+    return member === "ollcp" ? "oll" : member;
+  };
+  const [widgetSet, setWidgetSet] = useState<string | null>(null);
+  const [setMenu, setSetMenu] = useState<Tab | null>(null);
+  // The sets' sheet (the narrowest phone), opened from the open set's word.
+  const [setSheet, setSetSheet] = useState(false);
+  const setOpener = useRef<HTMLButtonElement>(null);
+  const setSheetBox = useRef<HTMLDialogElement>(null);
+  const closeSetSheet = () => {
+    setSetSheet(false);
+    setSetMenu(null);
+    requestAnimationFrame(() =>
+      setOpener.current?.focus({ preventScroll: true }),
+    );
+  };
+  useEffect(() => {
+    if (setSheet && !setSheetBox.current?.open)
+      setSheetBox.current?.showModal();
+  }, [setSheet]);
+  const swallowSetClick = useRef(false);
+  useEffect(() => {
+    if (!phone || !stored) return;
+    let stale = false;
+    void stored.get(WIDGET_SET_KEY).then((value) => {
+      if (!stale) setWidgetSet(value || null);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [phone, stored]);
+  // The cases as stored changed (put in drills, taken out, rescheduled by an attempt).
+  useEffect(() => {
+    if (phone && rows) widgetsChanged();
+  }, [phone, rows]);
+  const chooseWidgetSet = (next: string | null) => {
+    setWidgetSet(next);
+    void stored?.set(WIDGET_SET_KEY, next ?? "").then(widgetsChanged);
+  };
+  function pressSet(id: Tab, down: ReactPointerEvent) {
+    const { clientX, clientY, pointerId } = down;
+    const stop = () => {
+      clearTimeout(timer);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+    const move = (event: PointerEvent) => {
+      if (
+        event.pointerId === pointerId &&
+        Math.hypot(event.clientX - clientX, event.clientY - clientY) > 8
+      )
+        stop();
+    };
+    // As long as a session tile's press.
+    const timer = setTimeout(() => {
+      stop();
+      swallowSetClick.current = true;
+      vibrate([10]);
+      setSetMenu(id);
+    }, 450);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+  }
+  // The menu stays on screen (moved in from a side), and a press elsewhere closes it.
+  const setMenuBox = useCallback((element: HTMLElement | null) => {
+    if (!element) return;
+    const box = element.getBoundingClientRect();
+    const margin = 8;
+    const shift =
+      box.left < margin
+        ? margin - box.left
+        : box.right > innerWidth - margin
+          ? innerWidth - margin - box.right
+          : 0;
+    if (shift) element.style.setProperty("--shift", `${shift}px`);
+  }, []);
+  useEffect(() => {
+    if (setMenu === null) return;
+    const close = (event: PointerEvent) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-part="switch-menu"]')
+      )
+        return;
+      setSetMenu(null);
+      swallowSetClick.current = false;
+    };
+    // After the press that opened it has ended.
+    const armed = setTimeout(
+      () => window.addEventListener("pointerdown", close),
+      0,
+    );
+    return () => {
+      clearTimeout(armed);
+      window.removeEventListener("pointerdown", close);
+    };
+  }, [setMenu]);
+
   // A mode keeps OLLCP's group; another set, or the way back to the first list, leaves it.
   const go = (next: { set?: TrainSet; mode?: Mode; group?: number | null }) => {
     const to = next.set ?? set;
@@ -579,6 +690,54 @@ export function Train({
   const family = familyOf(set);
 
   const otherPuzzle = puzzleFor(set) === "222" ? "333" : "222";
+  const rowSets = isTwo(set) ? TWO_SETS : SETS;
+  // A set's word, in the row or in the sheet; `menu` says where its long press menu goes.
+  const setItem = (id: Tab, menu: boolean) => {
+    const word = (
+      <button
+        key={id}
+        type="button"
+        data-action="train-set"
+        data-set={id}
+        aria-pressed={id === family}
+        onPointerDown={phone ? (event) => pressSet(id, event) : undefined}
+        onClick={() => {
+          if (swallowSetClick.current) {
+            swallowSetClick.current = false;
+            return;
+          }
+          if (setSheet) closeSetSheet();
+          go({ set: setOfTab(id) });
+        }}
+      >
+        {setName(id)}
+      </button>
+    );
+    // The phone app only: a long press on the word opens its one action, the session
+    // tiles' menu.
+    if (!phone) return word;
+    const chosen = widgetSet === widgetSetOf(id);
+    return (
+      <span key={id} data-part="train-set-item">
+        {word}
+        {menu && setMenu === id && (
+          <span data-part="switch-menu" role="menu" ref={setMenuBox}>
+            <button
+              type="button"
+              role="menuitem"
+              data-action="train-widget"
+              onClick={() => {
+                setSetMenu(null);
+                chooseWidgetSet(chosen ? null : widgetSetOf(id));
+              }}
+            >
+              {chosen ? t.widgetRemove : t.widgetShow}
+            </button>
+          </span>
+        )}
+      </span>
+    );
+  };
   return (
     <Held.Provider value={faces}>
       <main data-no-timer data-part="train" data-mode={mode}>
@@ -589,25 +748,22 @@ export function Train({
         </nav>
         <h1>{t.title}</h1>
         <div data-part="train-bar">
-          <p data-part="train-sets">
-            {(isTwo(set) ? TWO_SETS : SETS).map((id) => (
-              <button
-                key={id}
-                type="button"
-                data-action="train-set"
-                data-set={id}
-                aria-pressed={id === family}
-                onClick={() =>
-                  go({
-                    set: isFamily(id)
-                      ? memberOf(id, storedMember(id, members[id] ?? null))
-                      : id,
-                  })
-                }
-              >
-                {setName(id)}
-              </button>
-            ))}
+          <p
+            data-part="train-sets"
+            data-many={rowSets.length > 3 ? "" : undefined}
+          >
+            {rowSets.map((id) => setItem(id, !setSheet))}
+            {/* The narrowest phone: the set's own word, which opens the full list. */}
+            <button
+              ref={setOpener}
+              type="button"
+              data-action="train-set-open"
+              aria-haspopup="dialog"
+              aria-expanded={setSheet}
+              onClick={() => setSetSheet(true)}
+            >
+              {setName(family as Tab)}
+            </button>
           </p>
           <p data-part="train-modes">
             {MODES.map((id) => (
@@ -751,6 +907,39 @@ export function Train({
           />
         )}
       </main>
+      {setSheet && (
+        <dialog
+          ref={setSheetBox}
+          data-part="train-set-sheet"
+          aria-label={t.sets}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            // Before the screen's own Escape, which leaves Algorithms.
+            event.preventDefault();
+            closeSetSheet();
+          }}
+          onCancel={(event) => {
+            event.preventDefault();
+            closeSetSheet();
+          }}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeSetSheet();
+          }}
+        >
+          <button
+            type="button"
+            data-action="dialog-close"
+            onClick={closeSetSheet}
+          >
+            {t.title}
+          </button>
+          <ul data-part="train-set-list">
+            {rowSets.map((id) => (
+              <li key={id}>{setItem(id, true)}</li>
+            ))}
+          </ul>
+        </dialog>
+      )}
       {keysOpen && (
         <TrainKeys words={words} ru={ru} onClose={() => setKeysOpen(false)} />
       )}
@@ -805,6 +994,9 @@ function TrainKeys({
 
 const wideLearn = () => matchMedia("(min-width: 900px)");
 const isWideLearn = () => wideLearn().matches;
+/** A family's word just pressed: the next list focuses it (the list is new, the word too). */
+let memberFocus: { set: TrainSet; id: string } | null = null;
+
 function watchWideLearn(change: () => void) {
   const media = wideLearn();
   media.addEventListener("change", change);
@@ -931,6 +1123,25 @@ function Learn({
 
   // A case swiped sideways goes into the drills, or out of them.
   const caseList = useRef<HTMLElement>(null);
+  // Opened from a family's word: that word keeps the keyboard.
+  // The list can mount twice while the set loads, so the word is kept a moment (or until
+  // another set's list mounts).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, as the list mounts.
+  useEffect(() => {
+    if (memberFocus?.set !== set) {
+      memberFocus = null;
+      return;
+    }
+    caseList.current
+      ?.querySelector<HTMLElement>(
+        `[data-part="train-slot"] [data-member="${memberFocus.id}"]`,
+      )
+      ?.focus({ preventScroll: true });
+    const was = memberFocus;
+    setTimeout(() => {
+      if (memberFocus === was) memberFocus = null;
+    }, 1500);
+  }, []);
   const toggleDrill = (id: string) =>
     selected.has(id) ? changeDrill([], [id]) : changeDrill([id], []);
   useSwipe(caseList, {
@@ -1157,7 +1368,12 @@ function Learn({
                         )
                   }
                   aria-pressed={choiceOf(family, set) === id}
-                  onClick={() => onMember(family, id)}
+                  onClick={() => {
+                    // The member opens as a new list: the keyboard stays on its word.
+                    if (choiceOf(family, set) !== id)
+                      memberFocus = { set: memberOf(family, id as never), id };
+                    onMember(family, id);
+                  }}
                 >
                   {family === "f2l"
                     ? t.slots[id as F2lSlot]

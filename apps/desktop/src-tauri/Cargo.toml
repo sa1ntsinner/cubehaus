@@ -22,13 +22,21 @@ serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
 # The native folder picker for where backups go (MIT OR Apache-2.0).
 tauri-plugin-dialog = "=2.8.4"
-# Signed updates (MIT OR Apache-2.0); loaded only when a release build is given a key.
-# The system's TLS (native-tls): the default rustls route brings a root store under a
-# licence outside the allowed list (webpki-root-certs, CDLA-Permissive-2.0).
 # A second launch brings the running window forward instead of opening the file twice
 # (MIT OR Apache-2.0).
 tauri-plugin-single-instance = "=2.5.5"
+# Signed updates (MIT OR Apache-2.0); loaded only when a release build is given a key.
+# The system's TLS (native-tls): the default rustls route brings a root store under a
+# licence outside the allowed list (webpki-root-certs, CDLA-Permissive-2.0).
 tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["native-tls", "zip"] }
+# The window opens where and as large as it was left, full screen included
+# (MIT OR Apache-2.0).
+tauri-plugin-window-state = "=2.5.0"
+
+[features]
+# Lets the updater take a plain-HTTP address on 127.0.0.1, for the local update rehearsal
+#. Never on in a release build.
+update-rehearsal = []
 
 [dev-dependencies]
 # The mock runtime, for the updater test's app.

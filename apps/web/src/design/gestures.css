@@ -42,6 +42,14 @@
 [data-nudge="right"] {
   animation: nudge-right 900ms var(--ease);
 }
+[data-nudge="up"] {
+  animation: nudge-up 900ms var(--ease);
+}
+@keyframes nudge-up {
+  35% {
+    translate: 0 -12px;
+  }
+}
 [data-nudge="down"] {
   animation: nudge-down 900ms var(--ease);
 }
@@ -113,4 +121,19 @@ main:has(> output[data-part="time"][data-swipe-direction="down"])
 [data-part="swipe-word"] {
   padding: 0 var(--s1);
   background: var(--ground);
+}
+
+/* Phones open the list from Settings or a hint. The tablet keeps its status shortcut. */
+@media (max-width: 699px) and (min-height: 431px),
+  (max-height: 430px) and (orientation: landscape) and (hover: none) and (
+    pointer: coarse
+  ) {
+  main:has(> output[data-part="time"][data-swipe-direction="down"])
+    > :is([data-part="stats"], [data-part="time-under"]) {
+    opacity: 0;
+    transition: none;
+  }
+  [data-part="status-line"] > nav:last-child [data-action="gestures"] {
+    display: none;
+  }
 }

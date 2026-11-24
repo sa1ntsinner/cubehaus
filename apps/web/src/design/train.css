@@ -355,8 +355,10 @@ main[data-part="train"]
   line-height: 1.45;
   color: var(--dim);
 }
+/* Wider than the gap between two groups (about 1.9ch), so the pre-turn reads as set
+   apart from the moves in the quieter others as well as in the main one. */
 [data-part="train-auf"] {
-  margin-inline-end: 1.1ch;
+  margin-inline-end: 2.4ch;
 }
 [data-part="train-alg-foot"] {
   display: flex;
@@ -636,18 +638,6 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
     text-wrap: balance;
   }
 }
-[data-part="train-hint"] [data-input="touch"] {
-  display: none;
-}
-@media (pointer: coarse) {
-  [data-part="train-hint"] [data-input="keys"],
-  [data-part="train-after"] [data-input="keys"] {
-    display: none;
-  }
-  [data-part="train-hint"] [data-input="touch"] {
-    display: inline;
-  }
-}
 [data-part="train-result"] {
   display: flex;
   flex-direction: column;
@@ -773,10 +763,10 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
    share what is left, so the choices at the foot stay on the screen. */
 @media (max-height: 600px) {
   main[data-part="train"] {
-    padding-block: var(--s3) var(--s5);
+    padding-block: var(--s3) calc(var(--s5) + env(safe-area-inset-bottom));
   }
   [data-part="train-drill"] {
-    min-height: calc(100dvh - 120px);
+    min-height: calc(100dvh - 120px - env(safe-area-inset-bottom));
   }
   main[data-part="train"]
     [data-part="train-picture"]
@@ -824,10 +814,11 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
 @media (max-width: 699px) {
   main[data-part="train"] {
     --pad: var(--s4);
-    padding: calc(var(--s4) + env(safe-area-inset-top)) var(--pad) var(--s7);
+    padding: calc(var(--s4) + env(safe-area-inset-top)) var(--pad)
+      calc(var(--s7) + env(safe-area-inset-bottom));
   }
   [data-part="train-drill"] {
-    min-height: calc(100dvh - 160px);
+    min-height: calc(100dvh - 160px - env(safe-area-inset-bottom));
   }
   main[data-part="train"]
     [data-part="train-picture"]
@@ -938,5 +929,101 @@ main[data-part="train"] [data-part="train-picture"] [data-part="case-diagram"] {
     text-decoration-line: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 0.2em;
+  }
+}
+
+/* ---- A touch phone (DESIGN.md section 14a, 2026-11-24) ---- */
+/* Keys only where there are keys (DESIGN.md section 18c, input/hardware-keys.ts): a
+   phone never, another touch screen once a hardware key has been pressed. */
+:root[data-keys] [data-part="train-hint"] [data-input="touch"],
+:root:not([data-keys])
+  :is([data-part="train-hint"], [data-part="train-after"])
+  [data-input="keys"] {
+  display: none;
+}
+/* After a case the swipe is the way on (← Next, → Missed): the two words leave the screen
+   but stay in the accessibility tree and the keyboard order, as the timer's solve actions
+   do; the gesture's hint says it the first few times. */
+@media (max-width: 699px) and (min-height: 431px) and (hover: none) and (
+    pointer: coarse
+  ),
+  (max-height: 430px) and (orientation: landscape) and (hover: none) and (
+    pointer: coarse
+  ) {
+  [data-part="train-after"] > button {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* The open set's word, which opens the sets' sheet: only where the row's five words do
+   not stand beside the way back (under 360 px; the 2×2's three do). */
+[data-action="train-set-open"] {
+  display: none;
+}
+@media (max-width: 359px) {
+  [data-part="train-sets"][data-many] > :not([data-action="train-set-open"]) {
+    display: none;
+  }
+  [data-part="train-sets"][data-many] > [data-action="train-set-open"] {
+    display: inline-block;
+    font-weight: 600;
+    color: var(--ink);
+  }
+}
+[data-action="train-set-open"]::after {
+  content: " ▾";
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--dim);
+}
+/* The sheet: the sets one under another, the open one in `ink` and 600. */
+[data-part="train-set-list"] {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-part="train-set-list"] [data-action="train-set"] {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--dim);
+  cursor: pointer;
+}
+[data-part="train-set-list"] [data-action="train-set"][aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--ink);
+}
+[data-part="train-set-list"] [data-action="train-set"]:focus-visible {
+  outline: 2px solid var(--double);
+  outline-offset: -2px;
+}
+[data-part="train-set-list"] [data-part="train-set-item"] {
+  display: block;
+}
+
+/* OLLCP's groups hold six cases: three to a line, or six where six fit, never five and
+   one. */
+[data-part="train-cases"] {
+  container-type: inline-size;
+}
+[data-part="train-case-list"]:has(> li:nth-child(6):last-child) {
+  grid-template-columns: repeat(3, minmax(84px, 1fr));
+}
+@container (min-width: 544px) {
+  [data-part="train-case-list"]:has(> li:nth-child(6):last-child) {
+    grid-template-columns: repeat(6, minmax(84px, 1fr));
   }
 }

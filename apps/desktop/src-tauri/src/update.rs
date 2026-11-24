@@ -51,18 +51,27 @@ pub enum UpdateState {
 /// The updater's settings (`plugins.updater`) as a release build was given them, or None:
 /// then it is off. Both a public key and at least one endpoint are needed, every endpoint
 /// over HTTPS, and none of the plugin's `dangerous…` switches may be on.
+///
+/// A build with the `update-rehearsal` feature (never a release)
+/// also takes plain HTTP from this machine (`http://127.0.0.1:<port>/…`) and the one
+/// switch that allows it, so the whole update can be tried against a local server.
 pub fn configured(updater: Option<&Value>) -> Option<Value> {
+    const LOOPBACK: &str = "http://127.0.0.1:";
+    let rehearsal = cfg!(feature = "update-rehearsal");
     let updater = updater?.as_object()?;
     let pubkey = updater.get("pubkey")?.as_str()?.trim();
     let endpoints = updater.get("endpoints")?.as_array()?;
     let https = |endpoint: &Value| {
-        endpoint
-            .as_str()
-            .is_some_and(|url| url.starts_with("https://") && url.len() > "https://".len())
+        endpoint.as_str().is_some_and(|url| {
+            (url.starts_with("https://") && url.len() > "https://".len())
+                || (rehearsal && url.starts_with(LOOPBACK) && url.len() > LOOPBACK.len())
+        })
     };
-    let dangerous = updater
-        .iter()
-        .any(|(name, value)| name.starts_with("dangerous") && value != &Value::Bool(false));
+    let dangerous = updater.iter().any(|(name, value)| {
+        name.starts_with("dangerous")
+            && value != &Value::Bool(false)
+            && !(rehearsal && name == "dangerousInsecureTransportProtocol")
+    });
     (!pubkey.is_empty() && !endpoints.is_empty() && endpoints.iter().all(https) && !dangerous)
         .then(|| Value::Object(updater.clone()))
 }

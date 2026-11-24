@@ -188,3 +188,104 @@ test("a failed update is said and goes once the next install succeeds", async ()
   next.dispatchEvent(new Event("statechange"));
   expect(change).toHaveBeenLastCalledWith("update-waiting");
 });
+
+// A page in a browser: a window, a visible document, and the host in reach.
+function browser() {
+  const page = Object.assign(new EventTarget(), {
+    hidden: false,
+    readyState: "complete",
+  });
+  vi.stubGlobal("window", Object.assign(new EventTarget(), { setInterval }));
+  vi.stubGlobal("document", page);
+  return page;
+}
+
+test("the page asks the host for a new worker when it opens and when it is looked at again", async () => {
+  const { registration, services } = setup();
+  Object.assign(navigator, { onLine: true });
+  const page = browser();
+  registration.active = services.controller = worker();
+  watchOffline(vi.fn());
+  await Promise.resolve();
+  expect(registration.update).toHaveBeenCalledTimes(1);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  // Coming back to the tab is a focus and a visibility change together: one check.
+  window.dispatchEvent(new Event("focus"));
+  page.dispatchEvent(new Event("visibilitychange"));
+  expect(registration.update).toHaveBeenCalledTimes(2);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  // Back from the back-forward cache, where nothing was heard.
+  window.dispatchEvent(
+    Object.assign(new Event("pageshow"), { persisted: true }),
+  );
+  expect(registration.update).toHaveBeenCalledTimes(3);
+});
+
+test("a first visit does not ask again while its worker installs", async () => {
+  const { registration } = setup();
+  Object.assign(navigator, { onLine: true });
+  browser();
+  registration.installing = worker();
+  watchOffline(vi.fn());
+  await Promise.resolve();
+  expect(registration.update).not.toHaveBeenCalled();
+});
+
+test("an untouched page takes the waiting update a moment after it has loaded", async () => {
+  vi.useFakeTimers();
+  try {
+    const { registration, services } = setup();
+    browser();
+    registration.active = services.controller = worker();
+    const next = worker();
+    registration.waiting = next;
+    watchOffline(vi.fn());
+    await vi.advanceTimersByTimeAsync(0);
+    // Chromium does not swap workers asked to in the first moments of a page load.
+    expect(next.postMessage).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(next.postMessage.mock.calls).toEqual([["SKIP_WAITING"]]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("an update the browser does not let through is fetched from the host instead", async () => {
+  vi.useFakeTimers();
+  try {
+    const { registration, services, reload } = setup();
+    Object.assign(navigator, { onLine: true });
+    browser();
+    const unregister = vi.fn().mockResolvedValue(true);
+    Object.assign(registration, { unregister });
+    const host = vi.fn().mockRejectedValue(new TypeError("offline"));
+    vi.stubGlobal("fetch", host);
+    registration.active = services.controller = worker();
+    const next = worker();
+    next.state = "installed";
+    registration.waiting = next;
+    const update = watchOffline(vi.fn());
+    await vi.advanceTimersByTimeAsync(0);
+    update.applyUpdate();
+    expect(next.postMessage).toHaveBeenCalledTimes(1);
+
+    // The old worker never lets go, and the host is out of reach: nothing is given up.
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(unregister).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+
+    // Pressed again with the host in reach: the old worker is dropped, the page reloads.
+    host.mockResolvedValue({ ok: true });
+    update.applyUpdate();
+    expect(next.postMessage).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(unregister).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});

@@ -6,6 +6,21 @@ export function isTouchScreen(): boolean {
   );
 }
 
+// Keep the portrait and short landscape rules in step with design/timer.css.
+const PHONE_QUERY =
+  "(max-width: 699px) and (min-height: 431px) and (hover: none) and (pointer: coarse), " +
+  "(max-height: 430px) and (orientation: landscape) and (hover: none) and (pointer: coarse)";
+
+export function isTouchPhone(): boolean {
+  return typeof matchMedia === "function" && matchMedia(PHONE_QUERY).matches;
+}
+
+export function watchTouchPhone(change: () => void): () => void {
+  const media = matchMedia(PHONE_QUERY);
+  media.addEventListener("change", change);
+  return () => media.removeEventListener("change", change);
+}
+
 /** This device's localStorage, or null where reading it throws (a private window). */
 export function deviceStorage(): Storage | null {
   try {

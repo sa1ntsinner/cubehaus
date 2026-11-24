@@ -272,6 +272,8 @@ test.describe("sizes on a phone", () => {
                 const style = getComputedStyle(at);
                 if (
                   style.display === "none" ||
+                  (at.matches('[data-part="last-actions"]') &&
+                    style.clipPath !== "none") ||
                   style.visibility === "hidden" ||
                   style.opacity === "0"
                 )
@@ -311,7 +313,6 @@ test.describe("sizes on a phone", () => {
                   );
               }
             const actions = all('main > [data-part="last-actions"] button');
-            if (actions.length === 0) out.push("no +2, DNF or Delete");
             for (const button of actions)
               if (box(button).height < 44)
                 out.push(`${button.textContent} is under 44 px tall`);
@@ -345,8 +346,10 @@ test.describe("sizes on a phone", () => {
                 );
             }
             const file = q('main > [data-part="file"]');
-            const actionsTop = Math.min(
+            const status = q('footer[data-part="status-line"]');
+            const controlsTop = Math.min(
               ...actions.map((button) => box(button).top),
+              status ? box(status).top : Number.POSITIVE_INFINITY,
             );
             if (shown(file)) {
               const fileBox = box(file);
@@ -380,12 +383,12 @@ test.describe("sizes on a phone", () => {
                     `a total leaves the file (${Math.round(rect.top)}–${Math.round(rect.bottom)} in ${Math.round(fileBox.top)}–${Math.round(fileBox.bottom)})`,
                   );
               }
-              if (fileBox.bottom > actionsTop + 0.5)
+              if (fileBox.bottom > controlsTop + 0.5)
                 out.push(
-                  `the file runs into the actions by ${(fileBox.bottom - actionsTop).toFixed(1)} px`,
+                  `the file runs into the footer controls by ${(fileBox.bottom - controlsTop).toFixed(1)} px`,
                 );
-            } else if (slotsBottom > actionsTop + 0.5)
-              out.push("the averages run into the actions");
+            } else if (slotsBottom > controlsTop + 0.5)
+              out.push("the averages run into the footer controls");
             return out;
           });
           for (const problem of found)

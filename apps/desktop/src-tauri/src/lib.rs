@@ -8,6 +8,8 @@ pub mod backup;
 pub mod database;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod download;
+#[cfg(target_os = "macos")]
+mod menu;
 pub mod update;
 
 use backup::{BackupMeta, RestoreError, RestoreSource};
@@ -406,7 +408,24 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }))
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        // Size, place, maximised and full screen; not visibility or decorations.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED
+                        | tauri_plugin_window_state::StateFlags::FULLSCREEN,
+                )
+                .build(),
+        );
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder
+            .menu(|app| menu::build(app))
+            .on_menu_event(|app, event| menu::handle(app, event.id().as_ref()));
+    }
     if updater {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }

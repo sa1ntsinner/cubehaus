@@ -11,13 +11,16 @@ export function ProgressDistribution({
   format,
   numbers,
   labels,
+  opened = false,
 }: {
   load: () => Promise<Distribution | null>;
   format: (value: number) => string;
   numbers: Intl.NumberFormat;
   labels: Text["progress"];
+  /** Open from the start: a phone's own view of it. */
+  opened?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(opened);
   const [data, setData] = useState<Distribution | null>(null);
 
   useEffect(() => {
@@ -42,6 +45,7 @@ export function ProgressDistribution({
   return (
     <details
       data-part="progress-more"
+      open={opened || undefined}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary>{labels.distribution}</summary>

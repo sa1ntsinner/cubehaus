@@ -223,7 +223,7 @@ export function checkWorkerGraph(directory) {
     );
   }
   const entries = filesIn(root).filter((file) =>
-    /(?:^|\/)search-worker-entry(?:-[\w-]+)?\.js$/.test(file),
+    /(?:^|[\\/])search-worker-entry(?:-[\w-]+)?\.js$/.test(file),
   );
   if (!entries.length) throw new Error("No search worker entry found in build");
   const visited = new Set();

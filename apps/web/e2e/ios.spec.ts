@@ -77,9 +77,8 @@ test.describe("on a phone", () => {
     expect(await height()).toBe(844 - 330);
   });
 
-  // DESIGN.md section 7: while inspecting only the count, the scramble and its picture
-  // stay. On iOS the file and the status line stayed; and a touch where they were must
-  // be the timer's, not an unseen link's.
+  // On a phone, inspection clears the ground around the count. A touch where
+  // the status controls stood belongs to the timer.
   test("inspection hides the file and the status line, and a touch there holds", async ({
     page,
     browserName,
@@ -89,6 +88,7 @@ test.describe("on a phone", () => {
     const main = page.locator("main");
     const touch = await finger(page);
     const time = await centreOf(page, 'main > output[data-part="time"]');
+    const settings = await centreOf(page, '[data-action="settings"]');
     await touch("down", time);
     await touch("up");
     await expect(main).toHaveAttribute("data-phase", "inspecting");
@@ -97,22 +97,15 @@ test.describe("on a phone", () => {
         "opacity",
         "0",
       );
-    await expect(page.locator('main > [data-part="scramble"]')).toHaveCSS(
-      "opacity",
-      "1",
-    );
-    const settings = await centreOf(page, '[data-action="settings"]');
+    await expect(page.locator('main > [data-part="scramble"]')).toBeHidden();
     await touch("down", settings);
     await expect(main).toHaveAttribute("data-phase", "holding");
-    // Held during inspection, the file stays hidden and the scramble readable.
+    // Holding during inspection keeps the ground clear.
     await expect(page.locator('main > [data-part="file"]')).toHaveCSS(
       "opacity",
       "0",
     );
-    await expect(page.locator('main > [data-part="scramble"]')).toHaveCSS(
-      "opacity",
-      "1",
-    );
+    await expect(page.locator('main > [data-part="scramble"]')).toBeHidden();
     await touch("up");
     await expect(main).toHaveAttribute("data-phase", "inspecting");
     await expect(page).not.toHaveURL(/#\/settings/);

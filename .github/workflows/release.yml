@@ -162,7 +162,11 @@ jobs:
         if: steps.secrets.outputs.signed != 'true'
         run: |
           pnpm --filter @cubehaus/web build
-          (cd apps/desktop && pnpm exec tauri build --target universal-apple-darwin --bundles app,dmg)
+          # The widgets are built and put in as in a release, unsigned and without an App
+          # Group (they install and show their empty state).
+          apps/desktop/widgets/build.sh "$RUNNER_TEMP/widgets"
+          (cd apps/desktop && pnpm exec tauri build --target universal-apple-darwin --bundles app,dmg --config "$RUNNER_TEMP/widgets/tauri.json")
+          lipo -archs apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/cubehaus.app/Contents/PlugIns/CubehausWidgets.appex/Contents/MacOS/CubehausWidgets
           mkdir -p "$RUNNER_TEMP/release"
           cp apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg "$RUNNER_TEMP/release/"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

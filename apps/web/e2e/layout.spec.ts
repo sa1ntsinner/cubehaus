@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { test as stored } from "./fixtures";
+import { sessionButton } from "./helpers";
 
 const scrambleSelector = 'main > [data-part="scramble"]';
 const solveListSelector = '[data-part="solves"]';
@@ -94,6 +95,7 @@ stored.describe("sizes", () => {
     "the scramble and the time resize by key and by setting and stay after a reload",
     async ({ page }) => {
       await page.goto("/");
+      await expect(sessionButton(page)).toBeEnabled();
       const scramble = page.locator(scrambleSelector);
       await expect(scramble).toHaveAttribute("data-ready", "true", {
         timeout: scrambleTimeout,
@@ -325,10 +327,10 @@ test.describe("sizes on a phone", () => {
 
             // The parts follow one another down the screen without touching.
             const order = [
-              q('main > [data-part="scramble"]'),
-              q('main > [data-part="scramble-picture"]'),
               q('main > output[data-part="time"]'),
               ...all('[data-part="stats-now"] [data-slot]'),
+              q('main > [data-part="scramble-picture"]'),
+              q('main > [data-part="scramble"]'),
             ].filter(shown);
             const slotsBottom = Math.max(
               ...all('[data-part="stats-now"] [data-slot]').map(
@@ -491,4 +493,59 @@ test.describe("smallest sizes on a phone", () => {
       expect(problems, problems.slice(0, 40).join("\n")).toEqual([]);
     });
   }
+});
+
+test.describe("touch phone timer controls", () => {
+  test.use({ ...mobile, viewport: { width: 393, height: 852 } });
+
+  test("keeps two scramble lines clear of the timer and navigation", async ({
+    page,
+  }) => {
+    const fixture = new URLSearchParams({
+      state: "event-333",
+      lang: "en",
+      "test-scramble": "R U2 F' D R2 B U' L F2 D' R B' L2 U F' R2 D2 B2 L U'",
+    });
+    await page.goto(`/?${fixture}`);
+    const scramble = page.locator(scrambleSelector);
+    await expect(scramble.locator("[data-move]").first()).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    test.skip(
+      !(await page.evaluate(
+        () => matchMedia("(hover: none) and (pointer: coarse)").matches,
+      )),
+      "this browser does not report a touch screen",
+    );
+    const lines = await scramble
+      .locator("[data-move]")
+      .evaluateAll((moves) =>
+        Array.from(
+          new Set(moves.map((move) => move.getBoundingClientRect().top)),
+          (top) =>
+            moves.filter((move) => move.getBoundingClientRect().top === top)
+              .length,
+        ),
+      );
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe(10);
+    const time = await page.locator('output[data-part="time"]').boundingBox();
+    const moves = await scramble.boundingBox();
+    if (!time || !moves) throw new Error("Timer or scramble has no box");
+    expect(time.y + time.height).toBeLessThan(moves.y);
+    for (const name of ["Algorithms", "Progress", "Settings"]) {
+      const link = page.getByRole("link", { name, exact: true });
+      await expect(link.locator("svg")).toBeVisible();
+      const box = await link.boundingBox();
+      if (!box) throw new Error("Phone action has no box");
+      expect(box.width).toBe(44);
+      expect(box.height).toBe(44);
+      for (const other of [time, moves])
+        expect(
+          box.x + box.width <= other.x ||
+            other.x + other.width <= box.x ||
+            box.y + box.height <= other.y ||
+            other.y + other.height <= box.y,
+        ).toBe(true);
+    }
+  });
 });

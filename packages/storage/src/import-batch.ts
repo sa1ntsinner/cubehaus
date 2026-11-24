@@ -461,8 +461,8 @@ export async function importBatch(
         sql: `INSERT INTO solve (
           id, session_id, event, time_ms, plus2, dnf, scramble, started_at, inspection_ms,
           comment, input, import_source, import_hash, import_extra, updated_at,
-          moves, solution, cubes_solved, cubes_attempted
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'imported', ?, ?, ?, ?, ?, ?, ?, ?)`,
+          moves, solution, cubes_solved, cubes_attempted, splits
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'imported', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params: [
           newId(solve.startedAt),
           target,
@@ -482,6 +482,7 @@ export async function importBatch(
           solve.solution ?? null,
           solve.cubesSolved ?? null,
           solve.cubesAttempted ?? null,
+          solve.splits ? JSON.stringify(solve.splits) : null,
         ],
       });
       counts.added++;

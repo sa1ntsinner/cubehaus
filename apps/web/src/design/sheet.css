@@ -78,7 +78,7 @@ dialog:is(
     [data-part="train-set-sheet"]
   )
   [data-action="dialog-close"]::before {
-  content: "←";
+  content: "←" / "";
   margin-inline-end: var(--s2);
   font-family: var(--font-mono);
 }

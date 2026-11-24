@@ -21,7 +21,7 @@ import { bindKeyboard } from "./input/keyboard";
 import { bindTouch } from "./input/touch";
 import { type Action, createKeyEngine, type KeyState } from "./keys/engine";
 import { type Keymap, keysFor } from "./keys/keymap";
-import type { Settings } from "./settings";
+import { activeSplitNames, type Settings } from "./settings";
 import type { TimerSeed } from "./testing/seed";
 import { textFor } from "./text";
 
@@ -45,13 +45,19 @@ function unlocks(input: TimerInput): boolean {
 
 export function sessionTimerConfig(
   event: EventId,
-  settings: Pick<Settings, "inspection" | "holdMs">,
+  settings: Pick<Settings, "inspection" | "holdMs"> &
+    Partial<Pick<Settings, "entry" | "splits">>,
 ): TimerConfig {
+  const splitNames = activeSplitNames(event, {
+    entry: settings.entry ?? "timer",
+    splits: settings.splits ?? null,
+  });
   return {
     ...OFFICIAL_TIMER_CONFIG,
     inspectionMs:
       settings.inspection === "official" ? eventInfo(event).inspectionMs : null,
     holdMs: settings.holdMs,
+    ...(splitNames ? { splitNames } : {}),
   };
 }
 
@@ -72,6 +78,7 @@ export function solveFromEffect(
       context.wallNow - (context.perfNow - effect.startedAt),
     ),
     inspectionMs: effect.inspectionMs,
+    ...(effect.splits ? { splits: effect.splits } : {}),
     comment: null,
     input: context.input,
   };
@@ -91,7 +98,7 @@ export function createTimerController(deps: {
   scramble: () => string | null;
   session: () => Pick<Session, "id" | "event"> | null;
   config?: () => TimerConfig;
-  onChange: (state: TimerState) => void;
+  onChange: (state: TimerState, previous: TimerState) => void;
   onSolve: (solve: Solve) => void;
   onEffect?: (effect: Exclude<TimerEffect, SolveEffect>) => void;
 }): TimerController {
@@ -131,7 +138,7 @@ export function createTimerController(deps: {
       else if (!isHeld(previous)) owner = source ?? null;
       if (active && previous.phase !== "running" && state.phase === "running")
         active.input = source ?? "keyboard";
-      if (state !== previous) deps.onChange(state);
+      if (state !== previous) deps.onChange(state, previous);
       for (const effect of result.effects) {
         if (effect.type !== "solve") {
           deps.onEffect?.(effect);
@@ -213,9 +220,12 @@ export function useTimer(options: {
           latest.current.session?.event ?? "333",
           latest.current.settings,
         ),
-      onChange: (next) => {
+      onChange: (next, previous) => {
         setState(next);
-        if (next.phase === "running" || next.phase === "inspecting")
+        if (
+          next.phase !== previous.phase &&
+          (next.phase === "running" || next.phase === "inspecting")
+        )
           setElapsedMs(0);
         if (next.phase === "stopped") stoppedAt.current = performance.now();
       },

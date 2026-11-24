@@ -10,6 +10,7 @@ import {
 import type { Db, SqlValue } from "./db";
 import { migrate, SCHEMA_VERSION } from "./migrations";
 import { createNodeDb } from "./node-db";
+import { createStore } from "./store";
 
 const open: Db[] = [];
 async function fresh(): Promise<Db> {
@@ -53,6 +54,7 @@ const solveRow = (id: string, over: Record<string, SqlValue> = {}) => ({
   deleted_at: null,
   import_extra: null,
   cross_colour: null,
+  splits: null,
   ...over,
 });
 
@@ -68,6 +70,7 @@ const repeatRow = (id: string, over: Record<string, SqlValue> = {}) => ({
   input: "keyboard",
   updated_at: 6000,
   deleted_at: null,
+  splits: null,
   ...over,
 });
 
@@ -144,7 +147,13 @@ async function seed(db: Db) {
     insert("solve_repeat", repeatRow("r1")),
     insert(
       "solve_repeat",
-      repeatRow("r2", { dnf: 1, deleted_at: 7000, updated_at: 7000 }),
+      repeatRow("r2", {
+        dnf: 1,
+        deleted_at: 7000,
+        updated_at: 7000,
+        splits:
+          '[{"name":"Cross","durationMs":1500},{"name":"Rest","durationMs":7500}]',
+      }),
     ),
     insert("import_session", {
       source: "cstimer",
@@ -449,7 +458,7 @@ test("a backup from schema 7 restores its trainer attempts as not split", async 
   ]);
 });
 
-test("the cross colour goes round a backup; a schema 8 backup restores it unknown", async () => {
+test("cross colour and named splits round-trip; a schema 8 backup restores neither", async () => {
   const source = await fresh();
   await source.batch([
     insert("session", {
@@ -463,7 +472,14 @@ test("the cross colour goes round a backup; a schema 8 backup restores it unknow
       updated_at: 1,
       deleted_at: null,
     }),
-    insert("solve", solveRow("a", { cross_colour: "yellow" })),
+    insert(
+      "solve",
+      solveRow("a", {
+        cross_colour: "yellow",
+        splits:
+          '[{"name":"Cross","durationMs":1820},{"name":"Rest","durationMs":10525}]',
+      }),
+    ),
     insert("solve", solveRow("b", { started_at: 6000 })),
   ]);
   const current = await snapshot(source);
@@ -478,6 +494,10 @@ test("the cross colour goes round a backup; a schema 8 backup restores it unknow
   ).toEqual([
     { id: "a", cross_colour: "yellow" },
     { id: "b", cross_colour: null },
+  ]);
+  expect((await createStore(roundTrip).solves.get("a"))?.splits).toEqual([
+    { name: "Cross", durationMs: 1820 },
+    { name: "Rest", durationMs: 10525 },
   ]);
   const v8 = {
     ...current,
@@ -500,6 +520,7 @@ test("the cross colour goes round a backup; a schema 8 backup restores it unknow
     { id: "a", cross_colour: null },
     { id: "b", cross_colour: null },
   ]);
+  expect(await createStore(old).solves.get("a")).not.toHaveProperty("splits");
   // A colour that is not one of the six is refused, and nothing is written.
   const bad = structuredClone(current);
   (bad.tables.solve?.[0] as Record<string, SqlValue>).cross_colour = "purple";

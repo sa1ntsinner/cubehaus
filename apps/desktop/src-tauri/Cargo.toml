@@ -1,6 +1,6 @@
 [package]
 name = "cubehaus"
-version = "0.0.5"
+version = "1.0.0"
 description = "cubehaus, a speedcubing timer"
 license = "MPL-2.0"
 edition = "2024"

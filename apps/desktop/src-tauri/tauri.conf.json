@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "cubehaus",
-  "version": "0.0.5",
+  "version": "1.0.0",
   "identifier": "app.cubehaus.desktop",
   "build": {
     "frontendDist": "../../web/dist"

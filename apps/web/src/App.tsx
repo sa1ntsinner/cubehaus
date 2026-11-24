@@ -1,3 +1,4 @@
+import "./design/safe-area.css";
 import {
   CROSS_COLOURS,
   type CrossColour,
@@ -41,6 +42,7 @@ import { backupDue } from "./db/native";
 import { openDatabase } from "./db/open";
 import { createPendingJournal, memoryStorage } from "./db/pending";
 import { SafetyLine } from "./db/SafetyLine";
+import { inMacDesktopApp, writeDesktopWidgetSnapshot } from "./desktop-widgets";
 import { canFullscreen, toggleFullscreen } from "./fullscreen";
 import type { GestureId } from "./gesture-hints";
 import { keysShown } from "./input/hardware-keys";
@@ -98,7 +100,7 @@ import {
 } from "./screens/Timer";
 import { listed } from "./session-order";
 import { selectedSlots } from "./session-stats";
-import { coloursInPlay } from "./settings";
+import { activeSplitNames, coloursInPlay } from "./settings";
 import type { LoadedSeed } from "./testing/load";
 import { gestureList, type Text, textFor } from "./text";
 import {
@@ -308,10 +310,10 @@ export function App({
         : undefined,
     [app, phoneCopy],
   );
-  // Phone app: what the Home Screen widgets show (widget-snapshot.ts), written a moment
-  // after the open session's numbers or the trainer's cases change, and on leaving.
+  // Phone app and Mac desktop app: what the widgets show (widget-snapshot.ts), written a
+  // moment after the open session's numbers or the trainer's cases change, and on leaving.
   const phoneWidgets =
-    inPhoneApp() &&
+    (inPhoneApp() || inMacDesktopApp()) &&
     (view.dbState?.kind === "persistent" || view.dbState?.kind === "memory");
   useEffect(
     () =>
@@ -347,7 +349,7 @@ export function App({
                   : null,
               );
             },
-            writeWidgetSnapshot,
+            inPhoneApp() ? writeWidgetSnapshot : writeDesktopWidgetSnapshot,
             document,
           )
         : undefined,
@@ -1541,6 +1543,7 @@ function TimerPage({
     deletedAt !== expiredDeletion &&
     performance.now() - deletedAt < 6000;
   useSwipe(timerPage, {
+    slideOnCommit: phone,
     config: {
       ...DEFAULT_SWIPE,
       directions: [
@@ -1577,10 +1580,14 @@ function TimerPage({
     },
     onCommit: (direction) => {
       if (!target) return;
-      if (direction === "up") openComment(target);
-      else if (direction === "left") void app.deleteSolve(target);
-      else void app.penalty(target, direction === "right" ? "plus2" : "dnf");
       learned(`time-${direction}`);
+      if (direction === "up") {
+        openComment(target);
+        return;
+      }
+      return direction === "left"
+        ? app.deleteSolve(target)
+        : app.penalty(target, direction === "right" ? "plus2" : "dnf");
     },
   });
   useSwipe(timerPage, {
@@ -1947,30 +1954,8 @@ function TimerPage({
       return fallback;
     return keyLabel(binding, isMacPlatform(), view.settings.language);
   };
-  // An empty session says how to start (DESIGN §7), until the first solve on this device:
-  // the start keys when not Space alone.
-  const emptyHint = (() => {
-    if (started) return undefined;
-    // A drill with no case picked cannot start: the scramble's place says why.
-    if (drillBlocked) return undefined;
-    // Fewest Moves and typed results have their own fields, which explain themselves.
-    if (eventInfo(view.current?.event ?? "333").kind === "moves")
-      return undefined;
-    if (view.settings.entry === "typing") return undefined;
-    const touch = words.emptyHintTouch;
-    // The two keys' names stand above the time already.
-    if (view.settings.startMode === "two-hand")
-      return { keys: words.emptyHintHands, touch };
-    const [start] = keysFor(view.keymap, "timer.start");
-    if (!start) return { keys: null, touch };
-    if (start === "Space") return { keys: words.emptyHintKey, touch };
-    return {
-      keys: words.emptyHintKeys(
-        keyLabel(start, isMacPlatform(), view.settings.language),
-      ),
-      touch,
-    };
-  })();
+  // No words on an empty session: starting a timer needs none (owner, 2026-11-24).
+  const emptyHint: string | undefined = undefined;
   const helpState = state.phase === "stopped" ? "stopped" : "idle";
   const timerActive =
     state.phase === "holding" ||
@@ -1985,6 +1970,73 @@ function TimerPage({
       ? event === recent.event
       : recent.sessionId === view.current?.id);
 
+  const statusNav = (
+    <nav data-no-timer data-phone-nav={phone || undefined}>
+      <a
+        href="#/train"
+        data-action="train"
+        aria-label={words.train.title}
+        // Its code starts loading at the first sign of intent.
+        onPointerEnter={() => void loadTrain()}
+        onPointerDown={() => void loadTrain()}
+        onFocus={() => void loadTrain()}
+      >
+        {phone ? (
+          <PhoneNavIcon action="train" />
+        ) : (
+          <>
+            <span data-word="long">{words.train.title}</span>
+            <span data-word="short">{words.train.short}</span>
+          </>
+        )}
+      </a>{" "}
+      <a
+        href="#/progress"
+        data-action="progress"
+        aria-label={words.progress.title}
+        onPointerEnter={() => void loadProgress()}
+        onPointerDown={() => void loadProgress()}
+        onFocus={() => void loadProgress()}
+      >
+        {phone ? <PhoneNavIcon action="progress" /> : words.progress.title}
+      </a>{" "}
+      <button
+        type="button"
+        data-action="keys"
+        data-no-timer
+        disabled={timerActive || inspecting}
+        onClick={(input) => {
+          if (modal === null) openDialog("help", input.currentTarget);
+        }}
+      >
+        {words.keysTitle}
+      </button>{" "}
+      <a
+        href="#/settings"
+        data-action="settings"
+        aria-label={words.settings.title}
+        onPointerEnter={() => void loadSettings()}
+        onPointerDown={() => void loadSettings()}
+        onFocus={() => void loadSettings()}
+      >
+        {phone ? <PhoneNavIcon action="settings" /> : words.settings.title}
+      </a>{" "}
+      {/* A touch screen has no keys: its list is the gestures (shown by CSS). */}
+      <button
+        type="button"
+        data-action="gestures"
+        data-no-timer
+        aria-label={words.gestures.title}
+        disabled={timerActive || inspecting}
+        onClick={(input) => {
+          if (modal === null) openDialog("help", input.currentTarget);
+        }}
+      >
+        ?
+      </button>
+    </nav>
+  );
+
   return (
     <main
       ref={timerPage}
@@ -1994,6 +2046,8 @@ function TimerPage({
       data-inspecting={inspecting || undefined}
       data-commenting={commenting ? "" : undefined}
       data-arrangement="c"
+      data-touch-phone={phone || undefined}
+      data-empty-session={!hasRows && !recentInSession ? "" : undefined}
       data-layout={view.settings.layout}
       data-shown-solve={shownSolve?.id}
       data-stat-picker-open={statPicker || undefined}
@@ -2074,6 +2128,14 @@ function TimerPage({
           canStepScramble && modal === null ? navigateScramble : undefined
         }
         phase={state.phase}
+        reserveSplits={activeSplitNames(event, timerSettings) !== undefined}
+        markedSplits={state.splits}
+        currentPart={
+          state.phase === "running"
+            ? state.splitNames?.[state.splits?.length ?? 0]
+            : undefined
+        }
+        recentSplits={recentInSession ? recent?.splits : undefined}
         displayMs={
           state.phase === "running" || (!entry && recentInSession)
             ? displayMs
@@ -2560,63 +2622,9 @@ function TimerPage({
             </button>
           </p>
         )}
-        <nav data-no-timer>
-          <a
-            href="#/train"
-            data-action="train"
-            aria-label={words.train.title}
-            // Its code starts loading at the first sign of intent.
-            onPointerEnter={() => void loadTrain()}
-            onPointerDown={() => void loadTrain()}
-            onFocus={() => void loadTrain()}
-          >
-            <span data-word="long">{words.train.title}</span>
-            <span data-word="short">{words.train.short}</span>
-          </a>{" "}
-          <a
-            href="#/progress"
-            data-action="progress"
-            onPointerEnter={() => void loadProgress()}
-            onPointerDown={() => void loadProgress()}
-            onFocus={() => void loadProgress()}
-          >
-            {words.progress.title}
-          </a>{" "}
-          <button
-            type="button"
-            data-action="keys"
-            data-no-timer
-            disabled={timerActive || inspecting}
-            onClick={(input) => {
-              if (modal === null) openDialog("help", input.currentTarget);
-            }}
-          >
-            {words.keysTitle}
-          </button>{" "}
-          <a
-            href="#/settings"
-            data-action="settings"
-            onPointerEnter={() => void loadSettings()}
-            onPointerDown={() => void loadSettings()}
-            onFocus={() => void loadSettings()}
-          >
-            {words.settings.title}
-          </a>{" "}
-          {/* A touch screen has no keys: its list is the gestures (shown by CSS). */}
-          <button
-            type="button"
-            data-action="gestures"
-            data-no-timer
-            aria-label={words.gestures.title}
-            disabled={timerActive || inspecting}
-            onClick={(input) => {
-              if (modal === null) openDialog("help", input.currentTarget);
-            }}
-          >
-            ?
-          </button>
-        </nav>
+        {!phone && statusNav}
       </footer>
+      {phone && statusNav}
     </main>
   );
 }
@@ -2662,5 +2670,45 @@ function ChoiceResult({
         overTip={words.cross.overTip(over)}
       />
     </output>
+  );
+}
+
+function PhoneNavIcon({
+  action,
+}: {
+  action: "train" | "progress" | "settings";
+}) {
+  return (
+    <svg
+      aria-hidden="true"
+      width="22"
+      height="22"
+      viewBox="0 0 22 22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {action === "train" &&
+        [3, 9, 15].flatMap((y) =>
+          [3, 9, 15].map((x) => (
+            <rect key={`${x},${y}`} x={x} y={y} width="4" height="4" rx="0.6" />
+          )),
+        )}
+      {action === "progress" && (
+        <>
+          <path d="M3 17.5 8.2 12.3 12 14.3 17.1 7.6" />
+          <circle cx="18.3" cy="6" r="2" />
+        </>
+      )}
+      {action === "settings" && (
+        <>
+          <path d="M3 7h4m4 0h8M3 15h9m4 0h3" />
+          <circle cx="9" cy="7" r="2" />
+          <circle cx="14" cy="15" r="2" />
+        </>
+      )}
+    </svg>
   );
 }

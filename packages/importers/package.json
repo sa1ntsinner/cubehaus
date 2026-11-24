@@ -1,6 +1,6 @@
 {
   "name": "@cubehaus/importers",
-  "version": "0.0.5",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "license": "MPL-2.0",
@@ -11,9 +11,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@cubehaus/core": "workspace:0.0.5"
+    "@cubehaus/core": "workspace:1.0.0"
   },
   "devDependencies": {
-    "@cubehaus/storage": "workspace:0.0.5"
+    "@cubehaus/storage": "workspace:1.0.0"
   }
 }

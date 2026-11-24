@@ -1,6 +1,6 @@
 import type { Db } from "./db";
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 export class NewerSchemaError extends Error {}
 
 const schemaV1 = [
@@ -25,6 +25,9 @@ const schemaV1 = [
     key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL
   ) STRICT, WITHOUT ROWID`,
 ];
+
+export const liveSplits = `deleted_at IS NULL AND (splits IS NOT NULL
+  OR (import_source = 'cstimer' AND import_extra IS NOT NULL))`;
 
 const migrations: readonly (readonly string[])[] = [
   schemaV1,
@@ -116,6 +119,11 @@ const migrations: readonly (readonly string[])[] = [
     // Progress by colour reads only the solves with one; without this it would look up
     // every solve of a large folder to find none.
     "CREATE INDEX solve_cross_colour ON solve (session_id, started_at, id) WHERE deleted_at IS NULL AND cross_colour IS NOT NULL",
+  ],
+  [
+    "ALTER TABLE solve ADD COLUMN splits TEXT",
+    "ALTER TABLE solve_repeat ADD COLUMN splits TEXT",
+    `CREATE INDEX solve_splits ON solve (session_id, started_at, id) WHERE ${liveSplits}`,
   ],
 ];
 

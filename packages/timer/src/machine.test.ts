@@ -208,3 +208,48 @@ test("floors fractional elapsed milliseconds in both state and effect", () => {
     },
   ]);
 });
+
+test("records parts from event timestamps, ignores bounce, and stops on the last part", () => {
+  const config = {
+    ...DEFAULT_TIMER_CONFIG,
+    splitNames: ["Cross", "F2L", "LL"],
+  };
+  const press = (state: ReturnType<typeof createTimerState>, at: number) =>
+    reduceTimer(state, { type: "press", at }, config);
+  const running = run(start).state;
+  const began = reduceTimer(
+    press(createTimerState(), 0).state,
+    { type: "release", at: 400.5 },
+    config,
+  ).state;
+  expect(began.phase).toBe(running.phase);
+  const first = press(began, 2225.25);
+  expect(first.effects).toEqual([]);
+  expect(first.state).toMatchObject({
+    phase: "running",
+    splits: [{ name: "Cross", durationMs: 1824 }],
+  });
+  expect(press(first.state, 2475).state).toBe(first.state);
+  const second = press(first.state, 2475.25);
+  expect(second.state.phase).toBe("running");
+  const last = press(second.state, 5000);
+  expect(last.state.phase).toBe("stopped");
+  expect(last.effects).toMatchObject([
+    {
+      type: "solve",
+      timeMs: 4599,
+      splits: [
+        { name: "Cross", durationMs: 1824 },
+        { name: "F2L", durationMs: 250 },
+        { name: "LL", durationMs: 2525 },
+      ],
+    },
+  ]);
+  const cancelled = reduceTimer(
+    second.state,
+    { type: "cancel", at: 3000 },
+    config,
+  );
+  expect(cancelled.state).toEqual(createTimerState());
+  expect(cancelled.effects).toEqual([{ type: "discarded" }]);
+});

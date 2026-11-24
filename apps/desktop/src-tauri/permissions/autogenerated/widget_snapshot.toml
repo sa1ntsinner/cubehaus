@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-widget-snapshot"
+description = "Enables the widget_snapshot command without any pre-configured scope."
+commands.allow = ["widget_snapshot"]
+
+[[permission]]
+identifier = "deny-widget-snapshot"
+description = "Denies the widget_snapshot command without any pre-configured scope."
+commands.deny = ["widget_snapshot"]

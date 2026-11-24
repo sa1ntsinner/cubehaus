@@ -2,6 +2,7 @@ import {
   type CrossColour,
   crossColourOfFace,
   type EventId,
+  eventInfo,
   isCrossColour,
 } from "@cubehaus/core";
 import {
@@ -33,6 +34,37 @@ export function isLayout(value: unknown): value is Layout {
 // its event's default, so a new Blindfolded session starts as the last one was
 // set. Anything unknown or malformed falls back to the default and never throws.
 
+export const splitPresets = {
+  three: ["Cross", "F2L", "LL"],
+  four: ["Cross", "F2L", "OLL", "PLL"],
+} as const;
+
+export const splitNameLimit = 12;
+export type SplitSetting =
+  | keyof typeof splitPresets
+  | { names: string[] }
+  | null;
+
+export function allowsSplits(
+  event: EventId,
+  entry: Settings["entry"],
+): boolean {
+  return entry === "timer" && eventInfo(event).kind === "time";
+}
+
+export function hasSplitPresets(event: EventId): boolean {
+  return event === "333" || event === "333oh" || event === "333bf";
+}
+
+export function activeSplitNames(
+  event: EventId,
+  { entry, splits }: Pick<Settings, "entry" | "splits">,
+): readonly string[] | undefined {
+  if (!splits || !allowsSplits(event, entry)) return;
+  if (typeof splits === "object") return splits.names;
+  if (hasSplitPresets(event)) return splitPresets[splits];
+}
+
 export interface Settings {
   language: "en" | "ru";
   theme: ThemeChoice;
@@ -44,6 +76,7 @@ export interface Settings {
   precision: 2 | 3;
   running: "hundredths" | "tenths" | "seconds" | "hidden";
   entry: "timer" | "typing";
+  splits: SplitSetting;
   picture: boolean;
   statSlots: SlotPreferences;
   layout: Layout;
@@ -80,6 +113,7 @@ export const DEFAULT_SETTINGS: Settings = {
   precision: 2,
   running: "seconds",
   entry: "timer",
+  splits: null,
   picture: true,
   statSlots: {},
   layout: "lift",
@@ -138,6 +172,22 @@ const choices: {
         ids.every(statId),
     ),
   entry: (v): v is Settings["entry"] => v === "timer" || v === "typing",
+  splits: (v): v is SplitSetting =>
+    v === null ||
+    v === "three" ||
+    v === "four" ||
+    (!!v &&
+      typeof v === "object" &&
+      "names" in v &&
+      Array.isArray(v.names) &&
+      v.names.length >= 2 &&
+      v.names.length <= 6 &&
+      v.names.every(
+        (name) =>
+          typeof name === "string" &&
+          name.trim().length > 0 &&
+          name.length <= splitNameLimit,
+      )),
   training: isTrainingProfile,
   sizes: isViewSizes,
   holding: isHolding,
@@ -244,9 +294,10 @@ export function resolveSettings(
   tag?: string,
 ): Settings {
   const device = { ...defaultSettings(tag), ...cleanSettings(global) };
+  const own = cleanSettings(session);
   return {
     ...device,
-    ...cleanSettings(session),
+    ...own,
     picture: device.picture,
     statSlots: device.statSlots,
     layout: device.layout,
@@ -254,6 +305,7 @@ export function resolveSettings(
     today: device.today,
     theme: device.theme,
     sizes: device.sizes,
+    splits: own.splits ?? null,
   };
 }
 
@@ -279,11 +331,13 @@ export async function loadSettings(
     store.get(sessionSettingsKey(sessionId)),
     store.get(viewSizesKey),
   ]);
+  const own = parseStoredSettings(session);
   return resolveSettings(
     { ...parseStoredSettings(global), sizes: parseSizes(sizes) },
     {
       ...parseStoredSettings(forEvent),
-      ...parseStoredSettings(session),
+      ...own,
+      splits: own.splits ?? null,
     },
     tag,
   );
@@ -314,7 +368,9 @@ export async function changeSetting<K extends keyof Settings>(
     ? [globalSettingsKey]
     : [
         sessionSettingsKey(sessionId),
-        ...(event === undefined ? [] : [eventSettingsKey(event)]),
+        ...(event === undefined || key === "splits"
+          ? []
+          : [eventSettingsKey(event)]),
       ];
   for (const storeKey of keys) {
     const current = parseStoredSettings(await store.get(storeKey));

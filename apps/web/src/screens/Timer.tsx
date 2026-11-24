@@ -7,6 +7,7 @@ import {
   penaltyOf,
   resultValue,
   type Solve,
+  type SplitPart,
 } from "@cubehaus/core";
 import type { TimerPhase } from "@cubehaus/timer";
 import {
@@ -39,91 +40,53 @@ export function usePhoneTimeLayout(
   useLayoutEffect(() => {
     const main = page.current;
     if (!main || !phone) return;
-    const parts =
-      ':is(output[data-part="time"], [data-part="scramble"], [data-part="scramble-picture"], [data-part="drill"], [data-part="cross"], [data-part="hand-keys"], [data-part="entry"])';
-
+    const selector = ':scope > output[data-part="time"]';
+    const below =
+      ':scope > :is([data-part="time-under"], [data-part="stats"], [data-part="scramble-picture"], [data-part="last-actions"], [data-part="status-line"])';
     const measure = () => {
-      const time = main.querySelector<HTMLOutputElement>(
-        ':scope > output[data-part="time"]',
-      );
+      const time = main.querySelector<HTMLOutputElement>(selector);
       if (!time) {
         main.style.removeProperty("--phone-time-room");
         return;
       }
       const style = getComputedStyle(main);
-      const track = Number(style.getPropertyValue("--phone-time-track"));
-      if (!track) {
-        main.style.removeProperty("--phone-time-room");
-        main.style.removeProperty("--phone-time-offset");
-        main.removeAttribute("data-time-over-picture");
-        return;
-      }
-      // Only the natural-height tracks above the spacer contribute to the minimum.
-      // The spacer then grows to the axis, or stays small if the scramble needs the room.
-      const rows = style.gridTemplateRows.split(" ");
-      const top = rows
-        .slice(0, track - 1)
-        .reduce((height, row) => height + Number.parseFloat(row), 0);
+      const gap = Number.parseFloat(style.rowGap);
+      const halfTime = time.offsetHeight / 2;
       const centre = main.clientHeight / 2;
-      const halfTime = time.getBoundingClientRect().height / 2;
-      const naturalCentre =
-        Number.parseFloat(style.paddingTop) +
-        top +
-        track * Number.parseFloat(style.rowGap) +
-        halfTime;
-      const above = main.querySelectorAll<HTMLElement>(
-        ':scope > :is([data-part="drill"], [data-part="cross"], [data-part="hand-keys"])',
-      );
-      const entryHeight =
-        track === 3
-          ? (main.querySelector<HTMLElement>(':scope > [data-part="entry"]')
-              ?.offsetHeight ?? 0)
-          : 0;
-      const room = Math.max(
-        entryHeight,
-        centre - naturalCentre,
-        ...Array.from(above, (part) => part.offsetHeight),
-      );
-      const offset = centre - naturalCentre - room + main.scrollTop;
-      main.style.setProperty("--phone-time-room", `${room}px`);
-      main.style.setProperty("--phone-time-offset", `${offset}px`);
-      const picture = main.querySelector<HTMLElement>(
-        ':scope > [data-part="scramble-picture"]',
-      );
-      const pictureBottom = picture
-        ? picture.offsetTop + picture.offsetHeight
-        : 0;
-      main.toggleAttribute(
-        "data-time-over-picture",
-        track === 3 && pictureBottom > centre - halfTime - 8,
-      );
-    };
-    measure();
-    const resize = new ResizeObserver(measure);
-    const watch = (node: Node) => {
-      if (node instanceof HTMLElement && node.matches(parts))
-        resize.observe(node);
-    };
-    for (const child of main.children) watch(child);
-    resize.observe(main);
-    // Some pictures are drawn asynchronously and join the grid after the scramble.
-    const children = new MutationObserver((changes) => {
-      for (const change of changes) {
-        for (const node of change.removedNodes)
-          if (node instanceof Element) resize.unobserve(node);
-        for (const node of change.addedNodes) watch(node);
+      const room =
+        centre - halfTime - Number.parseFloat(style.paddingTop) - gap;
+      main.style.setProperty("--phone-time-room", `${Math.max(0, room)}px`);
+      if (!matchMedia("(orientation: portrait)").matches) return;
+      let used = halfTime + Number.parseFloat(style.paddingBottom) + 7 * gap;
+      for (const part of main.querySelectorAll<HTMLElement>(below)) {
+        const layout = getComputedStyle(part);
+        if (layout.position === "absolute" || layout.gridArea === "scramble")
+          continue;
+        used += part.matches('[data-part="status-line"]')
+          ? Math.max(44, part.offsetHeight)
+          : part.offsetHeight;
       }
+      main.style.setProperty(
+        "--phone-scramble-room",
+        `${Math.max(0, centre - used)}px`,
+      );
+    };
+    const resize = new ResizeObserver(measure);
+    const watch = () => {
+      resize.disconnect();
+      resize.observe(main);
+      for (const part of main.querySelectorAll(`${selector}, ${below}`))
+        resize.observe(part);
       measure();
-    });
+    };
+    watch();
+    const children = new MutationObserver(watch);
     children.observe(main, { childList: true });
-    main.addEventListener("scroll", measure, { passive: true });
     return () => {
       resize.disconnect();
       children.disconnect();
-      main.removeEventListener("scroll", measure);
       main.style.removeProperty("--phone-time-room");
-      main.style.removeProperty("--phone-time-offset");
-      main.removeAttribute("data-time-over-picture");
+      main.style.removeProperty("--phone-scramble-room");
     };
   }, [page, phone]);
 }
@@ -171,30 +134,39 @@ export function usePhoneCommentBar(
       const under = main.querySelector<HTMLElement>(
         ':scope > [data-part="time-under"]',
       );
-      // Measured where they stand without the lift.
-      const lift =
-        Number.parseFloat(main.style.getPropertyValue("--comment-lift")) || 0;
-      const top = time.getBoundingClientRect().top - lift;
-      let bottom = time.getBoundingClientRect().bottom - lift;
+      // Measure the laid-out figure, even if the swipe is still sliding it away.
+      const origin = main.getBoundingClientRect().top - main.scrollTop;
+      const top = origin + time.offsetTop;
+      let bottom = top + time.offsetHeight;
       for (const part of under?.children ?? [])
         if (part !== bar && part instanceof HTMLElement && part.offsetHeight)
-          bottom = Math.max(bottom, part.getBoundingClientRect().bottom - lift);
+          bottom = Math.max(
+            bottom,
+            origin +
+              (under?.offsetTop ?? 0) +
+              part.offsetTop +
+              part.offsetHeight,
+          );
       const barTop = bar.getBoundingClientRect().top;
       const ceiling = (viewport?.offsetTop ?? 0) + 8;
       const needed = Math.min(0, barTop - 16 - bottom);
       const cramped = top + needed < ceiling;
       main.toggleAttribute("data-comment-cramped", cramped);
       main.style.setProperty("--comment-lift", `${cramped ? 0 : needed}px`);
-      // The scramble and its picture step out only where the risen figure would meet them.
+      // The lower phone scramble can sit under the keyboard's translucent ground.
+      let coveredScramble = false;
       let above = 0;
       for (const part of main.querySelectorAll<HTMLElement>(
         ':scope > :is([data-part="scramble"], [data-part="scramble-picture"])',
       ))
-        if (part.offsetHeight)
-          above = Math.max(above, part.getBoundingClientRect().bottom);
+        if (part.offsetHeight) {
+          const box = part.getBoundingClientRect();
+          if (box.top < top) above = Math.max(above, box.bottom);
+          if (covered > 0 && box.bottom > barTop) coveredScramble = true;
+        }
       main.toggleAttribute(
         "data-comment-lifted",
-        !cramped && needed < 0 && top + needed < above + 8,
+        coveredScramble || (!cramped && needed < 0 && top + needed < above + 8),
       );
     };
     const update = () => place(false);
@@ -255,6 +227,10 @@ export function Timer({
   onRepeat,
   sizes = DEFAULT_SIZES,
   crossLine = null,
+  reserveSplits = false,
+  markedSplits,
+  currentPart,
+  recentSplits,
 }: {
   scramble: string | null;
   event: EventId;
@@ -264,6 +240,10 @@ export function Timer({
   blocked?: string | undefined;
   stepScramble?: ((direction: -1 | 1) => void) | undefined;
   phase: TimerPhase;
+  reserveSplits?: boolean;
+  markedSplits?: readonly SplitPart[] | undefined;
+  currentPart?: string | undefined;
+  recentSplits?: readonly SplitPart[] | undefined;
   displayMs: number;
   newest: Solve | undefined;
   justStopped: boolean;
@@ -307,6 +287,21 @@ export function Timer({
 }) {
   const settled = phase === "idle" || phase === "stopped";
   const shown = settled && !justStopped ? newest : undefined;
+  const parts =
+    phase === "running"
+      ? markedSplits
+      : settled
+        ? (shown?.splits ??
+          (justStopped ? (recentSplits ?? markedSplits) : undefined))
+        : undefined;
+  const splitLine =
+    reserveSplits || parts || currentPart ? (
+      <SplitLine
+        parts={parts ?? []}
+        current={currentPart}
+        precision={precision}
+      />
+    ) : null;
   const inspection =
     inspectionMs !== null && phase !== "running" && phase !== "stopped"
       ? inspectionDisplay(inspectionMs)
@@ -491,19 +486,23 @@ export function Timer({
             {time}
           </output>
         ))}
-      {showTime && !inspection && shown && (
-        <TimeUnder
-          solve={shown}
-          precision={precision}
-          no={shownNo}
-          words={words}
-          commenting={commenting}
-          onCommentDone={onCommentDone}
-          repeat={repeat}
-          onRepeat={onRepeat}
-          crossLine={crossLine}
-        />
-      )}
+      {showTime &&
+        (shown && !inspection ? (
+          <TimeUnder
+            solve={shown}
+            precision={precision}
+            no={shownNo}
+            words={words}
+            commenting={commenting}
+            onCommentDone={onCommentDone}
+            repeat={repeat}
+            onRepeat={onRepeat}
+            crossLine={crossLine}
+            splitLine={splitLine}
+          />
+        ) : (
+          splitLine && <div data-part="time-under">{splitLine}</div>
+        ))}
       <p data-part="time-status" role="status">
         {feedback?.reason}
       </p>
@@ -549,6 +548,57 @@ function solveDate(at: number, language: "en" | "ru") {
   }).format(date);
 }
 
+function SplitLine({
+  parts,
+  current,
+  precision,
+}: {
+  parts: readonly SplitPart[];
+  current: string | undefined;
+  precision: Settings["precision"];
+}) {
+  const durations = parts.map((part) =>
+    formatTime(part.durationMs, { precision }),
+  );
+  return (
+    <p
+      data-part="split-line"
+      data-active={current !== undefined || undefined}
+      title={
+        parts
+          .map(({ name }, index) => `${name} ${durations[index]}`)
+          .join(" · ") || undefined
+      }
+    >
+      {parts.map(({ name }, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: Parts stay in recorded order and can share a name.
+        <Fragment key={`${index}:${name}`}>
+          {index > 0 && " "}
+          {index > 0 && !current && (
+            <>
+              <span data-split-dot aria-hidden="true">
+                ·
+              </span>{" "}
+            </>
+          )}
+          <span data-split-part>
+            <span data-split-name>{name}</span>{" "}
+            <span data-split-duration>{durations[index]}</span>
+          </span>
+        </Fragment>
+      ))}
+      {current && (
+        <>
+          {parts.length > 0 && " "}
+          <span data-split-part data-split-current>
+            <span data-split-name>{current}</span> …
+          </span>
+        </>
+      )}
+    </p>
+  );
+}
+
 /**
  * Under the time: the +2 or DNF note; for a past solve its number and date; the solve's
  * comment, or the field C opens in its place.
@@ -563,8 +613,10 @@ function TimeUnder({
   repeat,
   onRepeat,
   crossLine,
+  splitLine,
 }: {
   crossLine: CrossLine | null;
+  splitLine: ReactNode;
   solve: Solve;
   precision: Settings["precision"];
   no: number | undefined;
@@ -587,7 +639,8 @@ function TimeUnder({
     !repeat &&
     !commenting &&
     solve.comment === null &&
-    !crossLine
+    !crossLine &&
+    !splitLine
   )
     return null;
   return (
@@ -597,6 +650,7 @@ function TimeUnder({
           {note.text}
         </p>
       )}
+      {splitLine}
       {crossLine &&
         (crossLine.pending ? (
           <p data-part="time-cross" data-pending="" aria-hidden="true">
@@ -859,6 +913,8 @@ function CommentField({
       aria-label={label}
       placeholder={label}
       autoComplete="off"
+      autoCorrect="off"
+      autoCapitalize="sentences"
       enterKeyHint="done"
       // biome-ignore lint/a11y/noAutofocus: C opens the field to type in at once.
       autoFocus
@@ -937,6 +993,9 @@ function Moves({
     const moves = units.map((unit, index) => (
       // biome-ignore lint/suspicious/noArrayIndexKey: units keep their order within a row.
       <Fragment key={index}>
+        {(event === "333" || event === "333oh") && index === 10 && (
+          <br data-part="phone-scramble-break" />
+        )}
         {index > 0 && " "}
         {unit.length > 1 ? <span data-part="move-unit">{unit}</span> : unit}
       </Fragment>

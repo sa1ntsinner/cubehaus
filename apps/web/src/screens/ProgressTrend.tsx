@@ -91,7 +91,12 @@ export function ProgressTrend({
 
   const description =
     start && end
-      ? labels.trend(name, format(start.value), format(end.value))
+      ? labels.trend(
+          name,
+          format(start.value),
+          format(end.value),
+          record ? format(record.value) : null,
+        )
       : undefined;
 
   const drawing = useMemo(() => {
@@ -234,6 +239,8 @@ export function ProgressTrend({
       data-part="progress-trend"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: The chart supports keyboard scrubbing.
       tabIndex={0}
+      // The chart's text alternative is the figure's own name: what focus lands on.
+      aria-label={description}
       onKeyDown={keyPick}
       data-hover={cursor ? "" : undefined}
       data-side={cursor ? (cursor.x > width / 2 ? "end" : "start") : undefined}
@@ -244,8 +251,7 @@ export function ProgressTrend({
         {readout ? `${readout.value} ${readout.solve}` : ""}
       </p>
       <svg
-        role="img"
-        aria-label={description ?? undefined}
+        aria-hidden="true"
         width="100%"
         height="100%"
         display="block"

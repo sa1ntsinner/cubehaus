@@ -69,16 +69,16 @@ if [ "$unsigned" = 1 ]; then
   exit 0
 fi
 
-destination=export
-[ "$upload" = 1 ] && destination=upload
-sed -e "s/__APPLE_TEAM_ID__/$APPLE_TEAM_ID/" -e "s/__DESTINATION__/$destination/" \
+# Export always signs with the Xcode account (cloud signing needs more than an API key's
+# Developer role); the upload then goes through altool with the API key.
+sed -e "s/__APPLE_TEAM_ID__/$APPLE_TEAM_ID/" -e "s/__DESTINATION__/export/" \
   ios/ExportOptions.template.plist > "$out/ExportOptions.plist"
-
-auth=()
-if [ "$upload" = 1 ]; then
-  auth=(-authenticationKeyID "$APPLE_API_KEY" -authenticationKeyIssuerID "$APPLE_API_ISSUER"
-    -authenticationKeyPath "$APPLE_API_KEY_PATH")
-fi
 xcodebuild -exportArchive -archivePath "$archive" -exportPath "$out/export" \
-  -exportOptionsPlist "$out/ExportOptions.plist" -allowProvisioningUpdates ${auth[@]+"${auth[@]}"}
+  -exportOptionsPlist "$out/ExportOptions.plist" -allowProvisioningUpdates
+
+if [ "$upload" = 1 ]; then
+  ipa=$(find "$out/export" -name '*.ipa' | head -1)
+  API_PRIVATE_KEYS_DIR=$(dirname "$APPLE_API_KEY_PATH") xcrun altool --upload-app -f "$ipa" \
+    -t ios --apiKey "$APPLE_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
+fi
 echo "archive.sh: $([ "$upload" = 1 ] && echo uploaded || echo exported to $out/export)"

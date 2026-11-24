@@ -54,7 +54,12 @@ export interface SwipeOffset {
 export type SwipeOutput =
   | { type: "none" }
   /** The swipe takes the touch: a timer hold under it ends, nothing scrolls. */
-  | { type: "claim"; direction: Direction; offset: SwipeOffset }
+  | {
+      type: "claim";
+      direction: Direction | null;
+      offset: SwipeOffset;
+      armed: boolean;
+    }
   | {
       type: "move";
       /** The allowed direction the finger is in, or null where it is resisted. */
@@ -211,8 +216,7 @@ export function reduceSwipe(
       state: { phase: "tracking", ids, start, axis, samples: [point] },
       output: {
         type: "claim",
-        direction: shown.direction ?? directionOf(axis, raw),
-        offset: shown.offset,
+        ...shown,
       },
     };
   }

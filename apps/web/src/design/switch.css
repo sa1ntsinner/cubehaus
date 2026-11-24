@@ -191,12 +191,12 @@ li:is([data-row="event"], [data-row="create"])
   content: "+";
 }
 li[data-current] > [data-action="switch-pick"]::before {
-  content: "•";
+  content: "•" / "";
   color: var(--ink);
 }
 /* The archive and the trash lead in. */
 li[data-row="view"] > [data-action="switch-pick"]::before {
-  content: "›";
+  content: "›" / "";
 }
 /* A long name wraps between its words, in its own column; the result keeps its place at
    the right. Only a word wider than the row breaks. */
@@ -235,12 +235,12 @@ li[data-current] [data-part="switch-label"] {
 /* ---- folders: a name with ▸ closed or ▾ open in the lead column, its count at the right;
    its sessions stand one column in ---- */
 li[data-row="folder"] > [data-action="switch-pick"]::before {
-  content: "▾";
+  content: "▾" / "";
   scale: 0.7;
 }
 li[data-row="folder"][data-collapsed="true"]
   > [data-action="switch-pick"]::before {
-  content: "▸";
+  content: "▸" / "";
 }
 /* A closed folder holding the open session shows that it does. */
 li[data-row="folder"][data-current] > [data-action="switch-pick"]::before {
@@ -388,7 +388,7 @@ dialog[data-part="switch"]:has(
 }
 @media (hover: hover) {
   li[data-selected] > [data-action="switch-event"]::after {
-    content: " ⇥";
+    content: " ⇥" / "";
     color: var(--gutter);
   }
 }

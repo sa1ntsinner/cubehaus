@@ -44,13 +44,18 @@ export function bindKeyboard(
     const phase = getPhase();
     const running = phase === "running";
     if (key.defaultPrevented && !running) return;
-    // While a solve runs, any fresh key stops it.
+    // A fresh key marks the timer; Escape discards the attempt.
     if (running) {
       key.preventDefault();
       if (!key.repeat) {
         clearHands();
-        heldCode = key.code;
-        dispatch({ type: "press", at: key.timeStamp });
+        if (key.code === "Escape") {
+          heldCode = null;
+          dispatch({ type: "cancel", at: key.timeStamp });
+        } else {
+          heldCode = key.code;
+          dispatch({ type: "press", at: key.timeStamp });
+        }
       }
       return;
     }

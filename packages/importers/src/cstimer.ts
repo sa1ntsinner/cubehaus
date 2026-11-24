@@ -1,4 +1,8 @@
-import type { EventId } from "@cubehaus/core";
+import {
+  type EventId,
+  type SplitPart,
+  splitsFromCsTimer,
+} from "@cubehaus/core";
 import { eventOfScrType } from "./cstimer-events";
 
 export interface SolveDraft {
@@ -15,6 +19,7 @@ export interface SolveDraft {
    * time at which each earlier phase ended, latest first.
    */
   phases?: number[];
+  splits?: readonly SplitPart[];
   /** Row items after the date that cubehaus does not read, kept unchanged. */
   extra?: unknown[];
   /** Original cells from a CubeTime CSV row. */
@@ -145,7 +150,11 @@ function parseSolve(row: unknown, index: number): SolveDraft | undefined {
     startedAt,
     row: index + 1,
   };
-  if (phases.length > 0) draft.phases = phases as number[];
+  if (phases.length > 0) {
+    const splits = splitsFromCsTimer(timeMs, phases);
+    if (splits) draft.splits = splits;
+    draft.phases = phases as number[];
+  }
   if (row.length > 4) draft.extra = row.slice(4);
   return draft;
 }

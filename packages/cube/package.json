@@ -1,6 +1,6 @@
 {
   "name": "@cubehaus/cube",
-  "version": "0.0.5",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "license": "MPL-2.0",

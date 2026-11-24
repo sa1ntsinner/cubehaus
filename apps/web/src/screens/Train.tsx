@@ -60,6 +60,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { AppView, createAppState } from "../app-state";
+import { inMacDesktopApp } from "../desktop-widgets";
 import { HINT_GAP } from "../gesture-hints";
 import { learnGesture, nudge, takeHint } from "../input/hint-store";
 import { isTouchScreen } from "../input/touch-screen";
@@ -247,34 +248,38 @@ function Alg({ moves }: { moves: string }) {
   const gap = (piece: AlgPiece) =>
     piece.cont ? " " : <span data-part="train-gap"> </span>;
   return (
-    <span data-part="train-moves">
-      {units.map((unit, u) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: units are positional.
-        <Fragment key={u}>
-          {u > 0 && gap(unit[0] as AlgPiece)}
-          <span data-part="train-unit">
-            {unit.map((piece, g) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional.
-              <Fragment key={g}>
-                {g > 0 && gap(piece)}
-                <span
-                  data-part="train-group"
-                  data-trigger={piece.trigger ? "" : undefined}
-                >
-                  {piece.moves.map((move, m) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: moves are positional.
-                    <Fragment key={m}>
-                      {m > 0 && " "}
-                      <span data-move={kindOf(move)}>{move}</span>
-                    </Fragment>
-                  ))}
-                </span>
-              </Fragment>
-            ))}
-          </span>
-        </Fragment>
-      ))}
-    </span>
+    <>
+      {/* Read as one line, not move by move. */}
+      <span data-heard>{moves}</span>
+      <span data-part="train-moves" aria-hidden="true">
+        {units.map((unit, u) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: units are positional.
+          <Fragment key={u}>
+            {u > 0 && gap(unit[0] as AlgPiece)}
+            <span data-part="train-unit">
+              {unit.map((piece, g) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional.
+                <Fragment key={g}>
+                  {g > 0 && gap(piece)}
+                  <span
+                    data-part="train-group"
+                    data-trigger={piece.trigger ? "" : undefined}
+                  >
+                    {piece.moves.map((move, m) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: moves are positional.
+                      <Fragment key={m}>
+                        {m > 0 && " "}
+                        <span data-move={kindOf(move)}>{move}</span>
+                      </Fragment>
+                    ))}
+                  </span>
+                </Fragment>
+              ))}
+            </span>
+          </Fragment>
+        ))}
+      </span>
+    </>
   );
 }
 
@@ -506,9 +511,10 @@ export function Train({
   // The set a word in the row opens: a family's member last chosen, or the set itself.
   const setOfTab = (id: Tab): TrainSet =>
     isFamily(id) ? memberOf(id, storedMember(id, members[id] ?? null)) : id;
-  // The phone's trainer widget shows one set (setting `trainer.widget`), chosen by a long
-  // press on the set's word. OLLCP is listed a group at a time, so its word gives OLL.
-  const phone = inPhoneApp();
+  // The trainer widget (phone, Mac desktop) shows one set (setting `trainer.widget`),
+  // chosen by a long press on the set's word. OLLCP is listed a group at a time, so its
+  // word gives OLL.
+  const phone = inPhoneApp() || inMacDesktopApp();
   const widgetSetOf = (id: Tab): string => {
     const member = setOfTab(id);
     return member === "ollcp" ? "oll" : member;
@@ -1558,7 +1564,17 @@ function Learn({
                             type="button"
                             tabIndex={caseTabIndex}
                             data-action="train-use"
-                            onClick={() => onChoose(current, alg.moves)}
+                            onClick={(event) => {
+                              // The chosen line moves up and its Use goes: the keyboard
+                              // stays on the word that lists the others.
+                              event.currentTarget
+                                .closest('[data-part="train-case"]')
+                                ?.querySelector<HTMLElement>(
+                                  '[data-action="train-more"]',
+                                )
+                                ?.focus();
+                              onChoose(current, alg.moves);
+                            }}
                           >
                             {t.use}
                           </button>
@@ -2152,6 +2168,19 @@ function Practice({
         return;
       }
       if (drill.phase === "stopped") {
+        // Enter on a focused control presses that control (Missed, a set), not Next;
+        // so does Space on Next and Missed themselves. Space elsewhere (a mode word
+        // left focused by a click) still goes on, as on the timer.
+        const control =
+          event.target instanceof Element &&
+          event.target.closest("button, a, input, select, textarea, summary");
+        if (
+          control &&
+          (event.key === "Enter" ||
+            (event.code === "Space" &&
+              control.closest('[data-part="train-after"]')))
+        )
+          return;
         if (event.code === "Space" || event.key === "Enter") {
           event.preventDefault();
           void next(shown?.caseId ?? null);
@@ -2168,6 +2197,13 @@ function Practice({
     }
     function up(event: KeyboardEvent) {
       if (paused || event.code !== "Space") return;
+      // Space is let through to Next and Missed: the button acts on its key up.
+      if (
+        drill.phase === "stopped" &&
+        event.target instanceof Element &&
+        event.target.closest('[data-part="train-after"] button')
+      )
+        return;
       event.preventDefault();
       step({ type: "up", at: event.timeStamp });
     }
@@ -2299,7 +2335,7 @@ function Practice({
       onPointerDown={pointer("down")}
       onPointerUp={pointer("up")}
     >
-      <div data-part="train-stage">
+      <div data-part="train-stage" tabIndex={-1}>
         {c && shown && byPicture && (
           <div
             data-part="train-picture"
@@ -2370,7 +2406,14 @@ function Practice({
                 type="button"
                 data-action="train-next"
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => void next(c.id)}
+                onClick={() => {
+                  // The button goes with the result: the keyboard and a screen reader
+                  // move on to the next case's picture, not to the top of the page.
+                  surface.current
+                    ?.querySelector<HTMLElement>('[data-part="train-stage"]')
+                    ?.focus({ preventScroll: true });
+                  void next(c.id);
+                }}
               >
                 {t.next}
               </button>
@@ -2393,20 +2436,18 @@ function Practice({
           </div>
         ) : (
           <p data-part="train-hint">
-            <span data-input="keys">
-              {!split
-                ? words.emptyHintKey
-                : byPicture
-                  ? t.splitHint.pictureKey
-                  : t.splitHint.scrambleKey}
-            </span>
-            <span data-input="touch">
-              {!split
-                ? words.emptyHintTouch
-                : byPicture
+            {split && (
+              <span data-input="keys">
+                {byPicture ? t.splitHint.pictureKey : t.splitHint.scrambleKey}
+              </span>
+            )}
+            {split && (
+              <span data-input="touch">
+                {byPicture
                   ? t.splitHint.pictureTouch
                   : t.splitHint.scrambleTouch}
-            </span>
+              </span>
+            )}
             {today && !started && (
               <span data-part="train-today">{t.today(today.counts)}</span>
             )}

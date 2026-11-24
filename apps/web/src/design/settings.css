@@ -33,7 +33,7 @@
   color: var(--dim);
 }
 [data-action="settings-close"]::before {
-  content: "←";
+  content: "←" / "";
   margin-inline-end: var(--s2);
   font-family: var(--font-mono);
 }
@@ -691,4 +691,39 @@ li[data-setting="crossColours"] > span:first-child {
   [data-part="section-glyph"] {
     font-size: 15px;
   }
+}
+
+[data-part="settings"]
+  li:is([data-setting="splits"], [data-setting="split-name"])
+  > label:first-child {
+  min-width: 44px;
+}
+[data-part="split-setting-control"] {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+[data-part="split-setting-control"] input {
+  width: min(15ch, 34vw);
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--gutter);
+  background: transparent;
+  color: var(--ink);
+}
+[data-part="split-setting-control"] input:focus-visible {
+  border-bottom-color: var(--ink);
+}
+[data-part="split-setting-control"] button,
+[data-setting="split-add"] button {
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--dim);
+}
+[data-part="split-setting-control"] button:disabled {
+  visibility: hidden;
+}
+[data-setting="split-add"] button {
+  margin-inline-start: auto;
 }

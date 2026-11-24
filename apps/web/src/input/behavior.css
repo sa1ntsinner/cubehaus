@@ -162,3 +162,11 @@ html[data-shell="phone"]
   -webkit-user-select: text;
   -webkit-touch-callout: default;
 }
+
+/* The phone time claims both axes, even when a gesture starts beside the figure. */
+main[data-touch-phone] > output[data-part="time"] {
+  touch-action: none;
+}
+main[data-touch-phone] {
+  overscroll-behavior: none;
+}

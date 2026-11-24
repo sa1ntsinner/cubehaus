@@ -28,6 +28,7 @@ fn main() {
             "choose_backup_directory",
             "check_update",
             "apply_update_when_idle",
+            "widget_snapshot",
         ]),
     ))
     .expect("failed to run tauri-build");

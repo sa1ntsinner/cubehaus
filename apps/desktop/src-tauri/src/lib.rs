@@ -3,7 +3,7 @@
 // not live in the webview's storage; whole copies of that file, kept a week
 // (backup.rs), so a broken disk or a bad restore loses at most a day; signed updates,
 // installed only while the timer is idle and off unless a release build is given a key
-// (update.rs).
+// (update.rs); on a Mac, the widgets' snapshot and a widget's link (widgets.rs).
 pub mod backup;
 pub mod database;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
@@ -11,11 +11,13 @@ mod download;
 #[cfg(target_os = "macos")]
 mod menu;
 pub mod update;
+pub mod widgets;
 
 use backup::{BackupMeta, RestoreError, RestoreSource};
 use database::{Database, Error, InstanceLock, Statement};
 use serde_json::{Map, Value};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
@@ -32,6 +34,10 @@ struct Native {
     updater: bool,
     /// A newer release, downloaded and verified, waiting for an idle moment.
     update: Arc<Mutex<Option<update::Downloaded>>>,
+    /// A widget's link that came while the page was loading, for when it has loaded.
+    route: Mutex<Option<String>>,
+    /// Whether the page has finished loading (so a route can be set on it now).
+    loaded: AtomicBool,
 }
 
 /// Where the owner's choice of backup folder is kept (one line: the path).
@@ -394,6 +400,38 @@ async fn apply_update_when_idle(
     Ok(applied)
 }
 
+/// The page's snapshot for the Mac widgets: written where they read it, then redrawn.
+#[tauri::command]
+async fn widget_snapshot(window: WebviewWindow, json: String) -> Result<(), Error> {
+    trusted(&window)?;
+    blocking(move || widgets::publish(&json)).await
+}
+
+/// Sets the page's route (one widgets::drill_route made, so plain characters only) and
+/// brings the window forward; kept until the page has loaded when it has not yet.
+#[cfg(target_os = "macos")]
+fn open_route(app: &tauri::AppHandle, route: String) {
+    // At a launch by the link the window may not exist yet.
+    let native = app.state::<Native>();
+    let window = app.get_webview_window("main");
+    match &window {
+        Some(window) if native.loaded.load(Ordering::SeqCst) => {
+            let _ = window.eval(format!("location.hash = {route:?}"));
+        }
+        _ => {
+            if let Ok(mut pending) = native.route.lock() {
+                *pending = Some(route);
+            }
+        }
+    }
+    let Some(window) = window else {
+        return;
+    };
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
@@ -438,7 +476,19 @@ pub fn run() {
                 .first()
                 .ok_or("tauri.conf.json has no window")?
                 .clone();
-            let window = tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?;
+            let window = tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
+                .on_page_load(|webview, payload| {
+                    let native = webview.state::<Native>();
+                    let finished = payload.event() == tauri::webview::PageLoadEvent::Finished;
+                    native.loaded.store(finished, Ordering::SeqCst);
+                    if !finished {
+                        return;
+                    }
+                    let pending = native.route.lock().ok().and_then(|mut slot| slot.take());
+                    if let Some(route) = pending {
+                        let _ = webview.eval(format!("location.hash = {route:?}"));
+                    }
+                });
             #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
             let window = {
                 let downloads = download::Downloads::default();
@@ -464,11 +514,22 @@ pub fn run() {
             restore_backup,
             choose_backup_directory,
             check_update,
-            apply_update_when_idle
+            apply_update_when_idle,
+            widget_snapshot
         ])
         .build(context)
         .expect("error while running cubehaus")
         .run(|app, event| {
+            // A widget's link (Drill), at launch or while running.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                if let Some(route) = urls
+                    .iter()
+                    .find_map(|url| widgets::drill_route(url.as_str()))
+                {
+                    open_route(app, route);
+                }
+            }
             // A quit folds the WAL into the file and closes it, so the history is one file
             // again (what a copy by hand or a sync tool expects). A crash or a kill skips
             // this; SQLite then replays the WAL on the next start.

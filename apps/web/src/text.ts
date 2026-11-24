@@ -242,8 +242,8 @@ const en = {
     colourNeeds: (n: number) => `An average needs ${n} solves of the colour`,
     none: "Times show here after the first solve.",
     solveAt: (solve: string, date: string) => `Solve ${solve} · ${date}`,
-    trend: (average: string, from: string, to: string) =>
-      `${average} trend, from ${from} to ${to}`,
+    trend: (average: string, from: string, to: string, best: string | null) =>
+      `${average} trend, from ${from} to ${to}${best ? `, best ${best}` : ""}.`,
     calendar: "Days with solves",
     today: "today",
     distribution: "Distribution",
@@ -619,6 +619,14 @@ const en = {
       "missing" | "target" | "event" | "changed" | "gone" | "nothing",
       string
     >,
+  },
+  splits: {
+    title: "Splits",
+    off: "Off",
+    custom: "Custom",
+    part: (number: number) => `Part ${number}`,
+    add: "Add part",
+    remove: (number: number) => `Remove part ${number}`,
   },
   settings: {
     data: "Data",
@@ -1126,8 +1134,8 @@ const ru: Text = {
       `Для среднего ${plural(n, "нужна", "нужны", "нужно")} ${n} ${plural(n, "сборка", "сборки", "сборок")}.`,
     none: "Здесь появится время после первой сборки.",
     solveAt: (solve: string, date: string) => `Сборка ${solve} · ${date}`,
-    trend: (average: string, from: string, to: string) =>
-      `Тренд ${average}: от ${from} до ${to}`,
+    trend: (average: string, from: string, to: string, best: string | null) =>
+      `Тренд ${average}: от ${from} до ${to}${best ? `, лучшее ${best}` : ""}.`,
     calendar: "Дни со сборками",
     today: "сегодня",
     distribution: "Разброс",
@@ -1494,6 +1502,14 @@ const ru: Text = {
       gone: "Не объединено.",
       nothing: "Не объединено.",
     },
+  },
+  splits: {
+    title: "Секции",
+    off: "Выкл.",
+    custom: "Свои",
+    part: (number) => `Секция ${number}`,
+    add: "Добавить секцию",
+    remove: (number) => `Удалить секцию ${number}`,
   },
   settings: {
     data: "Данные",

@@ -30,7 +30,7 @@ dialog[data-part="average-detail"] {
   color: var(--dim);
 }
 [data-part="average-detail"] [data-action="dialog-close"]::before {
-  content: "←";
+  content: "←" / "";
   margin-inline-end: var(--s2);
   font-family: var(--font-mono);
 }

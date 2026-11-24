@@ -137,7 +137,9 @@ test("progress compares stored solves and shows DNF-only days", async ({
   await expect(part("distribution-dnf")).toHaveCount(0);
 
   const trend = part("trend");
-  const svg = trend.getByRole("img");
+  // The figure carries the chart's name; the drawing itself is hidden from readers.
+  await expect(trend).toHaveAttribute("aria-label", /trend, from .+, best /);
+  const svg = trend.locator("svg");
   await expect(part("line")).toBeAttached();
   await svg.scrollIntoViewIfNeeded();
   const bounds = await svg.boundingBox();

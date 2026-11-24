@@ -27,7 +27,7 @@ main[data-part="progress"] > nav:first-child a {
   color: var(--dim);
 }
 main[data-part="progress"] > nav:first-child a::before {
-  content: "←";
+  content: "←" / "";
   margin-inline-end: var(--s2);
   font-family: var(--font-mono);
 }
@@ -665,4 +665,30 @@ main[data-view="spread"] [data-part="progress-more"] > summary {
     margin: 0 0 var(--s2);
     font-size: 20px;
   }
+}
+
+[data-part="progress-splits"] {
+  width: min(100%, 420px);
+  margin-block: var(--s6);
+  border-collapse: collapse;
+  font: 13px / 1.5 var(--font-mono);
+  text-align: right;
+}
+[data-part="progress-splits"] thead {
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+}
+[data-part="progress-splits"] :is(th, td) {
+  padding-block: var(--s1);
+  padding-inline-start: var(--s2);
+  font-weight: 400;
+}
+[data-part="progress-splits"] th:first-child {
+  padding-inline-start: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+[data-part="progress-splits"] thead th:first-child {
+  color: var(--ink);
+  font-weight: 600;
 }

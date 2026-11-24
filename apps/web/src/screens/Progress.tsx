@@ -6,6 +6,7 @@ import {
   formatMultiValue,
   formatTime,
 } from "@cubehaus/core";
+import { type SplitStanding, splitSummary } from "@cubehaus/stats";
 import type { ColourSeries, ProgressScope } from "@cubehaus/storage";
 import {
   useCallback,
@@ -258,6 +259,35 @@ export function Progress({
       ? colours.series
       : null;
 
+  const splitSession = scope?.kind === "session" ? scope.id : undefined;
+  const splitRequest = useMemo(
+    () => ({ sessionId: splitSession, revision }),
+    [splitSession, revision],
+  );
+  const [loadedSplits, setLoadedSplits] = useState<{
+    request: typeof splitRequest;
+    parts: SplitStanding[];
+  }>();
+  useEffect(() => {
+    if (!store || !splitRequest.sessionId) return;
+    let stale = false;
+    void store.solves.splitSeries(splitRequest.sessionId).then(
+      (series) => {
+        if (!stale)
+          setLoadedSplits({
+            request: splitRequest,
+            parts: splitSummary(series),
+          });
+      },
+      () => {},
+    );
+    return () => {
+      stale = true;
+    };
+  }, [store, splitRequest]);
+  const parts =
+    loadedSplits?.request === splitRequest ? loadedSplits.parts : undefined;
+  const precision = view.settings.precision;
   const result = loaded?.request === request ? loaded : undefined;
   const details = result?.model;
   const modelKey = details?.key;
@@ -358,6 +388,8 @@ export function Progress({
               data-part="progress-event"
               data-session-id={session.id}
               aria-pressed={session.id === selected?.id && mode === "session"}
+              // The bare count is read with its unit: "3×3, 60 solves".
+              aria-label={`${session.name}, ${labels.solveCount(count)}`}
               onClick={() => {
                 setSelection(session.id);
                 setMode("session");
@@ -578,6 +610,28 @@ export function Progress({
               numbers={numbers}
               labels={labels}
             />
+          )}
+          {shows("trend") && !!parts?.length && (
+            <table data-part="progress-splits" aria-label={text.splits.title}>
+              <thead>
+                <tr>
+                  <th scope="col">{text.splits.title}</th>
+                  <th scope="col">{text.mean}</th>
+                  <th scope="col">{text.ao12}</th>
+                  <th scope="col">{text.best}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parts.map((part) => (
+                  <tr key={part.key}>
+                    <th scope="row">{part.name}</th>
+                    <td>{formatAverage(part.mean, { precision })}</td>
+                    <td>{formatAverage(part.ao12, { precision }) || "–"}</td>
+                    <td>{formatTime(part.best, { precision })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
           {shows("bests") && details.records.length > 0 && (
             <dl data-part="progress-pbs">

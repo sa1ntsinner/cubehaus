@@ -5,7 +5,13 @@ import { defineConfig } from "@playwright/test";
 // waits for every other project, so a full run gives it the machine alone. To run it by
 // itself: `playwright test --project=perf --no-deps`.
 const perfSpec = /perf\.spec\.ts$/;
-const gpu = { args: ["--use-angle=metal"] };
+const mac = process.platform === "darwin";
+const gpu = { args: ["--use-angle=metal", ...(mac ? ["--enable-gpu"] : [])] };
+const chromium = {
+  browserName: "chromium" as const,
+  ...(mac ? { channel: "chromium" } : {}),
+  launchOptions: gpu,
+};
 // 4173 unless PW_PORT names another, for a run beside a preview that holds it.
 const port = Number(process.env.PW_PORT ?? 4173);
 const origin = `http://127.0.0.1:${port}`;
@@ -19,11 +25,8 @@ export default defineConfig({
     {
       name: "chromium",
       testIgnore: perfSpec,
-      use: {
-        browserName: "chromium",
-        // Render on the GPU: the CPU is the scarce resource on the dev Mac.
-        launchOptions: gpu,
-      },
+      // The full Chromium on macOS uses ANGLE Metal in headless mode.
+      use: chromium,
     },
     // Firefox, opt-in with PW_FIREFOX=1: Playwright's Firefox build does not start on macOS
     // 27 ("Could not find profile folder"), so it runs in the Linux image there.
@@ -52,7 +55,7 @@ export default defineConfig({
     {
       name: "perf",
       testMatch: perfSpec,
-      use: { browserName: "chromium", launchOptions: gpu },
+      use: chromium,
       dependencies: ["chromium", "webkit"],
       workers: 1,
     },

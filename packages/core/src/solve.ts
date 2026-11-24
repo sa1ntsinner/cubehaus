@@ -1,5 +1,6 @@
 import type { CrossColour } from "./cross-colour";
 import type { EventId } from "./events";
+import type { SplitPart } from "./splits";
 
 export type Penalty = "ok" | "plus2" | "dnf";
 export type InputKind = "keyboard" | "touch" | "manual" | "imported";
@@ -22,6 +23,8 @@ export interface Solve {
   cubesAttempted?: number | null;
   /** 3×3: the colour the cross was built on, when the app assigned one (schema 9). */
   crossColour?: CrossColour | null;
+  /** The part names and raw durations recorded in this solve. */
+  splits?: readonly SplitPart[];
   /**
    * A further attempt on the scramble of an earlier solve: that solve's id. A repeat is
    * stored apart and never counts in the session's statistics.

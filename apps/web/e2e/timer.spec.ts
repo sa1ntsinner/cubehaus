@@ -48,13 +48,8 @@ test("the scramble line stays empty until the first scramble, which comes within
   expect(seen.filter((text) => /No scramble|Retry/.test(text))).toEqual([]);
 });
 
-test("holds, readies, runs and stops using Space; the empty session's hint goes", async ({
-  page,
-}) => {
+test("holds, readies, runs and stops using Space", async ({ page }) => {
   const timer = page.locator("main");
-  // Both wordings are in the markup; CSS shows the one for the input at hand.
-  const hint = page.locator('[data-part="solves-empty"]');
-  await expect(hint.locator('[data-input="keys"]')).toBeVisible();
   await page.keyboard.down("Space");
   await expect(timer).toHaveAttribute("data-phase", "holding");
   await page.waitForTimeout(400);
@@ -70,7 +65,6 @@ test("holds, readies, runs and stops using Space; the empty session's hint goes"
   expect(seconds).toBeGreaterThanOrEqual(0.45);
   expect(seconds).toBeLessThanOrEqual(0.75);
   await page.keyboard.up("Space");
-  await expect(hint).toHaveCount(0);
 });
 
 test("a short hold, Meta+Space and Control+Space leave the timer idle", async ({
@@ -374,4 +368,67 @@ test("both physical hand keys start on the last release and an unrelated key sto
   const rows = page.locator("[data-solve-id]");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).not.toHaveAttribute("data-penalty", "dnf");
+});
+
+test.describe("split timing", () => {
+  test.use({ hasTouch: true, viewport: { width: 393, height: 852 } });
+
+  test("times three parts by keyboard and touch, then shows them in the solve", async ({
+    page,
+  }) => {
+    await page.goto("/#/settings/session");
+    await page.locator("#setting-splits").selectOption("three");
+    await expect(page.locator("#setting-splits")).toHaveValue("three");
+    await page.locator('[data-action="settings-close"]').click();
+    const timer = page.locator("main[data-timer-surface]");
+    const parts = page.locator('[data-part="split-line"]');
+    await expect(parts).toBeAttached();
+    const phase = (value: string) =>
+      expect(timer).toHaveAttribute("data-phase", value);
+    const time = page.locator('[data-part="time"]');
+    const box = await time.boundingBox();
+    if (!box) throw new Error("The time has no box");
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    const hold = (type: "pointerdown" | "pointerup") =>
+      time.dispatchEvent(type, {
+        pointerId: 7,
+        pointerType: "touch",
+        isPrimary: true,
+        bubbles: true,
+        cancelable: true,
+        button: type === "pointerdown" ? 0 : -1,
+        clientX: x,
+        clientY: y,
+      });
+
+    for (const input of ["keyboard", "touch"] as const) {
+      await expect(page.locator('[data-part="scramble"]')).toHaveAttribute(
+        "data-ready",
+        "true",
+      );
+      if (input === "keyboard") await page.keyboard.down("Space");
+      else await hold("pointerdown");
+      await phase("ready");
+      if (input === "keyboard") await page.keyboard.up("Space");
+      else await hold("pointerup");
+      await phase("running");
+
+      for (let part = 0; part < 3; part++) {
+        await page.waitForTimeout(300);
+        if (input === "keyboard") await page.keyboard.press("Space");
+        else await page.touchscreen.tap(x, y);
+        await expect(parts.locator("[data-split-duration]")).toHaveCount(
+          part + 1,
+        );
+        if (part < 2) await phase("running");
+      }
+      await phase("idle");
+      await expect(parts).toBeVisible();
+      await page.waitForTimeout(720);
+    }
+    await page.keyboard.press("ArrowUp");
+    await expect(timer).toHaveAttribute("data-shown-solve", /.+/);
+    await expect(parts.locator("[data-split-duration]")).toHaveCount(3);
+  });
 });

@@ -35,6 +35,7 @@ describe("settings", () => {
       precision: 2,
       running: "seconds",
       entry: "timer",
+      splits: null,
       picture: true,
       statSlots: {},
       layout: "lift",

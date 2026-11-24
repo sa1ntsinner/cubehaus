@@ -1,4 +1,9 @@
-import { type EventId, isEventId } from "@cubehaus/core";
+import {
+  type EventId,
+  isEventId,
+  readSplitParts,
+  splitsFromCsTimer,
+} from "@cubehaus/core";
 import { eventOfScrType, scrTypeOf } from "./cstimer-events";
 
 type Value = string | number | null | undefined;
@@ -136,10 +141,20 @@ export function encodeCsTimer(
       const plus2 =
         Number(row.plus2) ||
         (typeof extra?.plus2 === "number" ? extra.plus2 : 0);
+      const splits = readSplitParts(row.splits, Number(row.time_ms));
+      const ends: number[] = [];
+      if (splits) {
+        let elapsed = 0;
+        for (const part of splits.slice(0, -1)) {
+          elapsed += part.durationMs;
+          ends.push(elapsed);
+        }
+        ends.reverse();
+      }
       const timing = [
         Number(row.dnf) ? -1 : plus2 * 2000,
         Number(row.time_ms),
-        ...(Array.isArray(extra?.phases) ? extra.phases : []),
+        ...(splits ? ends : Array.isArray(extra?.phases) ? extra.phases : []),
       ];
       return [
         timing,
@@ -170,6 +185,7 @@ export const csvHeadings = [
   "solution",
   "cubes_solved",
   "cubes_attempted",
+  "splits",
 ] as const;
 
 /** RFC 4180: quoted when it holds a comma, a quote or a line break. */
@@ -181,7 +197,7 @@ function cell(value: Value): string {
 
 /**
  * One row per live solve, UTF-8, CRLF lines, dates in RFC 3339 UTC with milliseconds and
- * durations in whole milliseconds. Split times and source-only fields stay out.
+ * durations in whole milliseconds. Named splits are a JSON array in the last column.
  */
 export function encodeCsv(
   source: ExportSource,
@@ -191,7 +207,15 @@ export function encodeCsv(
   const lines = [csvHeadings.join(",")];
   for (const session of sessions(source, options))
     for (const row of session.solves) {
-      if (row.import_extra !== null && row.import_extra !== undefined)
+      const total = Number(row.time_ms);
+      const source = json(row.import_extra);
+      const legacyParts = splitsFromCsTimer(total, source?.phases);
+      const splits = readSplitParts(row.splits, total) ?? legacyParts;
+      const onlyPhases =
+        legacyParts &&
+        source &&
+        Object.keys(source).every((key) => key === "v" || key === "phases");
+      if (row.import_extra != null && !onlyPhases)
         issues.push({
           id: String(row.id),
           field: "import_extra",
@@ -214,6 +238,7 @@ export function encodeCsv(
           row.solution ?? null,
           row.cubes_solved ?? null,
           row.cubes_attempted ?? null,
+          splits ? JSON.stringify(splits) : null,
         ]
           .map(cell)
           .join(","),

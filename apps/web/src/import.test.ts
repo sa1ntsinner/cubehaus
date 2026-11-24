@@ -124,7 +124,12 @@ test("renamed moved and deleted imports survive interrupted replay", async () =>
     const backup = await snapshot(db);
     expect(
       backup.tables.solve?.find((row) => row.session_id === split.id),
-    ).toMatchObject({ import_extra: '{"v":1,"phases":[7000]}' });
+    ).toMatchObject({
+      splits: JSON.stringify([
+        { name: "1", durationMs: 7000 },
+        { name: "2", durationMs: 5345 },
+      ]),
+    });
     expect(
       backup.tables.import_session?.map(({ source_key, source_meta }) => [
         source_key,

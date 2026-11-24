@@ -161,7 +161,13 @@ export function ThemeEditor({
                 type="button"
                 data-action="theme-picture-remove"
                 disabled={!enabled}
-                onClick={() => change({ ...draft, image: null })}
+                onClick={(event) => {
+                  // The word goes with the picture: the keyboard stays on Choose beside it.
+                  event.currentTarget.parentElement
+                    ?.querySelector<HTMLElement>('input[type="file"]')
+                    ?.focus();
+                  change({ ...draft, image: null });
+                }}
               >
                 {t.remove}
               </button>
@@ -252,7 +258,11 @@ export function ThemeEditor({
           type="button"
           data-action="theme-reset-colours"
           disabled={!enabled}
-          onClick={() => change({ ...draft, tokens: {} })}
+          onClick={() => {
+            // The word goes once the colours are the base's: the keyboard stays in the list.
+            document.getElementById("theme-base")?.focus();
+            change({ ...draft, tokens: {} });
+          }}
         >
           {t.resetColours}
         </button>

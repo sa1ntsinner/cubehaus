@@ -209,13 +209,13 @@ importers:
         specifier: workspace:*
         version: link:../../packages/cube
       '@cubehaus/importers':
-        specifier: workspace:0.0.5
+        specifier: workspace:1.0.0
         version: link:../../packages/importers
       '@cubehaus/scramble':
         specifier: workspace:*
         version: link:../../packages/scramble
       '@cubehaus/stats':
-        specifier: workspace:0.0.5
+        specifier: workspace:1.0.0
         version: link:../../packages/stats
       '@cubehaus/storage':
         specifier: workspace:*
@@ -284,11 +284,11 @@ importers:
   packages/importers:
     dependencies:
       '@cubehaus/core':
-        specifier: workspace:0.0.5
+        specifier: workspace:1.0.0
         version: link:../core
     devDependencies:
       '@cubehaus/storage':
-        specifier: workspace:0.0.5
+        specifier: workspace:1.0.0
         version: link:../storage
 
   packages/scramble:

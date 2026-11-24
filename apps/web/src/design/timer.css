@@ -247,6 +247,19 @@ main > [data-part="scramble"] {
      both are the event's own. */
   --per-shown: max(1, round(down, var(--per) / var(--size-scramble, 1), 1));
   --lines-shown: round(up, var(--lines) * var(--per) / var(--per-shown), 1);
+  --short-lines-shown: round(
+    up,
+    var(--plines) *
+    var(--per) /
+    var(--per-shown),
+    1
+  );
+  --phone-line-room: round(
+    down,
+    min(var(--cap), var(--phone-scramble-room, 100dvh)) /
+    var(--plines),
+    1px
+  );
   font-size: max(
     var(--text-floor),
     min(
@@ -769,21 +782,10 @@ main > [data-part="file"] > [data-part="solves"] {
     text-align: center;
   }
 }
-[data-part="solves-empty"] > [data-input="touch"] {
-  display: none;
-}
 /* Gone while the timer is busy: inspecting, held or running. */
 main:not([data-phase="idle"], [data-phase="stopped"])
   [data-part="solves-empty"] {
   visibility: hidden;
-}
-@media (hover: none), (pointer: coarse) {
-  [data-part="solves-empty"] > [data-input="keys"] {
-    display: none;
-  }
-  [data-part="solves-empty"] > [data-input="touch"] {
-    display: inline;
-  }
 }
 /* The time is the row's button: it shows that solve in the middle. */
 [data-action="solve-show"] {
@@ -1195,7 +1197,11 @@ main > [data-part="hand-keys"] {
 /* ---- while the solve is armed and running only the time stays ---- */
 /* Only faded: a touch anywhere, on a hidden control too, still reaches the input code and
    stops the solve. */
-main[data-phase="running"] > :not(output[data-part="time"]),
+main[data-phase="running"]
+  > :not(
+    output[data-part="time"],
+    [data-part="time-under"]:has(> [data-part="split-line"][data-active])
+  ),
 main[data-phase="ready"]
   > :not(
     output[data-part="time"],
@@ -1403,7 +1409,7 @@ main[data-inspecting]:is([data-phase="holding"], [data-phase="ready"])
   /* Focus has no file: its row holds the history chevrons whole, so on a short screen
      their targets stay clear of the actions under them (the room comes from above the
      time). */
-  main[data-layout="focus"]:is(
+  main[data-layout="focus"]:not([data-touch-phone]):is(
     [data-timer-surface],
     :has(> [data-part="scramble"])
   ) {
@@ -1521,7 +1527,7 @@ main[data-inspecting]:is([data-phase="holding"], [data-phase="ready"])
         100cqi /
         (var(--per-shown) * var(--slot) * 0.6),
         var(--cap) /
-        (round(up, var(--plines) * var(--per) / var(--per-shown), 1) * 1.35)
+        (var(--short-lines-shown) * 1.35)
       )
     );
   }
@@ -1960,7 +1966,7 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
    practised), and the attempts take its room, the solve's own result first, down to two
    lines on a short screen; the actions and the status line stay on it. */
 @media (max-width: 699px) {
-  main:has(> [data-part="time-under"][data-repeat]) {
+  main:not([data-touch-phone]):has(> [data-part="time-under"][data-repeat]) {
     grid-template-rows:
       auto auto var(--phone-time-room, minmax(0, 1fr)) auto minmax(
         calc(3 * 44px + var(--s1)),
@@ -2192,28 +2198,18 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
     /* The figure's cap height sits a pixel above the middle of its line box. */
     position: relative;
     top: 1px;
-    transform: translateY(var(--phone-time-lift, 0px));
+    transform: translate3d(
+      var(--swipe-x, 0px),
+      calc(var(--swipe-y, 0px) + var(--phone-time-lift, 0px)),
+      0
+    );
     transition: transform 160ms ease-out;
-  }
-  main:is(
-      [data-inspecting],
-      [data-phase="holding"],
-      [data-phase="ready"],
-      [data-phase="running"]
-    )
-    > output[data-part="time"] {
-    --phone-time-lift: var(--phone-time-offset, 0px);
-  }
-  main[data-time-over-picture][data-inspecting]
-    > [data-part="scramble-picture"] {
-    opacity: 0;
-    pointer-events: none;
   }
   main > output[data-part="time"][data-swiping] {
     transition: none;
   }
   main > output[data-part="time"][data-swipe-settling] {
-    transition: translate 300ms cubic-bezier(0.25, 1.25, 0.4, 1);
+    transition: transform 300ms cubic-bezier(0.25, 1.25, 0.4, 1);
   }
 
   /* The individual solve actions stay in the tab order and accessibility tree.
@@ -2226,20 +2222,6 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-  main
-    > [data-part="status-line"]
-    > nav:last-child
-    [data-action="train"]
-    [data-word="long"] {
-    display: inline;
-  }
-  main
-    > [data-part="status-line"]
-    > nav:last-child
-    [data-action="train"]
-    [data-word="short"] {
-    display: none;
   }
   [data-part="solves"]
     :is([data-part="solve-comment"], [data-word="comment-placeholder"]),
@@ -2330,8 +2312,12 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
   }
   main > [data-part="time-under"] {
     position: relative;
-    top: var(--comment-lift, 0px);
-    transition: top 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  main[data-commenting]
+    > [data-part="time-under"]
+    > :not([data-part="comment-bar"]) {
+    transform: translate3d(0, var(--comment-lift, 0px), 0);
+    transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   main > footer[data-part="status-line"] > [data-kind="undo-delete"] {
     display: flex;
@@ -2380,4 +2366,588 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
     ) {
     transition: none;
   }
+}
+
+/* On a touch phone the figure stays on the viewport axis. The flexible file takes
+   the space between its averages and the scramble. */
+main[data-touch-phone] {
+  padding: calc(var(--s3) + env(safe-area-inset-top)) var(--phone-inline)
+    var(--phone-foot);
+  row-gap: var(--s2);
+}
+main[data-touch-phone] > output[data-part="time"]:not([data-swiping]) {
+  will-change: auto;
+}
+main[data-touch-phone] > [data-part="file"] {
+  min-height: 0;
+}
+main[data-touch-phone] > [data-part="hand-keys"] {
+  grid-area: air;
+  place-self: end center;
+}
+main[data-touch-phone] > [data-part="file"] > [data-part="stats-totals"] {
+  display: none;
+}
+main[data-touch-phone][data-empty-session]
+  > :is([data-part="stats"], [data-part="focus-history"]),
+main[data-touch-phone] > [data-part="time-under"]:empty {
+  display: none;
+}
+main[data-touch-phone]:is(
+    [data-phase="holding"],
+    [data-phase="ready"],
+    [data-phase="running"],
+    [data-inspecting]
+  )
+  > :is([data-part="scramble"], [data-part="scramble-picture"]) {
+  visibility: hidden;
+}
+[data-part="phone-scramble-break"] {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  main[data-touch-phone][data-layout] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+      var(--phone-time-room, minmax(0, 1fr))
+      auto auto auto minmax(0, 1fr) auto auto auto minmax(44px, auto);
+    grid-template-areas:
+      "air"
+      "time"
+      "note"
+      "stats"
+      "file"
+      "picture"
+      "scramble"
+      "actions"
+      "status";
+  }
+  main[data-touch-phone] > [data-phone-nav] {
+    grid-column: 1;
+    grid-row: 2 / scramble-start;
+    position: absolute;
+    inset-inline-end: var(--phone-rail);
+    inset-block-end: 0;
+    margin-inline-end: 0;
+  }
+  main[data-touch-phone] > [data-part="file"] {
+    width: min(280px, calc(100cqi - 76px));
+    justify-self: center;
+  }
+  main[data-touch-phone] > [data-part="scramble-picture"] {
+    grid-area: picture;
+    justify-self: center;
+    height: calc(58px * min(var(--size-picture, 1), 1.25));
+    margin: 0;
+  }
+  main[data-touch-phone] > [data-part="scramble"][data-ready="true"] {
+    --scramble-width: 100cqi;
+    --per: 7;
+    --slot: 2.65;
+    --gap: 0.65;
+    --max: 24px;
+    --plines: 3;
+    --cap: 34dvh;
+    justify-self: center;
+    align-content: end;
+    width: calc(var(--per) * var(--slot) * 1ch + 0.15ch);
+    word-spacing: calc((var(--gap) - 1) * 1ch);
+    min-height: calc(var(--plines) * 1lh);
+    max-width: var(--scramble-width);
+    font-size: max(
+      var(--text-floor),
+      min(
+        var(--max) *
+        var(--size-scramble, 1),
+        var(--scramble-width) /
+        ((var(--per) * var(--slot) + 0.15) * 0.601),
+        var(--phone-line-room) /
+        var(--row-height, 1.35)
+      )
+    );
+  }
+  main[data-touch-phone] > [data-part="scramble"][data-ready="false"] {
+    justify-self: center;
+  }
+  main[data-touch-phone] > [data-part="scramble"] [data-move] {
+    min-width: calc((var(--slot) - var(--gap, 1)) * 1ch);
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-event="sq1"]
+    [data-move] {
+    min-width: 0;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="222"],
+      [data-event="skewb"],
+      [data-event="pyram"]
+    ) {
+    --per: 8;
+    --plines: 2;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="333bf"] {
+    --per: 8;
+    --slot: 3.65;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="333fm"],
+      [data-event="fto"]
+    ) {
+    --per: 8;
+    --plines: 4;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="fto"] {
+    --slot: 3.65;
+    --max: 19px;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="444"],
+      [data-event="444bf"]
+    ) {
+    --per: 9;
+    --slot: 3.35;
+    --gap: 0.35;
+    --max: 18px;
+    --plines: 6;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="555"],
+      [data-event="555bf"],
+      [data-event="666"],
+      [data-event="777"]
+    ) {
+    --per: 9;
+    --slot: 4.65;
+    --max: 14px;
+    --plines: 7;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="666"] {
+    --plines: 9;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="777"] {
+    --plines: 12;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="minx"] {
+    --per: 11;
+    --slot: 3.35;
+    --gap: 0.35;
+    --row-height: 1.5;
+    --max: 15px;
+    --plines: 7;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="clock"] {
+    --per: 7;
+    --slot: 5.65;
+    --max: 16px;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="sq1"] {
+    --per: 4;
+    --slot: 8.2;
+    --gap: 1;
+    --max: 17px;
+    --plines: 5;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="333mbf"] {
+    --per: 13;
+    --max: 12.5px;
+    --plines: 1;
+    width: calc((var(--per) * var(--slot) + 3.15) * 1ch);
+    min-height: min-content;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="333"],
+      [data-event="333oh"]
+    ) {
+    --per: 10;
+    --slot: 2.35;
+    --gap: 0.35;
+    --plines: 2;
+    --max: 28px;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="333"],
+      [data-event="333oh"]
+    ):where(:has([data-n="20"])) {
+    --per: 11;
+  }
+  main[data-touch-phone] [data-part="phone-scramble-break"] {
+    display: inline;
+  }
+  /* A long scramble uses the lower right rail alongside its turns. */
+  main[data-touch-phone]:has(
+      > [data-part="scramble"]:is(
+          [data-event^="444"],
+          [data-event^="555"],
+          [data-event="666"],
+          [data-event="777"],
+          [data-event="minx"],
+          [data-event="333mbf"]
+        )
+    )
+    > [data-phone-nav] {
+    grid-row: scramble-start / status-start;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event^="444"],
+      [data-event^="555"],
+      [data-event="666"],
+      [data-event="777"],
+      [data-event="minx"],
+      [data-event="333mbf"]
+    ) {
+    --scramble-width: calc(100cqi - 38px);
+    justify-self: start;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="222"] {
+    --max: 28px;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="666"],
+      [data-event="777"]
+    ) {
+    --slot: 4.4;
+    --gap: 0.4;
+  }
+  main[data-touch-phone]:has(
+    > [data-part="scramble"]:is([data-event="666"], [data-event="777"])
+  ) {
+    row-gap: 6px;
+  }
+  main[data-touch-phone]:has(
+      > [data-part="scramble"]:is([data-event="666"], [data-event="777"])
+    )
+    > [data-part="scramble-picture"] {
+    display: block;
+    grid-area: scramble;
+    align-self: start;
+    justify-self: end;
+    height: 28px;
+    margin-block-start: -6px;
+    margin-inline-end: calc(var(--phone-rail) - var(--phone-inline) + 3px);
+  }
+}
+@media (max-width: 359px) and (orientation: portrait) {
+  main[data-touch-phone] > [data-phone-nav] {
+    grid-row: scramble-start / status-start;
+  }
+  main[data-touch-phone] > [data-part="scramble"][data-ready="true"] {
+    --scramble-width: calc(100cqi - 38px);
+    justify-self: start;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="222"] {
+    --per: 7;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="333"],
+      [data-event="333oh"]
+    ) {
+    --per: 7;
+    --plines: 3;
+    --max: 24px;
+  }
+  main[data-touch-phone] [data-part="phone-scramble-break"] {
+    display: none;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="666"],
+      [data-event="777"]
+    ) {
+    --per: 9;
+    --slot: 4.15;
+    --gap: 0.15;
+    --plines: 12;
+    --cap: 37dvh;
+    --row-height: 1.12;
+    line-height: round(calc(var(--row-height) * 1em), 1px);
+  }
+  main[data-touch-phone]:has(
+    > [data-part="scramble"]:is(
+        [data-event="666"],
+        [data-event="777"],
+        [data-event="minx"]
+      )
+  ) {
+    row-gap: 2px;
+  }
+  main[data-touch-phone]:has(
+      > [data-part="scramble"]:is([data-event="666"], [data-event="777"])
+    )
+    > [data-part="scramble-picture"] {
+    margin-block-start: -18px;
+  }
+}
+@media (max-height: 740px) and (orientation: portrait) {
+  main[data-touch-phone] {
+    row-gap: var(--s1);
+  }
+  main[data-touch-phone] [data-part="stats-now"] {
+    --slot-block-margin: calc(-1 * var(--s1));
+  }
+  main[data-touch-phone] > [data-part="scramble-picture"] {
+    height: calc(30px * min(var(--size-picture, 1), 1.25));
+  }
+  main[data-touch-phone]:has(> [data-part="scramble"][data-event="minx"])
+    > [data-part="scramble-picture"] {
+    height: 21px;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="444"] {
+    --plines: 5;
+  }
+}
+@media (orientation: landscape) {
+  main[data-touch-phone][data-layout] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows:
+      var(--phone-time-room, minmax(0, 1fr))
+      auto auto auto minmax(0, 1fr) auto minmax(44px, auto);
+    grid-template-areas:
+      "air air"
+      "time time"
+      "note note"
+      "stats stats"
+      "file file"
+      "actions actions"
+      "status status";
+    column-gap: 0;
+  }
+  main[data-touch-phone] > [data-part="scramble"] {
+    grid-area: 1 / 2 / status-start / 3;
+    justify-self: stretch;
+    align-self: center;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    min-height: 0;
+    --time-clearance: min(16dvw, 134px);
+    --scramble-width: calc(50cqi - var(--time-clearance));
+    --scramble-height: calc(
+      100dvh -
+      var(--phone-foot) -
+      68px -
+      env(safe-area-inset-top)
+    );
+    margin-inline-start: var(--time-clearance);
+    --slot: 2.25;
+    --gap: 0.25;
+    font-size: clamp(11px, 2.6dvw * var(--size-scramble, 1), 23px);
+    word-spacing: calc((var(--gap) - 1) * 1ch);
+  }
+  main[data-touch-phone] > [data-part="scramble"] [data-move] {
+    min-width: calc((var(--slot) - var(--gap)) * 1ch);
+  }
+  main[data-touch-phone] > [data-part="scramble"][data-event="222"] {
+    font-size: clamp(11px, 3.8dvw * var(--size-scramble, 1), 33px);
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"]:is(
+      [data-event="333bf"],
+      [data-event="fto"],
+      [data-event^="444"],
+      [data-event="minx"]
+    ) {
+    --slot: 3.45;
+    --gap: 0.45;
+    font-size: clamp(11px, 1.9dvw * var(--size-scramble, 1), 18px);
+  }
+  main[data-touch-phone] > [data-part="scramble"][data-event^="444"] {
+    font-size: clamp(
+      11px,
+      min(
+        2.5dvw *
+        var(--size-scramble, 1),
+        var(--scramble-width) /
+        10.46,
+        var(--scramble-height) /
+        13.5
+      ),
+      22px
+    );
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"]:is(
+      [data-event^="555"],
+      [data-event="666"],
+      [data-event="777"],
+      [data-event="clock"]
+    ) {
+    --slot: 4.45;
+    --gap: 0.45;
+    font-size: clamp(11px, 1.6dvw * var(--size-scramble, 1), 14px);
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"]:is([data-event="666"], [data-event="777"]) {
+    --slot: 4.15;
+    --gap: 0.15;
+    /* Compare six and seven columns to keep a 100-move scramble above the icons. */
+    --fits-six: min(
+      var(--scramble-width) /
+      15.06,
+      var(--scramble-height) /
+      21.25
+    );
+    --fits-seven: min(
+      var(--scramble-width) /
+      17.55,
+      var(--scramble-height) /
+      18.75
+    );
+    font-size: max(
+      11px,
+      min(
+        16px *
+        var(--size-scramble, 1),
+        max(var(--fits-six), var(--fits-seven))
+      )
+    );
+    line-height: round(1.25em, 1px);
+  }
+  main[data-touch-phone] > [data-part="scramble"][data-event="minx"] {
+    --slot: 3.35;
+    --gap: 0.35;
+    font-size: max(
+      11px,
+      min(15.6px * var(--size-scramble, 1), var(--scramble-height) / 19.6)
+    );
+    line-height: round(1.38em, 1px);
+  }
+  main[data-touch-phone] [data-part="stats-now"] {
+    font-size: min(25px * var(--size-averages, 1), 3.1dvw);
+    gap: var(--s3);
+  }
+  main[data-touch-phone] > [data-part="scramble"][data-event="clock"] {
+    --slot: 5.45;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-event="sq1"]
+    [data-move] {
+    min-width: 0;
+  }
+  main[data-touch-phone] > [data-phone-nav] {
+    grid-area: status;
+  }
+  main[data-touch-phone] > footer[data-part="status-line"] {
+    padding-inline-end: 134px;
+  }
+  main[data-touch-phone] > [data-part="scramble-picture"] {
+    display: none;
+  }
+  main[data-touch-phone] > [data-part="file"] {
+    width: min(230px, 27vw);
+    grid-area: 1 / 1 / status-start / 2;
+    align-self: center;
+    height: min(180px, 50dvh);
+    justify-self: start;
+  }
+  main[data-touch-phone][data-layout] > output[data-part="time"] {
+    font-size: calc(min(10vw, 19dvh) * min(1.15, var(--size-time, 1)));
+  }
+  main[data-touch-phone][data-layout]
+    > output[data-part="time"][data-wide-time] {
+    font-size: calc(min(8vw, 16dvh) * min(1.15, var(--size-time, 1)));
+  }
+  main[data-touch-phone][data-layout]
+    > output[data-part="time"][data-result-kind="multi"] {
+    font-size: calc(min(6vw, 14dvh) * min(1.15, var(--size-time, 1)));
+  }
+}
+
+/* Older browsers need valid sizes even when they cannot snap to whole pixels. */
+@supports not (width: round(1px, 1px)) {
+  main > [data-part="scramble"] {
+    --per-shown: var(--per);
+    --lines-shown: var(--lines);
+    --short-lines-shown: var(--plines);
+    --phone-line-room: calc(
+      min(var(--cap), var(--phone-scramble-room, 100dvh)) /
+      var(--plines)
+    );
+    line-height: 1.35;
+  }
+  main > [data-part="scramble"][data-event="minx"] {
+    line-height: 1.5;
+  }
+  main > [data-part="scramble"][data-event="333mbf"] {
+    line-height: 1.6;
+  }
+  @media (max-width: 359px) and (orientation: portrait) {
+    main[data-touch-phone]
+      > [data-part="scramble"][data-ready="true"]:is(
+        [data-event="666"],
+        [data-event="777"]
+      ) {
+      line-height: var(--row-height);
+    }
+  }
+  @media (orientation: landscape) {
+    main[data-touch-phone]
+      > [data-part="scramble"]:is([data-event="666"], [data-event="777"]) {
+      line-height: 1.25;
+    }
+    main[data-touch-phone] > [data-part="scramble"][data-event="minx"] {
+      line-height: 1.38;
+    }
+  }
+  @media (max-width: 699px) {
+    main > [data-part="file"] > [data-part="solves"] {
+      max-height: min(30dvh, var(--whole-room, 30dvh));
+    }
+  }
+}
+
+/* A reserved note row keeps the figure in place as parts are marked. */
+:where(main) > [data-part="time-under"]:has(> [data-part="split-line"]) {
+  max-width: 100%;
+  min-width: 0;
+}
+[data-part="split-line"] {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35ch;
+  max-width: 100%;
+  min-height: 1lh;
+  color: var(--dim);
+  font: 13px / 1.4 var(--font-mono);
+  white-space: nowrap;
+}
+[data-part="split-line"][data-active] {
+  column-gap: 1.15ch;
+}
+[data-split-part] {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55ch;
+  min-width: 0;
+}
+[data-split-name] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-split-current] {
+  flex-shrink: 0;
+  color: var(--ink);
+  font-weight: 600;
 }

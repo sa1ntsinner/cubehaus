@@ -1485,7 +1485,9 @@ export function SessionGrid({
           return `${name}, ${tile.note}, ${tile.left}. ${t.restore}`;
         const archived =
           tile.archived && place === "list" ? t.archivedMark : null;
-        return [name, archived, eventInfo(tile.event).label]
+        // A session named after its puzzle says it once, not "3×3, 3×3".
+        const puzzle = eventInfo(tile.event).label;
+        return [name, archived, puzzle === tile.name ? null : puzzle]
           .filter(Boolean)
           .join(", ");
       }

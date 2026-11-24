@@ -71,6 +71,10 @@ test("phase tails keep their original values and row number", () => {
       startedAt: 1700000000000,
       row: 1,
       phases: [7000],
+      splits: [
+        { name: "1", durationMs: 7000 },
+        { name: "2", durationMs: 5345 },
+      ],
     },
   ]);
 

@@ -240,7 +240,7 @@ test("three formats save from the keyboard and a csTimer file made here imports 
   await expect(result).toHaveText("Saved.");
   const table = await readFile((await csv.path()) as string, "utf8");
   expect(table.split("\r\n")[0]).toBe(
-    "session_id,session_name,event,id,time_ms,plus2,dnf,started_at_utc,scramble,comment,inspection_ms,moves,solution,cubes_solved,cubes_attempted",
+    "session_id,session_name,event,id,time_ms,plus2,dnf,started_at_utc,scramble,comment,inspection_ms,moves,solution,cubes_solved,cubes_attempted,splits",
   );
   expect(table.split("\r\n")).toHaveLength(62);
 

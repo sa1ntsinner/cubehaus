@@ -225,7 +225,7 @@ test("CSV has one row per live solve with exact strings and integer fields", asy
   const [head, ...rows] = readCsv(text);
   expect(head).toEqual([...csvHeadings]);
   expect(head?.join(",")).toBe(
-    "session_id,session_name,event,id,time_ms,plus2,dnf,started_at_utc,scramble,comment,inspection_ms,moves,solution,cubes_solved,cubes_attempted",
+    "session_id,session_name,event,id,time_ms,plus2,dnf,started_at_utc,scramble,comment,inspection_ms,moves,solution,cubes_solved,cubes_attempted,splits",
   );
   expect(rows.map((row) => row[3])).toEqual([
     "a1",
@@ -252,7 +252,11 @@ test("CSV has one row per live solve with exact strings and integer fields", asy
     "",
     "",
     "",
+    "",
   ]);
+  expect(rows[6]?.at(-1)).toBe(
+    '[{"name":"1","durationMs":7000},{"name":"2","durationMs":5345}]',
+  );
   expect(rows[3]?.[7]).toBe("2023-11-14T22:13:24.123Z");
   expect(rows[3]?.[10]).toBe("15000");
   expect(rows[5]?.slice(11, 13)).toEqual(["28", "R U"]);
@@ -298,4 +302,40 @@ test("one session alone: csTimer's file holds it as its only session, the table 
   expect(
     encodeCsv(backup, { sessionId: "gone" }).text.split("\r\n").filter(Boolean),
   ).toEqual([csvHeadings.join(",")]);
+});
+
+test("maps named durations to csTimer ends and imports those ends in chronological order", () => {
+  const source = {
+    tables: {
+      session: [{ id: "a", name: "Practice", event: "333", deleted_at: null }],
+      solve: [
+        {
+          id: "s",
+          session_id: "a",
+          deleted_at: null,
+          started_at: 1700000000000,
+          scramble: "R",
+          comment: null,
+          time_ms: 10000,
+          plus2: 2,
+          dnf: 0,
+          splits: JSON.stringify([
+            { name: "Cross", durationMs: 1000 },
+            { name: "F2L", durationMs: 6000 },
+            { name: "LL", durationMs: 3000 },
+          ]),
+        },
+      ],
+    },
+  };
+  const { text } = encodeCsTimer(source);
+  expect(JSON.parse(text).session1[0][0]).toEqual([4000, 10000, 7000, 1000]);
+  expect(parseCsTimer(text).sessions[0]?.solves[0]).toMatchObject({
+    plus2: 2,
+    splits: [
+      { name: "1", durationMs: 1000 },
+      { name: "2", durationMs: 6000 },
+      { name: "3", durationMs: 3000 },
+    ],
+  });
 });

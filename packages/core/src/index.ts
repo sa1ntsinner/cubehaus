@@ -46,3 +46,8 @@ export {
   penaltyOf,
   type Solve,
 } from "./solve";
+export {
+  readSplitParts,
+  type SplitPart,
+  splitsFromCsTimer,
+} from "./splits";

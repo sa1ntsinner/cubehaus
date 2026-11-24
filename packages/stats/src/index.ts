@@ -36,3 +36,4 @@ export {
 export { rankedWindowThreshold, rolling } from "./rolling";
 
 export type StatId = "best" | "mean" | "mo3" | `ao${number}`;
+export { type SplitStanding, splitSummary } from "./splits";

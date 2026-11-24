@@ -2,18 +2,26 @@
    action's word stands in the room it leaves, and let go it settles back ---- */
 
 /* Under the finger: from the first pixel, no easing. */
+[data-swiping],
+[data-swipe-settling] {
+  transform: translate3d(
+    var(--swipe-x, 0px),
+    calc(var(--swipe-y, 0px) + var(--phone-time-lift, 0px)),
+    0
+  );
+}
 [data-swiping] {
-  translate: var(--swipe-x, 0px) var(--swipe-y, 0px);
   transition: none;
-  will-change: translate;
+  will-change: transform;
 }
 /* Let go: back to its place with a little give, from wherever it stood. */
 [data-swipe-settling] {
-  transition: translate 300ms cubic-bezier(0.25, 1.25, 0.4, 1);
+  transition: transform 300ms cubic-bezier(0.25, 1.25, 0.4, 1);
 }
 
 [data-part="swipe-word"] {
   position: fixed;
+  inset: 0 auto auto 0;
   z-index: 30;
   pointer-events: none;
   font-family: var(--font-ui);
@@ -117,6 +125,15 @@ main:has(> output[data-part="time"][data-swipe-direction="down"])
   opacity: 0.15;
   transition: opacity 120ms ease;
 }
+/* The phone file is also in the path of a downward swipe. */
+main[data-touch-phone]:has(
+    > output[data-part="time"][data-swipe-direction="down"]
+  )
+  > [data-part="file"] {
+  opacity: 0;
+  transition: none;
+}
+
 /* Over a grid the word stands on the ground, clear of the captions under it. */
 [data-part="swipe-word"] {
   padding: 0 var(--s1);
@@ -136,4 +153,14 @@ main:has(> output[data-part="time"][data-swipe-direction="down"])
   [data-part="status-line"] > nav:last-child [data-action="gestures"] {
     display: none;
   }
+}
+
+[data-part="swipe-departure"] {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  white-space: nowrap;
+}
+[data-swipe-committing] {
+  opacity: 0;
 }

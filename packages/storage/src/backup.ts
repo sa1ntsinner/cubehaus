@@ -207,6 +207,12 @@ manifest[9] = (manifest[8] ?? []).map(([name, table]) =>
     : [name, table],
 );
 
+manifest[10] = (manifest[9] ?? []).map(([name, table]) =>
+  name === "solve" || name === "solve_repeat"
+    ? [name, { ...table, columns: [...table.columns, "splits"] }]
+    : [name, table],
+);
+
 export function backupTables(
   schema = SCHEMA_VERSION,
 ): readonly [string, Table][] {

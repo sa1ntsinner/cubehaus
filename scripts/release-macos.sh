@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds the macOS desktop app as a universal binary (Apple silicon and Intel), signed with
+# Builds the macOS desktop app as a universal binary (Apple silicon and Intel), with its
+# widget extension inside (apps/desktop/widgets), signed with
 # a Developer ID Application identity under the hardened runtime, notarized with an App
 # Store Connect API key and stapled; then the disk image, signed, notarized and stapled in
 # its turn. Optionally the updater archive and its signature.
@@ -46,8 +47,17 @@ rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
 # A regular build of the page.
 pnpm --filter @cubehaus/web build
 
-# Signs, notarizes and staples the app, then builds the disk image from it.
-(cd "$root/apps/desktop" && pnpm exec tauri build --target "$target" --bundles app,dmg)
+# The Mac widgets (apps/desktop/widgets/build.sh): the extension and its bridge library,
+# built and signed first (the extension with its own entitlements: sandbox and the App
+# Group `$APPLE_TEAM_ID.<app ID>`), so the app is signed around them below.
+widgets="$(mktemp -d)"
+trap 'rm -rf "$widgets"' EXIT
+"$root/apps/desktop/widgets/build.sh" "$widgets"
+
+# Copies the widgets in, gives the app its entitlements (the group), signs the app around
+# the already signed extension, notarizes and staples it, then builds the disk image.
+(cd "$root/apps/desktop" &&
+  pnpm exec tauri build --target "$target" --bundles app,dmg --config "$widgets/tauri.json")
 
 app="$bundle/macos/cubehaus.app"
 dmg="$(ls "$bundle"/dmg/*.dmg | head -n 1)"
@@ -65,6 +75,21 @@ if [ "$team" != "$APPLE_TEAM_ID" ]; then
   echo "release-macos: signed by team '$team', expected APPLE_TEAM_ID" >&2
   exit 1
 fi
+
+# The extension is inside, signed by the same team, with its own entitlements; the app
+# claims the same group.
+widget="$app/Contents/PlugIns/CubehausWidgets.appex"
+widget_team="$(codesign -dvv "$widget" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+if [ "$widget_team" != "$APPLE_TEAM_ID" ]; then
+  echo "release-macos: the widget extension is signed by team '$widget_team', expected APPLE_TEAM_ID" >&2
+  exit 1
+fi
+for code in "$app" "$widget"; do
+  if ! codesign -d --entitlements - --xml "$code" 2>/dev/null | grep -q "$APPLE_TEAM_ID\.app\.cubehaus\.desktop"; then
+    echo "release-macos: $(basename "$code") does not claim the App Group" >&2
+    exit 1
+  fi
+done
 
 mkdir -p "$out"
 rm -rf "$out/cubehaus.app"
@@ -87,4 +112,5 @@ spctl -a -vv -t install "$out/$(basename "$dmg")"
 xcrun stapler validate "$out/$(basename "$dmg")"
 xcrun stapler validate "$out/cubehaus.app"
 lipo -archs "$out/cubehaus.app/Contents/MacOS/cubehaus"
+lipo -archs "$out/cubehaus.app/Contents/PlugIns/CubehausWidgets.appex/Contents/MacOS/CubehausWidgets"
 (cd "$out" && shasum -a 256 "$(basename "$dmg")")

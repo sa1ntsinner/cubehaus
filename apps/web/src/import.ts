@@ -210,7 +210,7 @@ export async function importPlan(result: ImportResult): Promise<ImportPlan> {
       occurrences.set(identity, occurrence + 1);
       // What the row held that the solve's columns do not: kept to export it back.
       const extra: Record<string, unknown> = {};
-      if (solve.phases) extra.phases = solve.phases;
+      if (solve.phases && !solve.splits) extra.phases = solve.phases;
       if (solve.extra) extra.extra = solve.extra;
       if (solve.csv) extra.csv = solve.csv;
       if (solve.twisty) extra.twisty = solve.twisty;
@@ -218,6 +218,7 @@ export async function importPlan(result: ImportResult): Promise<ImportPlan> {
       if (!allowPlus2 && solve.plus2) extra.plus2 = solve.plus2;
       planned.push({
         timeMs: solve.timeMs,
+        ...(solve.splits ? { splits: solve.splits } : {}),
         plus2: allowPlus2 ? solve.plus2 : 0,
         dnf: solve.dnf,
         scramble: solve.scramble,

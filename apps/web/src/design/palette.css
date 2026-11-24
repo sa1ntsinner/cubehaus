@@ -27,7 +27,7 @@
   appearance: none;
 }
 [data-part="palette"]::before {
-  content: "›";
+  content: "›" / "";
   position: absolute;
   top: calc(max(12vh, calc(44px + 2 * var(--s4))) + 24px);
   left: max(calc(var(--s5) + var(--s3)), calc(50% - 280px + var(--s3)));

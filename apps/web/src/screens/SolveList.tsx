@@ -78,8 +78,8 @@ export const SolveList = memo(function SolveList({
   onSplit(pivotId: string): void;
   onStatPicker?(open: boolean): void;
   onAverage?: InspectAverage;
-  /** How to start an empty session, by keys and by touch; null: nothing to add. */
-  emptyHint?: { keys: string | null; touch: string | null } | undefined;
+  /** How to start an empty session with a keyboard. */
+  emptyHint?: string | undefined;
   /** Whether a gesture may act now (between solves, nothing open). */
   gesturesReady?(): boolean;
   onLearned?(id: GestureId): void;
@@ -228,6 +228,13 @@ export const SolveList = memo(function SolveList({
         totals: rows.map((row) => row.offsetHeight),
       });
       element.style.setProperty("--room", `${result.list}px`);
+      if (rowHeight.current > 0) {
+        const wholeRoom = Math.floor(result.list / rowHeight.current);
+        element.style.setProperty(
+          "--whole-room",
+          `${wholeRoom * rowHeight.current}px`,
+        );
+      }
       for (const row of rows.slice(result.totals))
         row.setAttribute("data-fit-hidden", "");
       if (totals && result.totals === 0)
@@ -248,34 +255,6 @@ export const SolveList = memo(function SolveList({
       document.fonts.removeEventListener("loadingdone", measure);
     };
   }, [count, extendedFile, filesVisible, updateRange]);
-
-  // An empty session's line gives way when a short screen leaves the file too little room
-  // (a status line message on a 320 px phone), so it never runs up into the averages.
-  // Measured with the line shown, so hiding cannot feed back into the next measure.
-  useLayoutEffect(() => {
-    const aside = file.current;
-    const hint = aside?.querySelector<HTMLElement>(
-      '[data-part="solves-empty"]',
-    );
-    if (!aside || !hint || count > 0) return;
-    function fitHint() {
-      if (!aside || !hint) return;
-      hint.removeAttribute("data-fit-hidden");
-      // Only where the file stands under the averages (a phone).
-      const stats = aside.parentElement?.querySelector<HTMLElement>(
-        ':scope > [data-part="stats"]',
-      );
-      if (!stats) return;
-      const above = stats.getBoundingClientRect();
-      if (aside.getBoundingClientRect().top < above.top) return;
-      if (hint.getBoundingClientRect().top < above.bottom + 8)
-        hint.setAttribute("data-fit-hidden", "");
-    }
-    fitHint();
-    const observer = new ResizeObserver(fitHint);
-    observer.observe(aside);
-    return () => observer.disconnect();
-  });
 
   // A past solve picked by the arrows stays in view, through every page that loads around
   // it, until a hand scrolls the file; back to now, the newest shows again.
@@ -644,14 +623,7 @@ export const SolveList = memo(function SolveList({
           </ol>
           {enabled && count === 0 && emptyHint && (
             // Where the first line will stand, as a comment; one of the two shows (CSS).
-            <p data-part="solves-empty">
-              {emptyHint.keys && (
-                <span data-input="keys">{`// ${emptyHint.keys}`}</span>
-              )}
-              {emptyHint.touch && (
-                <span data-input="touch">{`// ${emptyHint.touch}`}</span>
-              )}
-            </p>
+            <p data-part="solves-empty">{`// ${emptyHint}`}</p>
           )}
           {count > view.rows.length && (
             <div data-no-timer>

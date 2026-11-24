@@ -53,9 +53,16 @@ export function ProgressDistribution({
         <div data-part="progress-distribution">
           {first && last && (
             <>
+              {/* The bars' counts as text: a screen reader reads them without a pointer. */}
+              <ul data-heard aria-label={labels.distribution}>
+                {bins.map(({ start, count }) => (
+                  <li key={start}>
+                    {format(start)} · {numbers.format(count)}
+                  </li>
+                ))}
+              </ul>
               <svg
-                role="img"
-                aria-label={labels.distribution}
+                aria-hidden="true"
                 viewBox={`0 0 ${bins.length * 10} 100`}
                 preserveAspectRatio="none"
                 width="100%"

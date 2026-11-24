@@ -598,3 +598,26 @@ dialog[data-layout="grid"] li > [data-action="switch-pick"]::before {
     color: var(--dim);
   }
 }
+
+@media (max-width: 699px) and (orientation: portrait) and (hover: none) and (
+    pointer: coarse
+  ),
+  (max-height: 430px) and (orientation: landscape) and (hover: none) and (
+    pointer: coarse
+  ) {
+  dialog[data-part="switch"][data-layout="grid"] {
+    padding-top: calc(var(--s4) + env(safe-area-inset-top));
+    padding-bottom: calc(var(--phone-foot) + 44px + var(--s3));
+  }
+  dialog[data-part="switch"][data-layout="grid"]
+    > [data-action="dialog-close"] {
+    position: fixed;
+    z-index: 1;
+    top: auto;
+    bottom: var(--phone-foot);
+    left: var(--phone-inline);
+    min-width: 15ch;
+    font-size: 18px;
+    background: var(--ground);
+  }
+}

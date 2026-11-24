@@ -1,4 +1,4 @@
-import { inspectionPenalty } from "@cubehaus/core";
+import { inspectionPenalty, type SplitPart } from "@cubehaus/core";
 
 export type TimerPhase =
   | "idle"
@@ -22,6 +22,10 @@ export interface TimerState {
   // Inspection of the running solve, kept until it stops.
   inspectionMs: number | null;
   resultMs: number | null;
+  splitNames?: readonly string[];
+  splits?: readonly SplitPart[];
+  /** The last accepted split press, in the input clock's units. */
+  lastSplitAt?: number;
 }
 
 export type TimerInput =
@@ -42,6 +46,7 @@ export type TimerEffect =
       inspectionMs: number | null;
       plus2: number;
       dnf: boolean;
+      splits?: readonly SplitPart[];
     }
   | { type: "tooShort"; timeMs: number }
   | { type: "discarded" };
@@ -52,6 +57,7 @@ export interface TimerConfig {
   inspectionMs: number | null;
   // A stop strictly below this is not a solve (A6b1: 60 ms).
   minSolveMs: number;
+  splitNames?: readonly string[];
 }
 
 // What the timer does when nothing else is said: no inspection, every stop
@@ -187,6 +193,9 @@ export function reduceTimer(
           phase: "running",
           startedAt: input.at,
           resultMs: null,
+          ...(config.splitNames && config.splitNames.length >= 2
+            ? { splitNames: [...config.splitNames] }
+            : {}),
           inspectionMs:
             state.inspectionStartedAt === null
               ? null
@@ -197,7 +206,23 @@ export function reduceTimer(
     }
     case "running": {
       if (input.type !== "press" || state.startedAt === null) return unchanged;
-      const timeMs = Math.max(0, Math.floor(input.at - state.startedAt));
+      const startedAt = state.startedAt;
+      const elapsed = (at: number) => Math.max(0, Math.floor(at - startedAt));
+      const timeMs = elapsed(input.at);
+      let splits: SplitPart[] | undefined;
+      const finished = state.splits ?? [];
+      const name = state.splitNames?.[finished.length];
+      if (name !== undefined) {
+        const last = state.lastSplitAt;
+        if (last !== undefined && input.at - last < 250) return unchanged;
+        const durationMs = timeMs - (last === undefined ? 0 : elapsed(last));
+        splits = [...finished, { name, durationMs }];
+        if (splits.length < (state.splitNames?.length ?? 0))
+          return {
+            state: { ...state, lastSplitAt: input.at, splits },
+            effects: [],
+          };
+      }
       if (timeMs < config.minSolveMs)
         return { state: idle, effects: [{ type: "tooShort", timeMs }] };
       // Inspection is read as a judge's stopwatch shows it, in hundredths.
@@ -207,7 +232,12 @@ export function reduceTimer(
           : Math.floor(state.inspectionMs / 10) * 10,
       );
       return {
-        state: { ...state, phase: "stopped", resultMs: timeMs },
+        state: {
+          ...state,
+          phase: "stopped",
+          resultMs: timeMs,
+          ...(splits ? { splits } : {}),
+        },
         effects: [
           {
             type: "solve",
@@ -215,6 +245,7 @@ export function reduceTimer(
             startedAt: state.startedAt,
             inspectionMs: state.inspectionMs,
             ...penalty,
+            ...(splits ? { splits } : {}),
           },
         ],
       };

@@ -4,9 +4,12 @@ import {
   eventInfo,
   type Folder,
   newId,
+  readSplitParts,
   resultValue,
   type Session,
   type Solve,
+  type SplitPart,
+  splitsFromCsTimer,
 } from "@cubehaus/core";
 import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 import type { Db, Statement } from "./db";
@@ -21,6 +24,7 @@ import {
   timedSource,
   valueKey,
 } from "./import-batch";
+import { liveSplits } from "./migrations";
 
 /** How long the trash keeps what was deleted. */
 export const trashMs = 30 * 86_400_000;
@@ -229,6 +233,7 @@ export interface Store {
     scopedSeries(scope: ProgressScope): Promise<ProgressSeries>;
     /** The scope's solves that have a cross colour, oldest first; DNF is infinite. */
     colourSeries(scope: ProgressScope): Promise<ColourSeries>;
+    splitSeries(sessionId: string): Promise<Array<readonly SplitPart[]>>;
     progressCounts(): Promise<Record<string, number>>;
   };
   /**
@@ -389,27 +394,48 @@ export class MoveError extends Error {
 type SessionRow = Omit<Session, "archived"> & { archived: number };
 type FolderRow = Omit<Folder, "collapsed"> & { collapsed: number };
 const folderFields = "id, name, order_key AS orderKey, collapsed";
-type SolveRow = Omit<Solve, "dnf"> & { dnf: number };
+type SplitRow = {
+  timeMs: number;
+  splits?: string | null;
+  legacySplits?: string | null;
+};
+type SolveRow = Omit<Solve, "dnf" | "splits"> & { dnf: number } & SplitRow;
 const sessionFields =
   "id, name, event, order_key AS orderKey, folder_id AS folderId, archived, created_at AS createdAt";
+const legacySplits =
+  "CASE WHEN import_source = 'cstimer' THEN import_extra END";
 const solveFields = `id, session_id AS sessionId, event, time_ms AS timeMs, plus2, dnf,
   scramble, started_at AS startedAt, inspection_ms AS inspectionMs, comment, input,
   moves, solution, cubes_solved AS cubesSolved, cubes_attempted AS cubesAttempted,
-  cross_colour AS crossColour`;
+  cross_colour AS crossColour, splits, ${legacySplits} AS legacySplits`;
 const insertSolve = `INSERT OR IGNORE INTO solve (
   id, session_id, event, time_ms, plus2, dnf, scramble, started_at, inspection_ms,
   comment, input, import_source, import_hash, updated_at,
-  moves, solution, cubes_solved, cubes_attempted, cross_colour
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  moves, solution, cubes_solved, cubes_attempted, cross_colour, splits
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-/** A solve as read: DNF as a flag, and a cross colour only where one is known. */
-function solveOf<T extends SolveRow>(row: T): Omit<T, "dnf"> & Solve {
-  const { crossColour, ...rest } = row;
+function splitsOf(row: SplitRow): SplitPart[] | undefined {
+  const parts = readSplitParts(row.splits, row.timeMs);
+  if (parts || !row.legacySplits) return parts;
+  // Older csTimer imports kept the original ends in their source metadata.
+  try {
+    return splitsFromCsTimer(row.timeMs, JSON.parse(row.legacySplits)?.phases);
+  } catch {
+    return;
+  }
+}
+
+function solveOf<T extends SolveRow>(
+  row: T,
+): Omit<T, "dnf" | "splits" | "legacySplits"> & Solve {
+  const { crossColour, splits: _splits, legacySplits: _legacy, ...rest } = row;
+  const parts = splitsOf(row);
   return {
     ...rest,
     dnf: row.dnf !== 0,
     ...(crossColour ? { crossColour } : {}),
-  } as Omit<T, "dnf"> & Solve;
+    ...(parts ? { splits: parts } : {}),
+  };
 }
 
 // Serialize compound operations across stores sharing a connection. This also
@@ -464,6 +490,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
         solve.cubesSolved ?? null,
         solve.cubesAttempted ?? null,
         solve.crossColour ?? null,
+        solve.splits ? JSON.stringify(solve.splits) : null,
       ],
     };
   }
@@ -748,7 +775,8 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
               'timeMs', v.time_ms, 'plus2', v.plus2, 'dnf', v.dnf, 'scramble', v.scramble,
               'startedAt', v.started_at, 'inspectionMs', v.inspection_ms, 'comment', v.comment,
               'input', v.input, 'moves', v.moves, 'solution', v.solution,
-              'cubesSolved', v.cubes_solved, 'cubesAttempted', v.cubes_attempted)
+              'cubesSolved', v.cubes_solved, 'cubesAttempted', v.cubes_attempted,
+              'splits', v.splits, 'legacySplits', CASE WHEN v.import_source = 'cstimer' THEN v.import_extra END)
               FROM solve AS v WHERE v.session_id = session.id AND v.deleted_at IS NULL
               ORDER BY v.started_at DESC, v.id DESC LIMIT 1) AS last
           FROM session WHERE deleted_at IS NULL ORDER BY order_key, id`,
@@ -758,7 +786,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
             return {
               ...row,
               archived: row.archived !== 0,
-              last: solve && { ...solve, dnf: solve.dnf !== 0 },
+              last: solve && solveOf(solve),
             };
           }),
         ),
@@ -1357,8 +1385,8 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
           await db.batch([
             {
               sql: `INSERT OR IGNORE INTO solve_repeat (id, solve_id, time_ms, plus2, dnf,
-                started_at, inspection_ms, comment, input, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                started_at, inspection_ms, comment, input, updated_at, splits)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               params: [
                 solve.id,
                 solve.repeatOf,
@@ -1370,6 +1398,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
                 solve.comment,
                 solve.input,
                 now(),
+                solve.splits ? JSON.stringify(solve.splits) : null,
               ],
             },
           ]);
@@ -1604,6 +1633,18 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
             ).map(({ id, count }) => [id, count]),
           ),
         ),
+      splitSeries: (sessionId) =>
+        run(async () => {
+          const rows = await db.all<SplitRow>(
+            `SELECT time_ms AS timeMs, splits, ${legacySplits} AS legacySplits
+            FROM solve WHERE session_id = ? AND ${liveSplits} ORDER BY started_at, id`,
+            [sessionId],
+          );
+          return rows.flatMap((row) => {
+            const parts = splitsOf(row);
+            return parts ? [parts] : [];
+          });
+        }),
       colourSeries: (scope) =>
         run(async () => {
           const sessions = await scopeSessions(scope);
@@ -1663,7 +1704,7 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
           );
           return {
             values: Float64Array.from(rows, (row) =>
-              resultValue({ ...row, event: scope.event, dnf: row.dnf !== 0 }),
+              resultValue({ ...solveOf(row), event: scope.event }),
             ),
             startedAt: Float64Array.from(rows, (row) => row.startedAt),
           };
@@ -1682,9 +1723,8 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
             return {
               values: Float64Array.from(rows, (row) =>
                 resultValue({
-                  ...row,
+                  ...solveOf(row),
                   event: session.event,
-                  dnf: row.dnf !== 0,
                 }),
               ),
               startedAt: Float64Array.from(rows, (row) => row.startedAt),
@@ -1708,14 +1748,14 @@ export function createStore(db: Db, now: () => number = Date.now): Store {
                 solve_repeat.time_ms AS timeMs, solve_repeat.plus2, solve_repeat.dnf,
                 solve.scramble, solve_repeat.started_at AS startedAt,
                 solve_repeat.inspection_ms AS inspectionMs, solve_repeat.comment,
-                solve_repeat.input, solve_repeat.solve_id AS repeatOf
+                solve_repeat.input, solve_repeat.splits, solve_repeat.solve_id AS repeatOf
               FROM solve_repeat JOIN solve ON solve.id = solve_repeat.solve_id
               WHERE solve_repeat.solve_id = ? AND solve_repeat.deleted_at IS NULL
                 AND solve.deleted_at IS NULL
               ORDER BY solve_repeat.started_at, solve_repeat.id`,
               [rootId],
             )
-          ).map((row) => ({ ...row, dnf: row.dnf !== 0 })),
+          ).map(solveOf),
         ),
       setPenalty: (id, penalty) =>
         run(() =>

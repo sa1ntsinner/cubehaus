@@ -47,7 +47,16 @@ import { canKeepAwake } from "../phone-app";
 import { drillName } from "../scramble/training-client";
 import { slotKey } from "../session-stats";
 import { eventNamed } from "../session-switch";
-import { coloursInPlay, isLayout, type Settings as Values } from "../settings";
+import {
+  allowsSplits,
+  coloursInPlay,
+  hasSplitPresets,
+  isLayout,
+  type SplitSetting,
+  splitNameLimit,
+  splitPresets,
+  type Settings as Values,
+} from "../settings";
 import { gestureList, type Text } from "../text";
 import { isThemeChoice } from "../theme";
 import { appVersion } from "../version";
@@ -190,8 +199,12 @@ function ShortcutSettings({
                 <button
                   type="button"
                   data-action="keyboard-reset"
-                  disabled={!enabled || saving}
-                  onClick={() => void save({}, null)}
+                  // Not disabled while saving: a disabled control drops the keyboard's focus.
+                  disabled={!enabled}
+                  aria-disabled={saving || undefined}
+                  onClick={() => {
+                    if (!saving) void save({}, null);
+                  }}
                 >
                   {t.keysReset}
                 </button>
@@ -219,11 +232,18 @@ function ShortcutSettings({
                   <button
                     type="button"
                     data-action="binding-remove"
-                    disabled={!enabled || saving || keys.length === 0}
+                    disabled={!enabled || keys.length === 0}
+                    aria-disabled={saving || undefined}
                     aria-label={`${t.keysRemove} · ${title}`}
-                    onClick={() =>
-                      void save({ ...view.keymap, [spec.id]: [] }, spec.id)
-                    }
+                    onClick={(event) => {
+                      if (saving) return;
+                      // Unbound, the word is off: the keyboard goes to the keys beside it.
+                      (
+                        event.currentTarget
+                          .nextElementSibling as HTMLElement | null
+                      )?.focus();
+                      void save({ ...view.keymap, [spec.id]: [] }, spec.id);
+                    }}
                   >
                     {t.keysRemove}
                   </button>
@@ -231,9 +251,11 @@ function ShortcutSettings({
                     type="button"
                     data-action="binding-change"
                     data-unbound={keys.length === 0 || undefined}
-                    disabled={!enabled || saving}
+                    disabled={!enabled}
+                    aria-disabled={saving || undefined}
                     aria-label={`${title}: ${active ? t.keysPress : shown}. ${t.keysChange}`}
                     onClick={(event) => {
+                      if (saving) return;
                       event.currentTarget.focus();
                       setNotice("");
                       setCapture(active ? null : spec.id);
@@ -314,6 +336,128 @@ function lastSection() {
   } catch {
     return "";
   }
+}
+
+function SplitSettings({
+  value,
+  presets,
+  enabled,
+  words,
+  save,
+}: {
+  value: SplitSetting;
+  presets: boolean;
+  enabled: boolean;
+  words: Text["splits"];
+  save: (value: SplitSetting) => void;
+}) {
+  const [names, setNames] = useState<string[]>(
+    value && typeof value === "object" ? value.names : [],
+  );
+  // A blur immediately before an add/remove uses the latest names, even while the
+  // preceding write is still queued.
+  const latest = useRef(names);
+  const update = (next: string[]) => {
+    latest.current = next;
+    setNames(next);
+    save({ names: next });
+  };
+  const choice =
+    value && typeof value === "object" ? "custom" : (value ?? "off");
+  return (
+    <>
+      <li data-setting="splits">
+        <label htmlFor="setting-splits">{words.title}</label>
+        <select
+          id="setting-splits"
+          value={choice}
+          disabled={!enabled}
+          onChange={({ currentTarget }) => {
+            const next = currentTarget.value;
+            if (next === "custom")
+              update(
+                latest.current.length
+                  ? latest.current
+                  : presets
+                    ? [...splitPresets.three]
+                    : ["1", "2"],
+              );
+            else save(next === "three" || next === "four" ? next : null);
+          }}
+        >
+          <option value="off">{words.off}</option>
+          {presets && (
+            <option value="three">{splitPresets.three.join(" · ")}</option>
+          )}
+          {presets && (
+            <option value="four">{splitPresets.four.join(" · ")}</option>
+          )}
+          <option value="custom">{words.custom}</option>
+        </select>
+      </li>
+      {choice === "custom" &&
+        names.map((name, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: Each uncontrolled field belongs to the saved name in this slot.
+          <li data-setting="split-name" key={`${index}:${name}`}>
+            <label htmlFor={`setting-split-${index}`}>
+              {words.part(index + 1)}
+            </label>
+            <span data-part="split-setting-control">
+              <input
+                id={`setting-split-${index}`}
+                type="text"
+                defaultValue={name}
+                maxLength={splitNameLimit}
+                autoComplete="off"
+                disabled={!enabled}
+                onBlur={({ currentTarget }) => {
+                  const edited = currentTarget.value.trim() || name;
+                  currentTarget.value = edited;
+                  if (edited === name) return;
+                  update(
+                    latest.current.map((old, part) =>
+                      part === index ? edited : old,
+                    ),
+                  );
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === "Escape") {
+                    event.preventDefault();
+                    if (event.key === "Escape")
+                      event.currentTarget.value = name;
+                    event.currentTarget.blur();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                aria-label={words.remove(index + 1)}
+                disabled={!enabled || names.length <= 2}
+                onClick={() =>
+                  update(latest.current.filter((_, part) => part !== index))
+                }
+              >
+                −
+              </button>
+            </span>
+          </li>
+        ))}
+      {choice === "custom" && names.length < 6 && (
+        <li data-setting="split-add">
+          <button
+            type="button"
+            disabled={!enabled}
+            onClick={() => {
+              const part = latest.current.length + 1;
+              update([...latest.current, String(part)]);
+            }}
+          >
+            {words.add}
+          </button>
+        </li>
+      )}
+    </>
+  );
 }
 
 export function Settings({
@@ -891,6 +1035,16 @@ export function Settings({
                     <option value="off">{t.inspectionChoices.off}</option>
                   </select>
                 ))}
+              {allowsSplits(session.event, values.entry) && (
+                <SplitSettings
+                  key={session.id}
+                  value={values.splits}
+                  presets={hasSplitPresets(session.event)}
+                  enabled={enabled}
+                  words={words.splits}
+                  save={(value) => set("splits", value, true)}
+                />
+              )}
               {session?.event === "333" && (
                 <li data-setting="training">
                   <span>{words.drill.setting}</span>{" "}
@@ -899,7 +1053,12 @@ export function Settings({
                       {drillName(values.training, words) ??
                         words.drill.official}
                     </span>{" "}
-                    <a href="#/drills" data-action="training-open">
+                    <a
+                      href="#/drills"
+                      data-action="training-open"
+                      // Heard alone, "Change" says nothing of what it changes.
+                      aria-label={`${words.drill.setting}: ${drillName(values.training, words) ?? words.drill.official}. ${words.drill.change}`}
+                    >
                       {words.drill.change}
                     </a>
                   </span>

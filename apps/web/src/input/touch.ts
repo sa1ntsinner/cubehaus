@@ -42,10 +42,11 @@ export function bindTouch(
       type: pointer.pointerType,
       preventMenu: !isNoTimer(pointer.target),
     });
-    // A control is pressed on purpose (DNF, Delete): only a touch that would time goes quiet.
+    // A second contact while a swipe owns the first cannot start another hold.
+    // Controls can still be pressed on purpose.
     if (
-      pointer.timeStamp < quietUntil &&
-      getPhase() !== "running" &&
+      (claimed.size > 0 ||
+        (pointer.timeStamp < quietUntil && getPhase() !== "running")) &&
       !isInteractive(pointer.target)
     ) {
       quiet.add(pointer.pointerId);

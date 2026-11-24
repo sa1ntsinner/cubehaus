@@ -9,7 +9,7 @@ export function isTouchScreen(): boolean {
 // Keep the portrait and short landscape rules in step with design/timer.css.
 const PHONE_QUERY =
   "(max-width: 699px) and (min-height: 431px) and (hover: none) and (pointer: coarse), " +
-  "(max-height: 430px) and (orientation: landscape) and (hover: none) and (pointer: coarse)";
+  "(max-height: 460px) and (orientation: landscape) and (hover: none) and (pointer: coarse)";
 
 export function isTouchPhone(): boolean {
   return typeof matchMedia === "function" && matchMedia(PHONE_QUERY).matches;

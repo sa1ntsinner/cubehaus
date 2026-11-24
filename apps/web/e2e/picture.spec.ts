@@ -168,11 +168,19 @@ test("reduced motion opens and closes without a flight and P hides the picture",
   await page.keyboard.press("KeyF");
   await expect(overlay).toBeVisible();
   await expect(svg).toBeHidden();
+  // A fade at most: nothing moves or scales.
   expect(
-    await overlay.evaluate(
-      (element) => element.getAnimations({ subtree: true }).length,
+    await overlay.evaluate((element) =>
+      element
+        .getAnimations({ subtree: true })
+        .flatMap((animation) =>
+          animation.effect instanceof KeyframeEffect
+            ? animation.effect.getKeyframes()
+            : [],
+        )
+        .some((frame) => "transform" in frame),
     ),
-  ).toBe(0);
+  ).toBe(false);
   await page.keyboard.press("KeyF");
   await expect(overlay).toHaveCount(0);
   await expect(svg).toBeVisible();

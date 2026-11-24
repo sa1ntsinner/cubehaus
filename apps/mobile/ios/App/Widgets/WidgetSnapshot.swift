@@ -1,10 +1,12 @@
 import SwiftUI
 import WidgetKit
 
-/// The snapshot the page writes (apps/web/src/widget-snapshot.ts), format version 1. The
+/// The snapshot the page writes (apps/web/src/widget-snapshot.ts), format version 2. The
 /// extension reads it and computes nothing: values and their written forms are the app's.
+/// Version 2 added `language`; a version 1 file still reads, as English.
 struct WidgetSnapshot: Decodable {
-    static let version = 1
+    static let version = 2
+    static let readable = 1...version
 
     struct Trainer: Decodable {
         let set: String
@@ -29,6 +31,8 @@ struct WidgetSnapshot: Decodable {
     }
 
     let version: Int
+    /// The app's chosen language (`en`, `ru`); nil in a version 1 file.
+    let language: String?
     let trainer: Trainer?
     let times: Times?
 
@@ -36,7 +40,7 @@ struct WidgetSnapshot: Decodable {
     static func load() -> WidgetSnapshot? {
         guard let url = SnapshotFile.url, let data = try? Data(contentsOf: url),
             let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data),
-            snapshot.version == version
+            readable.contains(snapshot.version)
         else { return nil }
         return snapshot
     }
@@ -44,6 +48,7 @@ struct WidgetSnapshot: Decodable {
     /// What the widget gallery shows before the app has written anything.
     static let sample = WidgetSnapshot(
         version: version,
+        language: nil,
         trainer: Trainer(set: "oll", name: "OLL", done: 5, total: 57, next: "OLL 27"),
         times: Times(
             session: "3×3", count: 124,
@@ -134,9 +139,27 @@ extension Font {
     }
 }
 
+/// The widgets speak the app's chosen language, not the system's: English until Russian
+/// is chosen in the app's Settings (it comes in the snapshot).
+enum Words {
+    static func bundle(_ language: String?) -> Bundle {
+        guard let path = Bundle.main.path(forResource: language == "ru" ? "ru" : "en", ofType: "lproj"),
+            let bundle = Bundle(path: path)
+        else { return .main }
+        return bundle
+    }
+
+    static func text(_ key: String, _ language: String?) -> String {
+        bundle(language).localizedString(forKey: key, value: key, table: nil)
+    }
+
+    /// The language of the last snapshot, for the widget gallery's names.
+    static var stored: String? { WidgetSnapshot.load()?.language }
+}
+
 /// Russian has three forms: 1 сборка, 2 сборки, 5 сборок; 21 сборка, 11 сборок.
-func solvesText(_ count: Int) -> String {
-    guard Bundle.main.preferredLocalizations.first == "ru" else {
+func solvesText(_ count: Int, _ language: String?) -> String {
+    guard language == "ru" else {
         return count == 1 ? "1 solve" : "\(count) solves"
     }
     let tens = count % 100, ones = count % 10

@@ -50,7 +50,7 @@ describe("view sizes", () => {
     const store = memoryStore();
     await changeSetting(store, "sizes", sizes, "s1", "333");
     expect(JSON.parse(store.values.get(viewSizesKey) ?? "null")).toEqual(sizes);
-    expect((await loadSettings(store, "s2", "en", "222")).sizes).toEqual(sizes);
+    expect((await loadSettings(store, "s2", "222")).sizes).toEqual(sizes);
     // A stored value off the scale is read as the default for that part only.
     await store.set(
       viewSizesKey,

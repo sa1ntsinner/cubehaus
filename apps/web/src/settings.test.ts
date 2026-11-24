@@ -5,7 +5,6 @@ import {
   DEFAULT_SETTINGS,
   defaultSettings,
   isTrainingProfile,
-  languageFrom,
   loadSettings,
   parseStoredSettings,
   resolveSettings,
@@ -66,13 +65,11 @@ describe("settings", () => {
       "s1",
       "333",
     );
-    const s1 = await loadSettings(store, "s1", "en", "333");
+    const s1 = await loadSettings(store, "s1", "333");
     expect(s1.cross).toBe("assigned");
     expect(s1.crossColours).toEqual(["yellow", "white"]);
     // Another session of the puzzle starts as the last one was set.
-    expect((await loadSettings(store, "s2", "en", "333")).cross).toBe(
-      "assigned",
-    );
+    expect((await loadSettings(store, "s2", "333")).cross).toBe("assigned");
     for (const bad of [[], ["white", "white"], ["purple"], "white", [1]])
       await expect(
         changeSetting(store, "crossColours", bad as never, "s1"),
@@ -161,14 +158,24 @@ describe("settings", () => {
     });
   });
 
-  test("the language comes from the browser: ru-RU is Russian, anything else English", () => {
-    expect(languageFrom("ru-RU")).toBe("ru");
-    expect(languageFrom("ru")).toBe("ru");
-    expect(languageFrom("RU-ru")).toBe("ru");
-    expect(languageFrom("en-GB")).toBe("en");
-    expect(languageFrom("de-DE")).toBe("en");
-    expect(languageFrom(undefined)).toBe("en");
-    expect(defaultSettings("ru-RU").language).toBe("ru");
+  test("the language is English until Russian is chosen, whatever the browser says", async () => {
+    const navigator = globalThis.navigator;
+    Object.defineProperty(globalThis, "navigator", {
+      value: { language: "ru-RU", languages: ["ru-RU"] },
+      configurable: true,
+    });
+    try {
+      expect(defaultSettings().language).toBe("en");
+      const store = memoryStore();
+      expect((await loadSettings(store, "s1")).language).toBe("en");
+      await changeSetting(store, "language", "ru");
+      expect((await loadSettings(store, "s1")).language).toBe("ru");
+    } finally {
+      Object.defineProperty(globalThis, "navigator", {
+        value: navigator,
+        configurable: true,
+      });
+    }
   });
 
   test("a session's value overrides the global one, which overrides the default", () => {
@@ -176,7 +183,6 @@ describe("settings", () => {
       resolveSettings(
         { calls: "voice", holdMs: 0 },
         { calls: "off", inspection: "off" },
-        "en",
       ),
     ).toEqual({
       ...DEFAULT_SETTINGS,
@@ -189,8 +195,8 @@ describe("settings", () => {
   test("DESIGN §12: the picture preference is global and defaults to on", async () => {
     const store = memoryStore();
     await changeSetting(store, "picture", false);
-    expect((await loadSettings(store, "s1", "en")).picture).toBe(false);
-    expect((await loadSettings(store, "s2", "en")).picture).toBe(false);
+    expect((await loadSettings(store, "s1")).picture).toBe(false);
+    expect((await loadSettings(store, "s2")).picture).toBe(false);
     expect(resolveSettings({}, { picture: false }).picture).toBe(true);
   });
 
@@ -211,11 +217,7 @@ describe("settings", () => {
       ),
     ).toEqual({ running: "tenths" });
     expect(
-      resolveSettings(
-        { holdMs: -1 } as never,
-        { language: "fr" } as never,
-        "en",
-      ),
+      resolveSettings({ holdMs: -1 } as never, { language: "fr" } as never),
     ).toEqual(DEFAULT_SETTINGS);
   });
 
@@ -223,7 +225,7 @@ describe("settings", () => {
     const store = memoryStore();
     await changeSetting(store, "theme", "dark", "s1");
     await changeSetting(store, "running", "tenths");
-    expect(await loadSettings(store, "s2", "en")).toMatchObject({
+    expect(await loadSettings(store, "s2")).toMatchObject({
       theme: "dark",
       running: "tenths",
     });
@@ -237,11 +239,11 @@ describe("settings", () => {
     const store = memoryStore();
     await changeSetting(store, "calls", "voice");
     await changeSetting(store, "inspection", "off", "s1");
-    expect(await loadSettings(store, "s1", "en")).toMatchObject({
+    expect(await loadSettings(store, "s1")).toMatchObject({
       calls: "voice",
       inspection: "off",
     });
-    expect(await loadSettings(store, "s2", "en")).toMatchObject({
+    expect(await loadSettings(store, "s2")).toMatchObject({
       calls: "voice",
       inspection: "official",
     });
@@ -249,7 +251,7 @@ describe("settings", () => {
       RangeError,
     );
     store.values.set("settings.global", "garbage");
-    expect(await loadSettings(store, "s1", "en")).toMatchObject({
+    expect(await loadSettings(store, "s1")).toMatchObject({
       calls: "off",
       inspection: "off",
     });
@@ -261,19 +263,19 @@ describe("settings", () => {
     await changeSetting(store, "inspection", "off", "bld-a", "333bf");
     await changeSetting(store, "holdMs", 0, "bld-a", "333bf");
     // A new Blindfolded session starts from the event's choice, over the global one.
-    expect(await loadSettings(store, "bld-b", "en", "333bf")).toMatchObject({
+    expect(await loadSettings(store, "bld-b", "333bf")).toMatchObject({
       inspection: "off",
       holdMs: 0,
     });
     // Another event and the device-wide values are untouched.
-    expect(await loadSettings(store, "three", "en", "333")).toMatchObject({
+    expect(await loadSettings(store, "three", "333")).toMatchObject({
       inspection: "official",
       holdMs: 500,
     });
     // The session's own value still wins over its event's.
     await changeSetting(store, "inspection", "official", "bld-c", "333bf");
     await changeSetting(store, "inspection", "off", "bld-a", "333bf");
-    expect(await loadSettings(store, "bld-c", "en", "333bf")).toMatchObject({
+    expect(await loadSettings(store, "bld-c", "333bf")).toMatchObject({
       inspection: "official",
     });
   });

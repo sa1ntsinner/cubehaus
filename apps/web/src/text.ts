@@ -522,6 +522,24 @@ const en = {
   /** Touch gestures: the hint said where each works, and the list in place of the keys. */
   gestures: {
     title: "Gestures",
+    /** Settings › More: the first-run pictures again (the key list where there are keys). */
+    guide: "Guide",
+    /** The first run on a touch screen: the controls as small moving pictures. */
+    welcome: {
+      title: "Controls",
+      start: "Start",
+      done: "Done",
+      words: [
+        "Start",
+        "Stop",
+        "Delete",
+        "+2",
+        "DNF",
+        "Comment",
+        "Scramble",
+        "Sessions",
+      ] as readonly string[],
+    },
     deleted: "Deleted.",
     undo: "Undo",
     comment: ["Swipe the time ↑", "Comment on the solve"] as readonly [
@@ -1407,6 +1425,22 @@ const ru: Text = {
   keysTitle: "Клавиши",
   gestures: {
     title: "Жесты",
+    guide: "Как пользоваться",
+    welcome: {
+      title: "Управление",
+      start: "Начать",
+      done: "Готово",
+      words: [
+        "Старт",
+        "Стоп",
+        "Удалить",
+        "+2",
+        "DNF",
+        "Комментарий",
+        "Скрамбл",
+        "Сессии",
+      ],
+    },
     deleted: "Удалено.",
     undo: "Вернуть",
     comment: ["Смахните время ↑", "Оставить комментарий к сборке"] as const,

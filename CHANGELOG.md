@@ -16,6 +16,8 @@ The first release.
 - Fewest Moves solutions are checked against the scramble. Multi-Blind is entered as cubes and time.
 - While solving, the time can run in hundredths, tenths or whole seconds, or stay hidden. The screen stays on while you practise.
 - Every action has a key, the keys can be changed, and a command palette finds the rest.
+- Splits: time the cross, F2L and last layer (or your own parts) of one solve, a tap or key press each. Progress shows each part's mean, ao12 and best.
+- On a phone: swipe the time left to delete, right for +2, down for DNF, up to comment; swipe the scramble for the next one.
 
 ### Sessions and statistics
 
@@ -28,7 +30,7 @@ The first release.
 
 ### Trainer
 
-- Algorithms for the 3×3: F2L, last slot, OLL, PLL, COLL and CMLL. For the 2×2: OLL, PBL and CLL.
+- Algorithms for the 3×3: F2L, last slot, OLL, OLLCP, PLL, COLL and CMLL. For the 2×2: OLL, PBL and CLL.
 - Each case has a picture, an algorithm split into triggers, and a short note on how to recognise it.
 - Learn shows the cases, Drill gives a scramble that leads to a chosen case and times it, Review brings back what is due and what went slowly.
 - Drill scrambles in the timer: a cross or xcross in a set number of turns, cross solved, chosen last-layer cases, edges only, corners only, R and U only.
@@ -47,7 +49,9 @@ The first release.
 
 - Web: works in a current browser on a computer or a phone, and offline after the first visit. A new version is picked up when no solve is in progress.
 - macOS: an app for Apple silicon and Intel, signed and notarized, that updates itself. To find an update it asks GitHub for the latest release and sends nothing else.
-- iPhone: the same timer as an app, with haptics and the share sheet for files.
+- iPhone and iPad: the same timer as an app, with haptics, the share sheet for files, and Home Screen widgets for your times and an algorithm set's progress.
+- Windows and Linux: installers on the releases page that update themselves (Windows builds are not code-signed yet).
+- macOS widgets for your times and an algorithm set's progress.
 - No account. Your solves stay on your device.
 - Dark and light themes, your own theme with a background picture, and three layouts for the timer screen.
-- English and Russian.
+- English, with Russian as a choice in Settings.

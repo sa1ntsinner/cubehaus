@@ -57,7 +57,7 @@ import {
   splitPresets,
   type Settings as Values,
 } from "../settings";
-import { gestureList, type Text } from "../text";
+import type { Text } from "../text";
 import { isThemeChoice } from "../theme";
 import { appVersion } from "../version";
 import {
@@ -77,6 +77,9 @@ const sizeChoices = Array.from(
 const GestureHelp = lazy(() =>
   import("../keys/Help").then(({ Help }) => ({ default: Help })),
 );
+const Welcome = lazy(() =>
+  import("./Welcome").then(({ Welcome }) => ({ default: Welcome })),
+);
 const holdChoices = [0, 100, 200, 300, 400, 500, 550, 700, 1000];
 
 function ShortcutSettings({
@@ -95,10 +98,11 @@ function ShortcutSettings({
 }) {
   const t = words.settings;
   const language = view.settings.language;
-  const [gesturesOpen, setGesturesOpen] = useState(false);
+  // The guide: the first run's pictures, or the key list where there are keys.
+  const [guideOpen, setGuideOpen] = useState(false);
   const gestureButton = useRef<HTMLButtonElement>(null);
   const closeGestures = () => {
-    flushSync(() => setGesturesOpen(false));
+    flushSync(() => setGuideOpen(false));
     gestureButton.current?.focus({ preventScroll: true });
   };
   const [capture, setCapture] = useState<string | null>(null);
@@ -150,7 +154,16 @@ function ShortcutSettings({
       <p data-part="keymap-notice" role="status">
         {notice}
       </p>
-      {gesturesOpen && (
+      {guideOpen && !keys && (
+        <Suspense fallback={null}>
+          <Welcome
+            words={words}
+            closeLabel={words.gestures.welcome.done}
+            onClose={closeGestures}
+          />
+        </Suspense>
+      )}
+      {guideOpen && keys && (
         // biome-ignore lint/a11y/noStaticElementInteractions: Escape closes the open dialog.
         <div
           onKeyDown={(event) => {
@@ -161,10 +174,12 @@ function ShortcutSettings({
         >
           <Suspense fallback={null}>
             <GestureHelp
-              bindings={[]}
+              bindings={ACTIONS.map((spec) => ({
+                action: { ...spec, run: () => {} },
+                keys: keysFor(view.keymap, spec.id),
+              })).filter((binding) => binding.keys.length > 0)}
               language={language}
-              title={words.gestures.title}
-              gestures={gestureList(words, isTouchPhone())}
+              title={words.keysTitle}
               closeLabel={t.title}
               onClose={closeGestures}
             />
@@ -175,12 +190,12 @@ function ShortcutSettings({
         <ul>
           {isTouchScreen() && (
             <li data-setting="gestures">
-              <span>{words.gestures.title}</span>{" "}
+              <span>{words.gestures.guide}</span>{" "}
               <button
                 ref={gestureButton}
                 type="button"
                 data-action="settings-gestures"
-                onClick={() => setGesturesOpen(true)}
+                onClick={() => setGuideOpen(true)}
               >
                 {t.keysOpen}
               </button>

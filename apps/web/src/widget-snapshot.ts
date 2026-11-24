@@ -4,7 +4,7 @@
  * extension reads. The page is the source of truth; the extension computes nothing.
  * Format, versioned:
  *
- *   { version, trainer: { set, name, done, total, next } | null,
+ *   { version, language, trainer: { set, name, done, total, next } | null,
  *     times: { session, count, stats: { single|mo3|ao5|ao12: { values, current, best,
  *     record } } } | null }
  *
@@ -23,7 +23,7 @@ import {
 } from "@cubehaus/core";
 import { best, parseStat, rolling } from "@cubehaus/stats";
 
-export const WIDGET_SNAPSHOT_VERSION = 1;
+export const WIDGET_SNAPSHOT_VERSION = 2;
 export const WIDGET_POINTS = 50;
 /** The setting that names the trainer widget's set (in the backup, as `trainer.*` are). */
 export const WIDGET_SET_KEY = "trainer.widget";
@@ -51,6 +51,7 @@ export interface WidgetTrainer {
 }
 export interface WidgetSnapshot {
   version: typeof WIDGET_SNAPSHOT_VERSION;
+  language: "en" | "ru";
   trainer: WidgetTrainer | null;
   times: WidgetTimes | null;
 }
@@ -143,8 +144,9 @@ export function widgetTrainer(input: {
 export function widgetSnapshot(
   trainer: WidgetTrainer | null,
   times: WidgetTimes | null,
+  language: "en" | "ru" = "en",
 ): WidgetSnapshot {
-  return { version: WIDGET_SNAPSHOT_VERSION, trainer, times };
+  return { version: WIDGET_SNAPSHOT_VERSION, language, trainer, times };
 }
 
 type SnapshotHost = {

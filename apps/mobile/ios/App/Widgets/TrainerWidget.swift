@@ -6,13 +6,15 @@ import WidgetKit
 struct TrainerWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "TrainerWidget", provider: SnapshotProvider()) { entry in
-            TrainerView(trainer: entry.snapshot?.trainer)
+            TrainerView(trainer: entry.snapshot?.trainer, language: entry.snapshot?.language)
                 .containerBackground(for: .widget) { Palette.ground }
         }
-        .configurationDisplayName(Text("Algorithms"))
+        .configurationDisplayName(Text(Words.text("Algorithms", Words.stored)))
         .description(
             Text(
-                "One set's progress: the cases in your drills. Choose the set in Algorithms: hold its word."
+                Words.text(
+                    "One set's progress: the cases in your drills. Choose the set in Algorithms: hold its word.",
+                    Words.stored)
             )
         )
         .supportedFamilies([.systemSmall, .systemMedium])
@@ -21,6 +23,7 @@ struct TrainerWidget: Widget {
 
 struct TrainerView: View {
     let trainer: WidgetSnapshot.Trainer?
+    let language: String?
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var mode
 
@@ -39,7 +42,7 @@ struct TrainerView: View {
                     Spacer(minLength: 8)
                     if let trainer, let url = URL(string: "cubehaus://train/\(trainer.set)/drill") {
                         Link(destination: url) {
-                            Text("Drill")
+                            Text(Words.text("Drill", language))
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(palette.ink)
                         }
@@ -48,7 +51,7 @@ struct TrainerView: View {
                 Spacer(minLength: 0)
                 count(palette, size: 44)
                 if let next = trainer?.next {
-                    Text("Next: \(next)")
+                    Text(String(format: Words.text("Next: %@", language), next))
                         .font(.widgetLabel.monospacedDigit())
                         .foregroundStyle(palette.dim)
                         .lineLimit(1)
@@ -72,7 +75,7 @@ struct TrainerView: View {
     }
 
     private func label(_ palette: Palette) -> some View {
-        Text(trainer?.name ?? String(localized: "Algorithms"))
+        Text(trainer?.name ?? Words.text("Algorithms", language))
             .font(.widgetLabel)
             .foregroundStyle(palette.dim)
             .lineLimit(1)

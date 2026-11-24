@@ -34,7 +34,16 @@
 }
 /* The main action of a message, as every action pair (DESIGN.md section 17a): 600 `ink`, the
    1px underline only under a fine pointer. */
-:is([data-part="update"], [data-part="db-state"][data-kind="unsaved"]) button {
+:is(
+    [data-part="update"],
+    [data-part="db-state"]:is(
+      [data-kind="unsaved"],
+      [data-kind="copy"],
+      [data-kind="home"],
+      [data-kind="wiped"]
+    )
+  )
+  button {
   margin-inline-start: var(--s2);
   font-weight: 600;
   color: var(--ink);
@@ -42,7 +51,15 @@
   text-underline-offset: 0.2em;
 }
 @media (hover: hover) and (pointer: fine) {
-  :is([data-part="update"], [data-part="db-state"][data-kind="unsaved"])
+  :is(
+      [data-part="update"],
+      [data-part="db-state"]:is(
+        [data-kind="unsaved"],
+        [data-kind="copy"],
+        [data-kind="home"],
+        [data-kind="wiped"]
+      )
+    )
     button:hover {
     text-decoration-line: underline;
   }

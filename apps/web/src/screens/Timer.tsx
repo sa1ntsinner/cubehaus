@@ -32,7 +32,11 @@ import { DEFAULT_SIZES, type ViewSizes } from "../view-size";
 import { CrossCells } from "./CrossCells";
 import { formatFileResult, spokenResult } from "./file-result";
 
-/** Keep the figure in flow with its notes, with a centred axis when the phone has room. */
+/**
+ * C on a touch phone: the scramble at the top, the figure on the centre of the screen.
+ * `--phone-time-room` is the free row between them; `--phone-scramble-room` the most the
+ * scramble may take above the figure, so its type never pushes the figure off the centre.
+ */
 export function usePhoneTimeLayout(
   page: RefObject<HTMLElement | null>,
   phone: boolean,
@@ -41,41 +45,37 @@ export function usePhoneTimeLayout(
     const main = page.current;
     if (!main || !phone) return;
     const selector = ':scope > output[data-part="time"]';
-    const below =
-      ':scope > :is([data-part="time-under"], [data-part="stats"], [data-part="scramble-picture"], [data-part="last-actions"], [data-part="status-line"])';
+    const scrambleSelector = ':scope > [data-part="scramble"]';
     const measure = () => {
       const time = main.querySelector<HTMLOutputElement>(selector);
       if (!time) {
         main.style.removeProperty("--phone-time-room");
+        main.style.removeProperty("--phone-scramble-room");
         return;
       }
       const style = getComputedStyle(main);
       const gap = Number.parseFloat(style.rowGap);
       const halfTime = time.offsetHeight / 2;
-      const centre = main.clientHeight / 2;
-      const room =
-        centre - halfTime - Number.parseFloat(style.paddingTop) - gap;
-      main.style.setProperty("--phone-time-room", `${Math.max(0, room)}px`);
-      if (!matchMedia("(orientation: portrait)").matches) return;
-      let used = halfTime + Number.parseFloat(style.paddingBottom) + 7 * gap;
-      for (const part of main.querySelectorAll<HTMLElement>(below)) {
-        const layout = getComputedStyle(part);
-        if (layout.position === "absolute" || layout.gridArea === "scramble")
-          continue;
-        used += part.matches('[data-part="status-line"]')
-          ? Math.max(44, part.offsetHeight)
-          : part.offsetHeight;
-      }
+      const above =
+        main.clientHeight / 2 -
+        halfTime -
+        Number.parseFloat(style.paddingTop) -
+        2 * gap;
       main.style.setProperty(
         "--phone-scramble-room",
-        `${Math.max(0, centre - used)}px`,
+        `${Math.max(0, above)}px`,
       );
+      const scramble = main.querySelector<HTMLElement>(scrambleSelector);
+      const room = above - (scramble ? scramble.offsetHeight : 0);
+      main.style.setProperty("--phone-time-room", `${Math.max(0, room)}px`);
     };
     const resize = new ResizeObserver(measure);
     const watch = () => {
       resize.disconnect();
       resize.observe(main);
-      for (const part of main.querySelectorAll(`${selector}, ${below}`))
+      for (const part of main.querySelectorAll(
+        `${selector}, ${scrambleSelector}`,
+      ))
         resize.observe(part);
       measure();
     };
@@ -366,6 +366,11 @@ export function Timer({
   }, [shown, shownNo, precision, words]);
   return (
     <>
+      {scramble !== null && (
+        <p data-heard data-part="scramble-heard">
+          {scramble}
+        </p>
+      )}
       <p
         ref={line}
         data-part="scramble"
@@ -407,7 +412,10 @@ export function Timer({
           />
         )}
         {scramble !== null ? (
-          <Moves line={scramble} event={event} upto={upto} />
+          // Drawn move by move for the eye; heard once, whole, from the copy before it.
+          <span data-part="scramble-moves" aria-hidden="true">
+            <Moves line={scramble} event={event} upto={upto} />
+          </span>
         ) : blocked ? (
           blocked
         ) : pending ? (

@@ -26,23 +26,28 @@ struct TimesEntry: TimelineEntry {
     let date: Date
     let stat: TimesStat
     let times: WidgetSnapshot.Times?
+    let language: String?
 }
 
 struct TimesProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> TimesEntry {
-        TimesEntry(date: Date(), stat: .ao5, times: WidgetSnapshot.sample.times)
+        TimesEntry(date: Date(), stat: .ao5, times: WidgetSnapshot.sample.times, language: Words.stored)
     }
 
     func snapshot(for configuration: TimesIntent, in context: Context) async -> TimesEntry {
         let entry = snapshotEntry(preview: context.isPreview)
-        return TimesEntry(date: entry.date, stat: configuration.stat, times: entry.snapshot?.times)
+        return TimesEntry(
+            date: entry.date, stat: configuration.stat, times: entry.snapshot?.times,
+            language: entry.snapshot?.language)
     }
 
     func timeline(for configuration: TimesIntent, in context: Context) async -> Timeline<TimesEntry> {
         let entry = snapshotEntry(preview: false)
         return Timeline(
             entries: [
-                TimesEntry(date: entry.date, stat: configuration.stat, times: entry.snapshot?.times)
+                TimesEntry(
+                    date: entry.date, stat: configuration.stat, times: entry.snapshot?.times,
+                    language: entry.snapshot?.language)
             ], policy: .never)
     }
 }
@@ -53,11 +58,12 @@ struct TimesWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "TimesWidget", intent: TimesIntent.self, provider: TimesProvider()) {
             entry in
-            TimesView(stat: entry.stat, times: entry.times)
+            TimesView(stat: entry.stat, times: entry.times, language: entry.language)
                 .containerBackground(for: .widget) { Palette.ground }
         }
-        .configurationDisplayName(Text("Times"))
-        .description(Text("The open session's recent results as a line, with the current value."))
+        .configurationDisplayName(Text(Words.text("Times", Words.stored)))
+        .description(
+            Text(Words.text("The open session's recent results as a line, with the current value.", Words.stored)))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
@@ -65,12 +71,13 @@ struct TimesWidget: Widget {
 struct TimesView: View {
     let stat: TimesStat
     let times: WidgetSnapshot.Times?
+    let language: String?
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var mode
 
     private var line: WidgetSnapshot.Line? { times?.stats[stat.rawValue] }
     private var name: String {
-        stat == .single ? String(localized: "single") : stat.rawValue
+        stat == .single ? Words.text("single", language) : stat.rawValue
     }
 
     var body: some View {
@@ -81,7 +88,7 @@ struct TimesView: View {
                 Text(name).font(.widgetLabel).foregroundStyle(palette.dim)
                 Spacer(minLength: 8)
                 if family != .systemSmall, let times {
-                    Text("\(times.session) · \(solvesText(times.count))")
+                    Text("\(times.session) · \(solvesText(times.count, language))")
                         .font(.widgetLabel.monospacedDigit())
                         .foregroundStyle(palette.gutter)
                         .lineLimit(1)

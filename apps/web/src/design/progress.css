@@ -657,7 +657,7 @@ main[data-part="progress"] [data-part="progress-views"] + * {
 main[data-view="spread"] [data-part="progress-more"] > summary {
   display: none;
 }
-@media (max-height: 430px) and (orientation: landscape) and (pointer: coarse) {
+@media (max-height: 460px) and (orientation: landscape) and (pointer: coarse) {
   main[data-part="progress"] {
     padding-top: calc(var(--s3) + env(safe-area-inset-top));
   }

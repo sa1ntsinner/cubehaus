@@ -1,0 +1,449 @@
+/*
+ * The controls as small moving pictures (DESIGN.md section 18d). Over the timer on the
+ * ground colour, as the sheets: no box, no shadow, no heading. A quiet grid, two columns
+ * on a phone, four on a tablet or a phone on its side, and one word to close at the foot.
+ * Hairline strokes as the icon buttons' (1.5 px at any size); the finger is a soft dot.
+ */
+dialog[data-part="welcome"] {
+  --glyph: clamp(60px, 10.5vh, 88px);
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: calc(var(--s4) + env(safe-area-inset-top))
+    max(var(--s5), env(safe-area-inset-right))
+    calc(var(--s3) + env(safe-area-inset-bottom))
+    max(var(--s5), env(safe-area-inset-left));
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  border: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  outline: none;
+  animation: welcome-in 220ms var(--ease) both;
+}
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+  }
+}
+
+dialog[data-part="welcome"] ul {
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(2, var(--glyph));
+  column-gap: clamp(48px, 18vw, 88px);
+  row-gap: clamp(14px, 3.6vh, 32px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+dialog[data-part="welcome"] li {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  position: relative;
+}
+dialog[data-part="welcome"] li > span[aria-hidden] {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+/* Read, not seen: the gesture in the list's words. */
+[data-part="welcome-how"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+dialog[data-part="welcome"] [data-action="welcome-close"] {
+  min-width: 120px;
+  min-height: 44px;
+  padding: 0 var(--s5);
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 600 17px / 1 var(--font-ui);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A tablet: four in a row, larger. A phone on its side: four in a row, smaller. */
+@media (min-width: 700px) and (min-height: 600px) {
+  dialog[data-part="welcome"] {
+    --glyph: 104px;
+  }
+  /* Seven on a tablet (no comment swipe): four, then three under the middle. */
+  dialog[data-part="welcome"] ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: calc(4 * var(--glyph) + 3 * 64px);
+    gap: 48px 64px;
+  }
+  dialog[data-part="welcome"] li > span[aria-hidden] {
+    font-size: 15px;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  dialog[data-part="welcome"] {
+    --glyph: 56px;
+  }
+  dialog[data-part="welcome"] ul {
+    grid-template-columns: repeat(4, var(--glyph));
+    column-gap: 56px;
+    row-gap: 12px;
+  }
+}
+
+/* --- The pictures ---------------------------------------------------------------- */
+
+[data-part="welcome"] svg {
+  width: var(--glyph);
+  height: var(--glyph);
+  overflow: visible;
+}
+[data-part="welcome"] svg * {
+  vector-effect: non-scaling-stroke;
+}
+[data-g="line"],
+[data-g="ring"],
+[data-g="ripple"] {
+  stroke: var(--dim);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+[data-g="ring"] {
+  stroke: var(--ink);
+  /* The fill starts at the top. */
+  transform: rotate(-90deg);
+}
+[data-g="dot"] {
+  fill: var(--ink);
+  fill-opacity: 0.42;
+}
+[data-g="time"] {
+  fill: var(--ink);
+  font-family: var(--font-solid);
+  font-size: 16px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+[data-g="moves"] {
+  fill: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+[data-g="name"] {
+  fill: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+/*
+ * Each loop 2.6–3.6 s, started a little after the one before, so they take turns. `--end`
+ * is the moment that shows the gesture done: reduced motion holds that frame still.
+ */
+:where([data-part="welcome"] li) {
+  --dur: 3.2s;
+  --end: 0.5;
+}
+[data-part="welcome"] li [data-g] {
+  animation-duration: var(--dur);
+  animation-delay: calc(var(--i) * 0.55s);
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-timing-function: linear;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+[data-part="welcome"] li [data-g="line"],
+[data-part="welcome"] li [data-g="time"],
+[data-part="welcome"] li [data-g="name"] {
+  animation-name: none;
+}
+
+/* Hold, let go: the ring fills while the finger stays, the finger lifts. */
+[data-mini="start"] {
+  --dur: 3.2s;
+  --end: 0.5;
+}
+[data-mini="start"] [data-g="dot"] {
+  animation-name: wl-press;
+}
+[data-mini="start"] [data-g="ring"] {
+  stroke-dasharray: 1;
+  animation-name: wl-fill;
+}
+@keyframes wl-press {
+  0%,
+  6% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  14%,
+  54% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: ease-in;
+  }
+  62%,
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+@keyframes wl-fill {
+  0%,
+  14% {
+    stroke-dashoffset: 1;
+    opacity: 1;
+  }
+  50% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  84%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+/* Touch: a quick tap and its ring. */
+[data-mini="stop"] {
+  --dur: 2.6s;
+  --end: 0.22;
+}
+[data-mini="stop"] [data-g="dot"] {
+  animation-name: wl-tap;
+}
+[data-mini="stop"] [data-g="ripple"] {
+  animation-name: wl-ripple;
+}
+@keyframes wl-tap {
+  0%,
+  8% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  16% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  26%,
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+@keyframes wl-ripple {
+  0%,
+  16% {
+    opacity: 0;
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  56%,
+  100% {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+
+/* The time and the finger go together. */
+[data-mini="left"],
+[data-mini="right"],
+[data-mini="down"],
+[data-mini="up"] {
+  --dur: 3s;
+  --end: 0.46;
+}
+[data-part="welcome"] [data-g="move"] {
+  animation-name: wl-swipe;
+}
+[data-part="welcome"] [data-g="move"] [data-g="dot"] {
+  animation-name: wl-finger;
+}
+@keyframes wl-swipe {
+  0%,
+  14% {
+    opacity: 1;
+    transform: translate(0, 0);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+  46% {
+    opacity: 1;
+    transform: translate(var(--dx), var(--dy));
+  }
+  60%,
+  78% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy));
+  }
+  80% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  92%,
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+@keyframes wl-finger {
+  0%,
+  4% {
+    opacity: 0;
+  }
+  12%,
+  46% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+/* The scramble: the row goes with the finger, the next one comes in behind it. */
+[data-mini="scramble"] {
+  --dur: 3.6s;
+  --end: 0.42;
+}
+[data-mini="scramble"] [data-g="dot"] {
+  animation-name: wl-scramble-finger;
+}
+[data-mini="scramble"] [data-g="moves"][data-row="old"] {
+  animation-name: wl-scramble-out;
+}
+[data-mini="scramble"] [data-g="moves"][data-row="new"] {
+  animation-name: wl-scramble-in;
+}
+@keyframes wl-scramble-finger {
+  0%,
+  6% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  14% {
+    opacity: 1;
+    transform: translateX(0);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+  42% {
+    opacity: 1;
+    transform: translateX(-20px);
+  }
+  52%,
+  100% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+@keyframes wl-scramble-out {
+  0%,
+  14% {
+    opacity: 1;
+    transform: translateX(0);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+  42% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  88% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes wl-scramble-in {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateX(20px);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+  44%,
+  74% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  86%,
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+}
+
+/* The session name: a tap, and the sessions show. */
+[data-mini="sessions"] {
+  --dur: 3.4s;
+  --end: 0.5;
+}
+[data-mini="sessions"] [data-g="dot"] {
+  animation-name: wl-tap;
+}
+[data-mini="sessions"] [data-g="grid"] {
+  animation-name: wl-grid;
+}
+@keyframes wl-grid {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translateY(4px);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  40%,
+  78% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog[data-part="welcome"] {
+    animation: none;
+  }
+  /* Held still at the end frame; the page's own rule (type.css) would cut it to 1 ms. */
+  [data-part="welcome"] li [data-g] {
+    animation-duration: var(--dur) !important;
+    animation-delay: calc(var(--dur) * var(--end) * -1);
+    animation-play-state: paused;
+  }
+}

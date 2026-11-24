@@ -5,7 +5,10 @@ import { placeZoom } from "./picture";
 export type ZoomState = "open" | "closing" | null;
 export const reducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const flightCurve = "cubic-bezier(0.16, 1, 0.3, 1)";
+// Open: a short spring that settles a hair past its size; close: straight back.
+const springCurve = "cubic-bezier(0.34, 1.32, 0.64, 1)";
+const returnCurve = "cubic-bezier(0.3, 0, 0.2, 1)";
+const flightMs = 220;
 
 type Placement = ReturnType<typeof placeZoom>;
 
@@ -66,19 +69,20 @@ export function PictureZoom({
     const placement = place();
     const start = transformTo(drawing, placement);
     drawing.style.visibility = "hidden";
-    const reduced = reducedMotion();
-    const flight = reduced
-      ? undefined
-      : box.animate([{ transform: start }, { transform: "none" }], {
-          duration: 460,
-          easing: flightCurve,
-        });
-    const fade = reduced
-      ? undefined
-      : veil.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: 300,
+    // Reduced motion: no flight and no scale, the large picture fades in where it stands.
+    const flight = reducedMotion()
+      ? box.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 160,
           easing: "ease-out",
+        })
+      : box.animate([{ transform: start }, { transform: "none" }], {
+          duration: flightMs,
+          easing: springCurve,
         });
+    const fade = veil.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 180,
+      easing: "ease-out",
+    });
     const observer = new ResizeObserver(place);
     observer.observe(scramble);
     window.addEventListener("resize", place);
@@ -108,10 +112,10 @@ export function PictureZoom({
       animation.cancel();
     const flight = box.animate(
       [{ transform }, { transform: transformTo(drawing, placement) }],
-      { duration: 340, easing: flightCurve, fill: "forwards" },
+      { duration: flightMs, easing: returnCurve, fill: "forwards" },
     );
     const fade = veil.animate([{ opacity }, { opacity: 0 }], {
-      duration: 240,
+      duration: 200,
       easing: "ease-in",
       fill: "forwards",
     });

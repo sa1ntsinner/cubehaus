@@ -148,7 +148,7 @@ g[data-part="picture-body"] {
   opacity: 0.28;
 }
 
-/* ---- enlarged: the page's ground covers everything but the scramble ---- */
+/* ---- enlarged: the page dims and blurs under it; only the scramble stays clear ---- */
 [data-part="picture-zoom"] {
   position: fixed;
   inset: 0;
@@ -156,7 +156,9 @@ g[data-part="picture-body"] {
   outline: none;
 }
 [data-part="picture-veil"] {
-  background: var(--ground);
+  background: color-mix(in srgb, var(--ground) 84%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 [data-part="picture-zoom-box"] {
   transform-origin: 0 0;
@@ -199,7 +201,7 @@ main > [data-part="scramble"][data-over-zoom] {
 /* A touch tablet on its side is short for its width: the Megaminx's two halves, the widest
    picture, would run on into the centred time. There it keeps to the side column's room. */
 @media (hover: none) and (pointer: coarse) and (min-width: 700px) and (
-    min-height: 431px
+    min-height: 461px
   ) and (orientation: landscape) {
   main > [data-part="scramble-picture"][data-event="minx"] {
     height: calc(min(216px, 24vh, 13vw) * var(--size-picture, 1));

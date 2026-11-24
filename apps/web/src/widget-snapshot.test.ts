@@ -178,10 +178,12 @@ describe("the snapshot", () => {
   it("carries its format version", () => {
     expect(widgetSnapshot(null, null)).toEqual({
       version: WIDGET_SNAPSHOT_VERSION,
+      language: "en",
       trainer: null,
       times: null,
     });
-    expect(WIDGET_SNAPSHOT_VERSION).toBe(1);
+    expect(widgetSnapshot(null, null, "ru").language).toBe("ru");
+    expect(WIDGET_SNAPSHOT_VERSION).toBe(2);
   });
 
   it("is written after the last change, once, and at once on leaving", async () => {

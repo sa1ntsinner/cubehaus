@@ -72,9 +72,6 @@ import { createUndoStack } from "./undo";
 
 const defaultPageSize = 200;
 
-// The interface starts in the browser's language until one is chosen.
-const browserLanguage = () => globalThis.navigator?.language;
-
 export interface SolveRow {
   solve: Solve;
   no: number;
@@ -218,7 +215,7 @@ export function createAppState(
   let dbState: DbState | null = null;
   let current: Session | null = null;
   let previousId: string | null = null;
-  let settings = defaultSettings(browserLanguage());
+  let settings = defaultSettings();
   let keymap: Keymap = {};
   let customTheme: ThemeDocument | null = null;
   let sessions: Session[] = [];
@@ -365,7 +362,6 @@ export function createAppState(
     const loadedSettings = await loadSettings(
       db.settings,
       session.id,
-      browserLanguage(),
       session.event,
     );
     // The one open before is kept with the current one, in one write.
@@ -1101,12 +1097,7 @@ export function createAppState(
           sessions.find((session) => session.id === sessionId)?.event,
         );
         if (current) {
-          settings = await loadSettings(
-            db.settings,
-            current.id,
-            browserLanguage(),
-            current.event,
-          );
+          settings = await loadSettings(db.settings, current.id, current.event);
           if (key === "statSlots" || key === "layout")
             series.request(
               sessionWindows(

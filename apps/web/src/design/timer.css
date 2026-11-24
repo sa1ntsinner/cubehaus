@@ -646,6 +646,14 @@ main > [data-part="stats"] {
     max(28px, (100cqi - 2 * var(--side) - 2 * var(--s6)) / 10.5)
   );
 }
+/* A slot is one line, its name beside its value, also where the middle column is narrower
+   than the pair (a tablet standing up): the line then reaches past the column, centred. */
+[data-part="stats-now"] > [data-slot] {
+  white-space: nowrap;
+}
+main > [data-part="stats"]:not(:has([data-slot="today"])) {
+  width: max-content;
+}
 [data-part="stats-now"] [data-part="slot-name"] {
   font-family: var(--font-mono);
   font-weight: 400;
@@ -920,7 +928,7 @@ li[data-penalty="dnf"] [data-part="solve-time"] {
 }
 /* A touch tablet keeps the file's editor: its two words get a finger's room. */
 @media (hover: none) and (pointer: coarse) and (min-width: 700px) and (
-    min-height: 431px
+    min-height: 461px
   ) {
   [data-part="comment-form"] button {
     min-width: 44px;
@@ -2161,7 +2169,7 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
 @media (max-width: 699px) and (min-height: 431px) and (hover: none) and (
     pointer: coarse
   ),
-  (max-width: 699px) and (max-height: 430px) and (orientation: landscape) and (
+  (max-width: 699px) and (max-height: 460px) and (orientation: landscape) and (
     hover: none
   ) and (pointer: coarse) {
   main:has(> output[data-part="time"]) {
@@ -2173,7 +2181,7 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
     );
   }
 }
-@media (min-width: 700px) and (max-height: 430px) and (
+@media (min-width: 700px) and (max-height: 460px) and (
     orientation: landscape
   ) and (hover: none) and (pointer: coarse) {
   main:has(> output[data-part="time"]) {
@@ -2191,7 +2199,7 @@ main > [data-part="time-under"] > [data-part="time-meta"] > button {
 @media (max-width: 699px) and (min-height: 431px) and (hover: none) and (
     pointer: coarse
   ),
-  (max-height: 430px) and (orientation: landscape) and (hover: none) and (
+  (max-height: 460px) and (orientation: landscape) and (hover: none) and (
     pointer: coarse
   ) {
   main > output[data-part="time"] {
@@ -2406,77 +2414,124 @@ main[data-touch-phone]:is(
   display: none;
 }
 
+/* C on a touch phone (DESIGN.md section 4, 2026-11-24 correction): the scramble's letters
+   at the top in both orientations, the figure on the centre of the screen. In portrait the
+   picture stands at the foot above the session row; on its side, to the right of the time.
+   The type of the scramble follows the same variables in both: --per moves of --slot ch on
+   a line, --plines lines kept, --max at most, and never taller than the room above the
+   figure (--phone-scramble-room, measured by usePhoneTimeLayout). */
+main[data-touch-phone] > [data-part="scramble"] {
+  grid-area: scramble;
+  align-self: start;
+}
+main[data-touch-phone] > [data-part="scramble"][data-ready="true"] {
+  --scramble-width: 100cqi;
+  --per: 7;
+  --slot: 2.65;
+  --gap: 0.65;
+  --max: 24px;
+  --plines: 3;
+  --cap: 100dvh;
+  --row-height: 1.35;
+  justify-self: center;
+  align-content: start;
+  width: calc(var(--per) * var(--slot) * 1ch + 0.15ch);
+  word-spacing: calc((var(--gap) - 1) * 1ch);
+  min-height: calc(var(--plines) * 1lh);
+  max-width: var(--scramble-width);
+  margin: 0;
+  font-size: max(
+    var(--text-floor),
+    min(
+      var(--max) *
+      var(--size-scramble, 1),
+      var(--scramble-width) /
+      ((var(--per) * var(--slot) + 0.15) * 0.601),
+      var(--phone-line-room) /
+      var(--row-height)
+    )
+  );
+}
+main[data-touch-phone] > [data-part="scramble"][data-ready="false"] {
+  justify-self: center;
+}
+main[data-touch-phone] > [data-part="scramble"] [data-move] {
+  min-width: calc((var(--slot) - var(--gap, 1)) * 1ch);
+}
+main[data-touch-phone] > [data-part="scramble"][data-event="sq1"] [data-move] {
+  min-width: 0;
+}
+main[data-touch-phone] [data-part="phone-scramble-break"] {
+  display: inline;
+}
+main[data-touch-phone]
+  > [data-part="scramble"][data-ready="true"][data-event="333mbf"] {
+  --per: 13;
+  --max: 12.5px;
+  --plines: 1;
+  width: calc((var(--per) * var(--slot) + 3.15) * 1ch);
+  min-height: min-content;
+}
+main[data-touch-phone]
+  > [data-part="scramble"][data-ready="true"][data-event="minx"] {
+  --row-height: 1.5;
+}
+/* The drill line and the cross mark: under the scramble, in the free row over the time. */
+main[data-touch-phone] > :is([data-part="drill"], [data-part="cross"]) {
+  grid-area: air;
+  align-self: start;
+}
+main[data-touch-phone] > [data-part="scramble-picture"] {
+  grid-area: picture;
+  justify-self: center;
+  align-self: center;
+  margin: 0;
+}
+main[data-touch-phone]
+  > [data-part="scramble-picture"]
+  > [data-action="picture-enlarge"] {
+  width: 100%;
+}
+main[data-touch-phone] > [data-part="scramble-picture"] svg {
+  max-width: 100%;
+  margin-inline: auto;
+}
+
 @media (orientation: portrait) {
-  main[data-touch-phone][data-layout] {
+  main[data-touch-phone][data-layout][data-arrangement] {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows:
-      var(--phone-time-room, minmax(0, 1fr))
-      auto auto auto minmax(0, 1fr) auto auto auto minmax(44px, auto);
+      auto var(--phone-time-room, minmax(0, 1fr))
+      auto auto auto minmax(0, 1fr) auto auto minmax(44px, auto);
     grid-template-areas:
+      "scramble"
       "air"
       "time"
       "note"
       "stats"
       "file"
       "picture"
-      "scramble"
       "actions"
       "status";
   }
+  /* The three icons stand at the right edge beside the file and the picture, never
+     beside the scramble or the time. */
   main[data-touch-phone] > [data-phone-nav] {
     grid-column: 1;
-    grid-row: 2 / scramble-start;
+    grid-row: file-start / status-start;
     position: absolute;
     inset-inline-end: var(--phone-rail);
     inset-block-end: 0;
     margin-inline-end: 0;
   }
   main[data-touch-phone] > [data-part="file"] {
-    width: min(280px, calc(100cqi - 76px));
+    width: min(280px, calc(100cqi - 2 * (44px + var(--s2))));
     justify-self: center;
   }
+  /* As large as the screen leaves it, and clear of the icons on either side. */
   main[data-touch-phone] > [data-part="scramble-picture"] {
-    grid-area: picture;
-    justify-self: center;
-    height: calc(58px * min(var(--size-picture, 1), 1.25));
-    margin: 0;
-  }
-  main[data-touch-phone] > [data-part="scramble"][data-ready="true"] {
-    --scramble-width: 100cqi;
-    --per: 7;
-    --slot: 2.65;
-    --gap: 0.65;
-    --max: 24px;
-    --plines: 3;
-    --cap: 34dvh;
-    justify-self: center;
-    align-content: end;
-    width: calc(var(--per) * var(--slot) * 1ch + 0.15ch);
-    word-spacing: calc((var(--gap) - 1) * 1ch);
-    min-height: calc(var(--plines) * 1lh);
-    max-width: var(--scramble-width);
-    font-size: max(
-      var(--text-floor),
-      min(
-        var(--max) *
-        var(--size-scramble, 1),
-        var(--scramble-width) /
-        ((var(--per) * var(--slot) + 0.15) * 0.601),
-        var(--phone-line-room) /
-        var(--row-height, 1.35)
-      )
-    );
-  }
-  main[data-touch-phone] > [data-part="scramble"][data-ready="false"] {
-    justify-self: center;
-  }
-  main[data-touch-phone] > [data-part="scramble"] [data-move] {
-    min-width: calc((var(--slot) - var(--gap, 1)) * 1ch);
-  }
-  main[data-touch-phone]
-    > [data-part="scramble"][data-event="sq1"]
-    [data-move] {
-    min-width: 0;
+    height: calc(clamp(72px, 19dvh, 180px) * min(var(--size-picture, 1), 1.2));
+    max-width: calc(100cqi - 2 * (44px + var(--s3)));
   }
   main[data-touch-phone]
     > [data-part="scramble"][data-ready="true"]:is(
@@ -2486,6 +2541,7 @@ main[data-touch-phone]:is(
     ) {
     --per: 8;
     --plines: 2;
+    --max: 30px;
   }
   main[data-touch-phone]
     > [data-part="scramble"][data-ready="true"][data-event="333bf"] {
@@ -2510,26 +2566,32 @@ main[data-touch-phone]:is(
       [data-event="444"],
       [data-event="444bf"]
     ) {
-    --per: 9;
-    --slot: 3.35;
-    --gap: 0.35;
-    --max: 18px;
-    --plines: 6;
+    --per: 10;
+    --slot: 3.45;
+    --gap: 0.45;
+    --max: 20px;
+    --plines: 5;
   }
   main[data-touch-phone]
     > [data-part="scramble"][data-ready="true"]:is(
       [data-event="555"],
-      [data-event="555bf"],
+      [data-event="555bf"]
+    ) {
+    --per: 9;
+    --slot: 4.45;
+    --gap: 0.45;
+    --max: 16px;
+    --plines: 7;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
       [data-event="666"],
       [data-event="777"]
     ) {
     --per: 9;
-    --slot: 4.65;
-    --max: 14px;
-    --plines: 7;
-  }
-  main[data-touch-phone]
-    > [data-part="scramble"][data-ready="true"][data-event="666"] {
+    --slot: 4.4;
+    --gap: 0.4;
+    --max: 15px;
     --plines: 9;
   }
   main[data-touch-phone]
@@ -2541,42 +2603,34 @@ main[data-touch-phone]:is(
     --per: 11;
     --slot: 3.35;
     --gap: 0.35;
-    --row-height: 1.5;
-    --max: 15px;
+    --max: 16px;
     --plines: 7;
   }
   main[data-touch-phone]
     > [data-part="scramble"][data-ready="true"][data-event="clock"] {
     --per: 7;
     --slot: 5.65;
-    --max: 16px;
+    --max: 18px;
   }
   main[data-touch-phone]
     > [data-part="scramble"][data-ready="true"][data-event="sq1"] {
     --per: 4;
     --slot: 8.2;
     --gap: 1;
-    --max: 17px;
+    --max: 18px;
     --plines: 5;
   }
-  main[data-touch-phone]
-    > [data-part="scramble"][data-ready="true"][data-event="333mbf"] {
-    --per: 13;
-    --max: 12.5px;
-    --plines: 1;
-    width: calc((var(--per) * var(--slot) + 3.15) * 1ch);
-    min-height: min-content;
-  }
+  /* 3×3: two lines of ten and eleven, as large as the width between the margins allows. */
   main[data-touch-phone]
     > [data-part="scramble"][data-ready="true"]:is(
       [data-event="333"],
       [data-event="333oh"]
     ) {
     --per: 10;
-    --slot: 2.35;
-    --gap: 0.35;
+    --slot: 2.5;
+    --gap: 0.5;
     --plines: 2;
-    --max: 28px;
+    --max: 34px;
   }
   main[data-touch-phone]
     > [data-part="scramble"][data-ready="true"]:is(
@@ -2585,73 +2639,13 @@ main[data-touch-phone]:is(
     ):where(:has([data-n="20"])) {
     --per: 11;
   }
-  main[data-touch-phone] [data-part="phone-scramble-break"] {
-    display: inline;
-  }
-  /* A long scramble uses the lower right rail alongside its turns. */
-  main[data-touch-phone]:has(
-      > [data-part="scramble"]:is(
-          [data-event^="444"],
-          [data-event^="555"],
-          [data-event="666"],
-          [data-event="777"],
-          [data-event="minx"],
-          [data-event="333mbf"]
-        )
-    )
-    > [data-phone-nav] {
-    grid-row: scramble-start / status-start;
-  }
-  main[data-touch-phone]
-    > [data-part="scramble"][data-ready="true"]:is(
-      [data-event^="444"],
-      [data-event^="555"],
-      [data-event="666"],
-      [data-event="777"],
-      [data-event="minx"],
-      [data-event="333mbf"]
-    ) {
-    --scramble-width: calc(100cqi - 38px);
-    justify-self: start;
-  }
-  main[data-touch-phone]
-    > [data-part="scramble"][data-ready="true"][data-event="222"] {
-    --max: 28px;
-  }
-  main[data-touch-phone]
-    > [data-part="scramble"][data-ready="true"]:is(
-      [data-event="666"],
-      [data-event="777"]
-    ) {
-    --slot: 4.4;
-    --gap: 0.4;
-  }
   main[data-touch-phone]:has(
     > [data-part="scramble"]:is([data-event="666"], [data-event="777"])
   ) {
     row-gap: 6px;
   }
-  main[data-touch-phone]:has(
-      > [data-part="scramble"]:is([data-event="666"], [data-event="777"])
-    )
-    > [data-part="scramble-picture"] {
-    display: block;
-    grid-area: scramble;
-    align-self: start;
-    justify-self: end;
-    height: 28px;
-    margin-block-start: -6px;
-    margin-inline-end: calc(var(--phone-rail) - var(--phone-inline) + 3px);
-  }
 }
 @media (max-width: 359px) and (orientation: portrait) {
-  main[data-touch-phone] > [data-phone-nav] {
-    grid-row: scramble-start / status-start;
-  }
-  main[data-touch-phone] > [data-part="scramble"][data-ready="true"] {
-    --scramble-width: calc(100cqi - 38px);
-    justify-self: start;
-  }
   main[data-touch-phone]
     > [data-part="scramble"][data-ready="true"][data-event="222"] {
     --per: 7;
@@ -2663,7 +2657,7 @@ main[data-touch-phone]:is(
     ) {
     --per: 7;
     --plines: 3;
-    --max: 24px;
+    --max: 26px;
   }
   main[data-touch-phone] [data-part="phone-scramble-break"] {
     display: none;
@@ -2673,11 +2667,8 @@ main[data-touch-phone]:is(
       [data-event="666"],
       [data-event="777"]
     ) {
-    --per: 9;
     --slot: 4.15;
     --gap: 0.15;
-    --plines: 12;
-    --cap: 37dvh;
     --row-height: 1.12;
     line-height: round(calc(var(--row-height) * 1em), 1px);
   }
@@ -2690,12 +2681,6 @@ main[data-touch-phone]:is(
   ) {
     row-gap: 2px;
   }
-  main[data-touch-phone]:has(
-      > [data-part="scramble"]:is([data-event="666"], [data-event="777"])
-    )
-    > [data-part="scramble-picture"] {
-    margin-block-start: -18px;
-  }
 }
 @media (max-height: 740px) and (orientation: portrait) {
   main[data-touch-phone] {
@@ -2705,144 +2690,124 @@ main[data-touch-phone]:is(
     --slot-block-margin: calc(-1 * var(--s1));
   }
   main[data-touch-phone] > [data-part="scramble-picture"] {
-    height: calc(30px * min(var(--size-picture, 1), 1.25));
-  }
-  main[data-touch-phone]:has(> [data-part="scramble"][data-event="minx"])
-    > [data-part="scramble-picture"] {
-    height: 21px;
-  }
-  main[data-touch-phone]
-    > [data-part="scramble"][data-ready="true"][data-event="444"] {
-    --plines: 5;
+    height: calc(clamp(64px, 16dvh, 120px) * min(var(--size-picture, 1), 1.2));
   }
 }
 @media (orientation: landscape) {
-  main[data-touch-phone][data-layout] {
+  main[data-touch-phone][data-layout][data-arrangement] {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows:
-      var(--phone-time-room, minmax(0, 1fr))
+      auto var(--phone-time-room, minmax(0, 1fr))
       auto auto auto minmax(0, 1fr) auto minmax(44px, auto);
     grid-template-areas:
+      "scramble scramble"
       "air air"
       "time time"
       "note note"
       "stats stats"
-      "file file"
+      "rest rest"
       "actions actions"
       "status status";
     column-gap: 0;
   }
-  main[data-touch-phone] > [data-part="scramble"] {
-    grid-area: 1 / 2 / status-start / 3;
-    justify-self: stretch;
-    align-self: center;
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    min-height: 0;
-    --time-clearance: min(16dvw, 134px);
-    --scramble-width: calc(50cqi - var(--time-clearance));
-    --scramble-height: calc(
-      100dvh -
-      var(--phone-foot) -
-      68px -
-      env(safe-area-inset-top)
-    );
-    margin-inline-start: var(--time-clearance);
-    --slot: 2.25;
-    --gap: 0.25;
-    font-size: clamp(11px, 2.6dvw * var(--size-scramble, 1), 23px);
-    word-spacing: calc((var(--gap) - 1) * 1ch);
-  }
-  main[data-touch-phone] > [data-part="scramble"] [data-move] {
-    min-width: calc((var(--slot) - var(--gap)) * 1ch);
+  /* Across the width between the safe areas, in two or three lines with real gaps. */
+  main[data-touch-phone] > [data-part="scramble"][data-ready="true"] {
+    --per: 11;
+    --slot: 2.6;
+    --gap: 0.6;
+    --max: 28px;
+    --plines: 2;
   }
   main[data-touch-phone] > [data-part="scramble"][data-event="222"] {
-    font-size: clamp(11px, 3.8dvw * var(--size-scramble, 1), 33px);
+    --max: 32px;
+    --plines: 1;
   }
   main[data-touch-phone]
-    > [data-part="scramble"]:is(
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="skewb"],
+      [data-event="pyram"]
+    ) {
+    --per: 15;
+    --plines: 1;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"]:is(
       [data-event="333bf"],
-      [data-event="fto"],
-      [data-event^="444"],
-      [data-event="minx"]
+      [data-event="fto"]
     ) {
-    --slot: 3.45;
-    --gap: 0.45;
-    font-size: clamp(11px, 1.9dvw * var(--size-scramble, 1), 18px);
-  }
-  main[data-touch-phone] > [data-part="scramble"][data-event^="444"] {
-    font-size: clamp(
-      11px,
-      min(
-        2.5dvw *
-        var(--size-scramble, 1),
-        var(--scramble-width) /
-        10.46,
-        var(--scramble-height) /
-        13.5
-      ),
-      22px
-    );
+    --per: 12;
+    --slot: 3.6;
+    --gap: 0.6;
+    --max: 24px;
   }
   main[data-touch-phone]
-    > [data-part="scramble"]:is(
-      [data-event^="555"],
-      [data-event="666"],
-      [data-event="777"],
-      [data-event="clock"]
-    ) {
+    > [data-part="scramble"][data-ready="true"][data-event="fto"] {
+    --plines: 3;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="333fm"] {
+    --per: 14;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event^="444"] {
+    --per: 16;
+    --slot: 3.5;
+    --gap: 0.5;
+    --max: 22px;
+    --plines: 3;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event^="555"] {
+    --per: 15;
     --slot: 4.45;
     --gap: 0.45;
-    font-size: clamp(11px, 1.6dvw * var(--size-scramble, 1), 14px);
+    --max: 18px;
+    --plines: 4;
   }
   main[data-touch-phone]
-    > [data-part="scramble"]:is([data-event="666"], [data-event="777"]) {
-    --slot: 4.15;
-    --gap: 0.15;
-    /* Compare six and seven columns to keep a 100-move scramble above the icons. */
-    --fits-six: min(
-      var(--scramble-width) /
-      15.06,
-      var(--scramble-height) /
-      21.25
-    );
-    --fits-seven: min(
-      var(--scramble-width) /
-      17.55,
-      var(--scramble-height) /
-      18.75
-    );
-    font-size: max(
-      11px,
-      min(
-        16px *
-        var(--size-scramble, 1),
-        max(var(--fits-six), var(--fits-seven))
-      )
-    );
+    > [data-part="scramble"][data-ready="true"]:is(
+      [data-event="666"],
+      [data-event="777"]
+    ) {
+    --per: 16;
+    --slot: 4.4;
+    --gap: 0.4;
+    --max: 17px;
+    --plines: 5;
+    --row-height: 1.25;
     line-height: round(1.25em, 1px);
   }
-  main[data-touch-phone] > [data-part="scramble"][data-event="minx"] {
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="777"] {
+    --per: 17;
+    --plines: 6;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="minx"] {
     --slot: 3.35;
     --gap: 0.35;
-    font-size: max(
-      11px,
-      min(15.6px * var(--size-scramble, 1), var(--scramble-height) / 19.6)
-    );
-    line-height: round(1.38em, 1px);
+    --max: 16px;
+    --plines: 7;
+    --row-height: 1.3;
+    line-height: round(1.3em, 1px);
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="clock"] {
+    --per: 10;
+    --slot: 5.45;
+    --gap: 0.45;
+    --max: 20px;
+  }
+  main[data-touch-phone]
+    > [data-part="scramble"][data-ready="true"][data-event="sq1"] {
+    --per: 7;
+    --slot: 8.2;
+    --gap: 1;
+    --max: 20px;
   }
   main[data-touch-phone] [data-part="stats-now"] {
     font-size: min(25px * var(--size-averages, 1), 3.1dvw);
     gap: var(--s3);
-  }
-  main[data-touch-phone] > [data-part="scramble"][data-event="clock"] {
-    --slot: 5.45;
-  }
-  main[data-touch-phone]
-    > [data-part="scramble"][data-event="sq1"]
-    [data-move] {
-    min-width: 0;
   }
   main[data-touch-phone] > [data-phone-nav] {
     grid-area: status;
@@ -2850,15 +2815,20 @@ main[data-touch-phone]:is(
   main[data-touch-phone] > footer[data-part="status-line"] {
     padding-inline-end: 134px;
   }
-  main[data-touch-phone] > [data-part="scramble-picture"] {
-    display: none;
-  }
+  /* The file to the left of the figure, the picture to its right: both in the band
+     between the scramble and the status row, clear of the figure's middle third. */
   main[data-touch-phone] > [data-part="file"] {
-    width: min(230px, 27vw);
-    grid-area: 1 / 1 / status-start / 2;
+    width: min(210px, 25vw);
+    grid-area: time / 1 / actions / 2;
     align-self: center;
-    height: min(180px, 50dvh);
+    height: min(180px, 100%);
     justify-self: start;
+  }
+  main[data-touch-phone] > [data-part="scramble-picture"] {
+    grid-area: air / 2 / actions / 3;
+    justify-self: end;
+    height: calc(min(132px, 30dvh) * min(var(--size-picture, 1), 1.2));
+    max-width: min(240px, calc(50cqi - 150px));
   }
   main[data-touch-phone][data-layout] > output[data-part="time"] {
     font-size: calc(min(10vw, 19dvh) * min(1.15, var(--size-time, 1)));
@@ -2906,7 +2876,7 @@ main[data-touch-phone]:is(
       line-height: 1.25;
     }
     main[data-touch-phone] > [data-part="scramble"][data-event="minx"] {
-      line-height: 1.38;
+      line-height: 1.3;
     }
   }
   @media (max-width: 699px) {

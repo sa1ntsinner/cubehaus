@@ -602,7 +602,7 @@ dialog[data-layout="grid"] li > [data-action="switch-pick"]::before {
 @media (max-width: 699px) and (orientation: portrait) and (hover: none) and (
     pointer: coarse
   ),
-  (max-height: 430px) and (orientation: landscape) and (hover: none) and (
+  (max-height: 460px) and (orientation: landscape) and (hover: none) and (
     pointer: coarse
   ) {
   dialog[data-part="switch"][data-layout="grid"] {

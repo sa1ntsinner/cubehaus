@@ -209,12 +209,17 @@ test.describe("touch gestures", () => {
     await swipe(page, TIME, { dx: -120 });
     await expect(lines(page)).toHaveCount(3);
 
-    // A line of the file swiped left is deleted.
+    // A line of the file swiped left is deleted (a line on screen: the larger picture
+    // leaves the file room for the newest lines only).
     await page.waitForTimeout(800);
-    await swipe(page, '[data-part="solves"] > li[data-solve-id]:last-child', {
-      dx: -140,
-      at: { x: 0.7, y: 0.5 },
-    });
+    await swipe(
+      page,
+      '[data-part="solves"] > li[data-solve-id]:not([data-fit-hidden])',
+      {
+        dx: -140,
+        at: { x: 0.7, y: 0.5 },
+      },
+    );
     await expect(lines(page)).toHaveCount(2);
   });
 
@@ -272,7 +277,7 @@ test.describe("touch gestures", () => {
     await expect(hint).toContainText("Swipe the time down for DNF");
   });
 
-  test("Settings lists the gestures on a touch phone", async ({ page }) => {
+  test("Settings › More opens the guide on a touch phone", async ({ page }) => {
     test.skip(
       !(await page.evaluate(
         () => matchMedia("(hover: none) and (pointer: coarse)").matches,
@@ -288,15 +293,18 @@ test.describe("touch gestures", () => {
       page.locator('[data-part="settings-sections"] [data-section="keys"]'),
     ).toHaveCount(0);
     await expect(page.locator('[data-setting="commands"]')).toHaveCount(0);
+    await expect(page.locator('[data-setting="gestures"] > span')).toHaveText(
+      "Guide",
+    );
     const opener = action(page, "settings-gestures");
     await opener.click();
-    const list = page.locator('dialog[data-part="keys-help"]');
-    await expect(list).toHaveAttribute("aria-label", "Gestures");
-    await expect(list.locator("dt").first()).toHaveText(
+    const guide = page.locator('dialog[data-part="welcome"]');
+    await expect(guide.locator("li")).toHaveCount(8);
+    await expect(guide.locator("li").first()).toContainText(
       "Hold the screen, let go",
     );
-    await expect(list.locator("kbd")).toHaveCount(0);
-    await list.locator('[data-action="dialog-close"]').click();
+    await guide.locator('[data-action="welcome-close"]').click();
+    await expect(guide).toHaveCount(0);
     await expect(opener).toBeFocused();
   });
 });

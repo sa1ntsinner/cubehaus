@@ -127,14 +127,13 @@ export const DEFAULT_SETTINGS: Settings = {
   crossColours: null,
 };
 
-export function languageFrom(tag: string | undefined): Settings["language"] {
-  return tag?.toLowerCase().split("-")[0] === "ru" ? "ru" : "en";
-}
-
-export function defaultSettings(
-  tag: string | undefined = globalThis.navigator?.language,
-): Settings {
-  return { ...DEFAULT_SETTINGS, language: languageFrom(tag) };
+/**
+ * The settings before any choice. The language is English for everyone, whatever the
+ * system or browser says: Russian only once chosen in Settings (owner, 2026-11-24).
+ * Only a chosen language is ever stored, so nothing stored needs to move.
+ */
+export function defaultSettings(): Settings {
+  return { ...DEFAULT_SETTINGS };
 }
 
 const choices: {
@@ -291,9 +290,8 @@ function parseSizes(text: string | null): ViewSizes {
 export function resolveSettings(
   global: Partial<Settings>,
   session: Partial<Settings>,
-  tag?: string,
 ): Settings {
-  const device = { ...defaultSettings(tag), ...cleanSettings(global) };
+  const device = { ...defaultSettings(), ...cleanSettings(global) };
   const own = cleanSettings(session);
   return {
     ...device,
@@ -322,7 +320,6 @@ interface SettingsStore {
 export async function loadSettings(
   store: SettingsStore,
   sessionId: string,
-  tag?: string,
   event?: EventId,
 ): Promise<Settings> {
   const [global, forEvent, session, sizes] = await Promise.all([
@@ -339,7 +336,6 @@ export async function loadSettings(
       ...own,
       splits: own.splits ?? null,
     },
-    tag,
   );
 }
 

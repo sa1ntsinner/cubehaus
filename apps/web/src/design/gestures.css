@@ -142,7 +142,7 @@ main[data-touch-phone]:has(
 
 /* Phones open the list from Settings or a hint. The tablet keeps its status shortcut. */
 @media (max-width: 699px) and (min-height: 431px),
-  (max-height: 430px) and (orientation: landscape) and (hover: none) and (
+  (max-height: 460px) and (orientation: landscape) and (hover: none) and (
     pointer: coarse
   ) {
   main:has(> output[data-part="time"][data-swipe-direction="down"])

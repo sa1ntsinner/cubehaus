@@ -40,6 +40,10 @@ export interface Seed {
   timer?: TimerSeed;
   /** The URL's theme: a seeded custom theme's base. */
   base: "dark" | "light";
+  /** `rows=N` on an event state: that many made-up solves in its session. */
+  rows?: number;
+  /** `splits=1`: Cross · F2L · LL on, and the newest solve split into those parts. */
+  splits?: boolean;
 }
 
 const stoppedTimes: Partial<Record<string, number>> = {
@@ -233,7 +237,10 @@ export function parseSeed(search: string): Seed | undefined {
     : (fixtureEvents[state] ?? "333");
   const theme = params.get("theme");
   const timer = timerFor(state);
+  const rows = Number(params.get("rows"));
   return {
+    ...(eventState && rows > 0 ? { rows: Math.min(60, rows) } : {}),
+    ...(params.get("splits") === "1" ? { splits: true } : {}),
     state,
     event,
     base: theme === "light" ? "light" : "dark",
@@ -267,6 +274,7 @@ export function parseSeed(search: string): Seed | undefined {
       // White on top for these shots; the rest keep the default, yellow on top.
       holding: state.endsWith("-white") ? "UF" : "DF",
       precision: state === "wide-time" ? 3 : 2,
+      splits: params.get("splits") === "1" ? "three" : DEFAULT_SETTINGS.splits,
       inspection:
         state.startsWith("two-hand-") ||
         (timer.timer &&
@@ -419,7 +427,7 @@ export function seededSolves(seed: Seed, sessionId: string): Solve[] {
     }));
   }
   let random = 0x2f6b9a1d;
-  const count = rowCounts[state] ?? 0;
+  const count = seed.rows ?? rowCounts[state] ?? 0;
   const history = count === 60;
   const scramble =
     event === "777" ? sample777 : event === "333mbf" ? sampleMulti : sample333;
@@ -475,6 +483,21 @@ export function seededSolves(seed: Seed, sessionId: string): Solve[] {
       input: "keyboard",
       ...(event === "333mbf" ? { cubesSolved: 3, cubesAttempted: 3 } : {}),
       ...(crossColour ? { crossColour } : {}),
+      ...(seed.splits && newest
+        ? {
+            splits: [
+              { name: "Cross", durationMs: Math.round(timeMs * 0.18) },
+              { name: "F2L", durationMs: Math.round(timeMs * 0.52) },
+              {
+                name: "LL",
+                durationMs:
+                  timeMs -
+                  Math.round(timeMs * 0.18) -
+                  Math.round(timeMs * 0.52),
+              },
+            ],
+          }
+        : {}),
     };
   });
 }

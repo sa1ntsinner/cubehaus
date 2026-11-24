@@ -327,10 +327,10 @@ test.describe("sizes on a phone", () => {
 
             // The parts follow one another down the screen without touching.
             const order = [
+              q('main > [data-part="scramble"]'),
               q('main > output[data-part="time"]'),
               ...all('[data-part="stats-now"] [data-slot]'),
               q('main > [data-part="scramble-picture"]'),
-              q('main > [data-part="scramble"]'),
             ].filter(shown);
             const slotsBottom = Math.max(
               ...all('[data-part="stats-now"] [data-slot]').map(
@@ -498,7 +498,9 @@ test.describe("smallest sizes on a phone", () => {
 test.describe("touch phone timer controls", () => {
   test.use({ ...mobile, viewport: { width: 393, height: 852 } });
 
-  test("keeps two scramble lines clear of the timer and navigation", async ({
+  // The scramble's letters at the top, the picture at the foot; on its side the picture
+  // stands beside the time (2026-11-24).
+  test("keeps the scramble above the time and the picture below it, or beside it on its side", async ({
     page,
   }) => {
     const fixture = new URLSearchParams({
@@ -526,12 +528,30 @@ test.describe("touch phone timer controls", () => {
               .length,
         ),
       );
-    expect(lines).toHaveLength(2);
-    expect(lines[0]).toBe(10);
-    const time = await page.locator('output[data-part="time"]').boundingBox();
-    const moves = await scramble.boundingBox();
-    if (!time || !moves) throw new Error("Timer or scramble has no box");
-    expect(time.y + time.height).toBeLessThan(moves.y);
+    expect(lines).toEqual([10, 10]);
+    const picture = page.locator('main > [data-part="scramble-picture"]');
+    const boxes = async () => {
+      const time = await page.locator('output[data-part="time"]').boundingBox();
+      const moves = await scramble.boundingBox();
+      const drawing = await picture.boundingBox();
+      if (!time || !moves || !drawing) throw new Error("A part has no box");
+      return { time, moves, drawing };
+    };
+    const apart = (
+      a: { x: number; y: number; width: number; height: number },
+      b: typeof a,
+    ) =>
+      a.x + a.width <= b.x ||
+      b.x + b.width <= a.x ||
+      a.y + a.height <= b.y ||
+      b.y + b.height <= a.y;
+    const portrait = await boxes();
+    expect(portrait.moves.y + portrait.moves.height).toBeLessThan(
+      portrait.time.y,
+    );
+    expect(portrait.time.y + portrait.time.height).toBeLessThan(
+      portrait.drawing.y,
+    );
     for (const name of ["Algorithms", "Progress", "Settings"]) {
       const link = page.getByRole("link", { name, exact: true });
       await expect(link.locator("svg")).toBeVisible();
@@ -539,13 +559,21 @@ test.describe("touch phone timer controls", () => {
       if (!box) throw new Error("Phone action has no box");
       expect(box.width).toBe(44);
       expect(box.height).toBe(44);
-      for (const other of [time, moves])
-        expect(
-          box.x + box.width <= other.x ||
-            other.x + other.width <= box.x ||
-            box.y + box.height <= other.y ||
-            other.y + other.height <= box.y,
-        ).toBe(true);
+      for (const other of Object.values(portrait))
+        expect(apart(box, other)).toBe(true);
     }
+
+    await page.setViewportSize({ width: 852, height: 393 });
+    await expect(picture).toBeVisible();
+    await expect
+      .poll(async () => {
+        const side = await boxes();
+        return (
+          side.drawing.x > side.time.x + side.time.width &&
+          apart(side.moves, side.drawing) &&
+          side.moves.y + side.moves.height <= side.time.y
+        );
+      })
+      .toBe(true);
   });
 });

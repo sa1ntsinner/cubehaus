@@ -28,9 +28,11 @@ async function clearOriginStorage(context: BrowserContext, baseURL?: string) {
 // Playwright's WebKit gives ephemeral contexts no origin-private file system
 // (getDirectory rejects with UnknownError), while Safari itself has one. A
 // persistent profile per test makes WebKit exercise the real storage path.
-export const test = base.extend({
+export const test = base.extend<{ welcome: boolean }>({
+  // The first-run pictures cover a touch screen's timer; a spec about them turns this on.
+  welcome: [false, { option: true }],
   context: async (
-    { browserName, browser, baseURL, hasTouch },
+    { browserName, browser, baseURL, hasTouch, welcome },
     use,
     testInfo,
   ) => {
@@ -47,6 +49,12 @@ export const test = base.extend({
         ? await webkit.launchPersistentContext(profile, options)
         : await browser.newContext(options);
     if (browserName === "webkit") await clearOriginStorage(context, baseURL);
+    if (!welcome)
+      await context.addInitScript(() => {
+        try {
+          localStorage.setItem("cubehaus.welcome", "seen");
+        } catch {}
+      });
     await use(context);
     await context.close();
     if (browserName === "webkit")

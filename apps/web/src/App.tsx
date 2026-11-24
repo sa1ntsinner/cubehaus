@@ -120,6 +120,7 @@ import {
   type ViewSizes,
 } from "./view-size";
 import { keepAwake } from "./wake-lock";
+import { markWelcomeSeen, welcomeSeen } from "./welcome";
 import {
   keepWidgetSnapshot,
   WIDGET_SET_KEY,
@@ -180,6 +181,9 @@ const Train = lazy(() => loadTrain().then(({ Train }) => ({ default: Train })));
 // Settings loads on its own like Progress: the timer's first load does not carry it, and
 // its code starts loading when the pointer or focus reaches the link.
 const loadSettings = () => import("./screens/Settings");
+const Welcome = lazy(() =>
+  import("./screens/Welcome").then(({ Welcome }) => ({ default: Welcome })),
+);
 const Settings = lazy(() =>
   loadSettings().then(({ Settings }) => ({ default: Settings })),
 );
@@ -347,6 +351,7 @@ export function App({
                       records,
                     })
                   : null,
+                settings.language,
               );
             },
             inPhoneApp() ? writeWidgetSnapshot : writeDesktopWidgetSnapshot,
@@ -433,6 +438,24 @@ export function App({
     return () => window.removeEventListener("hashchange", update);
   }, []);
 
+  // A touch screen's first visit: the controls as pictures over the timer, once (welcome.ts).
+  const [welcome, setWelcome] = useState(
+    () => isTouchScreen() && !welcomeSeen() && !readStarted(),
+  );
+  const firstRun =
+    welcome &&
+    view.current !== null &&
+    view.sessions.length <= 1 &&
+    view.rows.length === 0;
+  // Solves already here (a restored history): no welcome, now or after they are gone.
+  useEffect(() => {
+    if (welcome && view.current !== null && !firstRun) setWelcome(false);
+  }, [welcome, firstRun, view.current]);
+  const closeWelcome = () => {
+    markWelcomeSeen();
+    setWelcome(false);
+  };
+
   const dbKind = view.dbState?.kind;
   const words = textFor(language);
   const routeScreen = screenOf(route);
@@ -469,16 +492,25 @@ export function App({
     if (route === "#/settings" || route.startsWith("#/settings/"))
       return <Settings app={app} view={view} words={words} route={route} />;
     return (
-      <TimerPage
-        app={app}
-        view={view}
-        dbMessage={dbMessage}
-        seed={seed}
-        openCommands={route === "#/commands"}
-        openDrills={route === "#/drills"}
-        applyUpdate={applyUpdate}
-        installFailed={installFailed}
-      />
+      <>
+        <TimerPage
+          app={app}
+          view={view}
+          dbMessage={dbMessage}
+          seed={seed}
+          openCommands={route === "#/commands"}
+          openDrills={route === "#/drills"}
+          applyUpdate={applyUpdate}
+          installFailed={installFailed}
+        />
+        {firstRun && (route === "" || route === "#/") && (
+          <Welcome
+            words={words}
+            closeLabel={words.gestures.welcome.start}
+            onClose={closeWelcome}
+          />
+        )}
+      </>
     );
   }
 }

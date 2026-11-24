@@ -77,14 +77,14 @@ export function readPlatform(nav: Navigator = navigator): {
   safari: boolean;
   standalone: boolean;
 } {
-  const agent = nav.userAgent;
+  const ua = nav.userAgent;
   const ios =
-    /iPad|iPhone|iPod/.test(agent) ||
-    (/Macintosh/.test(agent) && nav.maxTouchPoints > 1);
+    /iPad|iPhone|iPod/.test(ua) ||
+    (/Macintosh/.test(ua) && nav.maxTouchPoints > 1);
   const safari =
-    /AppleWebKit/.test(agent) &&
-    /Safari/.test(agent) &&
-    !/Chrome|Chromium|CriOS|FxiOS|EdgiOS|Edg\/|Android/.test(agent);
+    /AppleWebKit/.test(ua) &&
+    /Safari/.test(ua) &&
+    !/Chrome|Chromium|CriOS|FxiOS|EdgiOS|Edg\/|Android/.test(ua);
   let standalone = (nav as { standalone?: boolean }).standalone === true;
   try {
     standalone ||= matchMedia("(display-mode: standalone)").matches;

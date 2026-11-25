@@ -90,6 +90,7 @@ import {
 } from "./scramble/training-client";
 import { CrossCells } from "./screens/CrossCells";
 import { Entry } from "./screens/Entry";
+import { InspectionCancel } from "./screens/InspectionCancel";
 import { Sessions } from "./screens/Sessions";
 import { SolveList } from "./screens/SolveList";
 import {
@@ -2150,6 +2151,9 @@ function TimerPage({
       }}
     >
       <h1 data-heard>{words.timer}</h1>
+      {phone && inspecting && (
+        <InspectionCancel label={words.cancel} onCancel={cancel} />
+      )}
       <Timer
         scramble={shownScramble}
         event={event}

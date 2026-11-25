@@ -359,3 +359,16 @@ main > [data-part="entry"]:has([data-part="cubes-solved"]) {
     row-gap: var(--s2);
   }
 }
+
+/* Keep Multi-Blind's form above the figure on a touch phone. Long attempts
+   can scroll when the space above the centred time is too short. */
+main[data-touch-phone]:has(> output[data-part="time"]):has(
+  > [data-part="entry"] [data-part="cubes-solved"]
+) {
+  --phone-air-row: minmax(min-content, var(--phone-time-room, 1fr));
+}
+main[data-touch-phone]:has(> output[data-part="time"])
+  > [data-part="entry"]:has([data-part="cubes-solved"]) {
+  grid-area: air;
+  align-self: end;
+}

@@ -389,7 +389,11 @@ export function Progress({
               data-session-id={session.id}
               aria-pressed={session.id === selected?.id && mode === "session"}
               // The bare count is read with its unit: "3×3, 60 solves".
-              aria-label={`${session.name}, ${labels.solveCount(count)}`}
+              aria-label={
+                count > 0
+                  ? `${session.name}, ${labels.solveCount(count)}`
+                  : undefined
+              }
               onClick={() => {
                 setSelection(session.id);
                 setMode("session");
@@ -398,9 +402,11 @@ export function Progress({
               }}
             >
               <span data-part="progress-event-name">{session.name}</span>{" "}
-              <data data-part="progress-event-count" value={count}>
-                {numbers.format(count)}
-              </data>
+              {count > 0 && (
+                <data data-part="progress-event-count" value={count}>
+                  {numbers.format(count)}
+                </data>
+              )}
             </button>
           ))}
         </nav>

@@ -283,6 +283,20 @@ export const SolveList = memo(function SolveList({
       // than the room (a comment on a phone's short file) keeps its number and time.
       const box = element.getBoundingClientRect();
       const at = row.getBoundingClientRect();
+      if (row.hasAttribute("data-selected") && isTouchPhone()) {
+        // Keep a range together when it fits. For a longer range, follow its active line.
+        const selection = element.querySelectorAll("li[data-selected]");
+        const first = selection[selection.length - 1]?.getBoundingClientRect();
+        const last = selection[0]?.getBoundingClientRect();
+        const fits =
+          first && last && last.bottom - first.top <= box.height + 0.5;
+        const top = fits ? first.top : at.top;
+        const bottom = fits ? last.bottom : at.bottom;
+        const shift =
+          top < box.top ? top - box.top : Math.max(0, bottom - box.bottom);
+        if (Math.abs(shift) >= 0.5) element.scrollTop += shift;
+        return;
+      }
       // A phone's list holds whole lines only (its max-height is set to them): there the
       // line stands one whole line below the top, or at it when the list holds one.
       const whole = getComputedStyle(element).maxHeight !== "none";

@@ -280,16 +280,20 @@ test.describe("picking lines on a touch screen", () => {
     await held.dispatchEvent("click");
     await expect(part(page, "time-meta")).toHaveCount(0);
     await expect(moveButton(page)).toHaveText("Move 1");
+    await expect(picked.first()).toBeInViewport({ ratio: 1 });
 
     // While any are picked a tap picks another, or drops it again.
     await time("2").tap();
     await expect(picked).toHaveCount(2);
     await expect(moveButton(page)).toHaveText("Move 2");
+    await expect(picked.nth(1)).toBeInViewport({ ratio: 1 });
     await time("2").tap();
     await expect(picked).toHaveCount(1);
     await time("2").tap();
     await expect(picked).toHaveCount(2);
 
+    await page.setViewportSize({ width: 852, height: 393 });
+    await expect(picked.first()).toBeInViewport({ ratio: 0.98 });
     await page.locator('[data-action="selection-clear"]').tap();
     await expect(picked).toHaveCount(0);
     await expect(part(page, "last-actions")).not.toHaveAttribute(

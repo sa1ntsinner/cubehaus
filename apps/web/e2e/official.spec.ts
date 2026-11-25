@@ -107,6 +107,38 @@ test("Review Focus 2: Escape and a window blur cancel inspection without a solve
   }
 });
 
+test.describe("phone inspection", () => {
+  test.use({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 393, height: 852 },
+  });
+
+  test("Cancel requires an uninterrupted 600 ms hold", async ({ page }) => {
+    await openTimer(page);
+    await startInspection(page);
+    const button = page.getByRole("button", { name: "Cancel", exact: true });
+    await expect(button).toBeVisible();
+    await button.tap();
+    await expect(inspection(page)).toBeVisible();
+
+    const pointer = { pointerId: 1, pointerType: "touch", button: 0 };
+    await button.dispatchEvent("pointerdown", pointer);
+    await page.clock.runFor(300);
+    await button.dispatchEvent("pointercancel", pointer);
+    await page.clock.runFor(600);
+    await expect(inspection(page)).toBeVisible();
+
+    await button.dispatchEvent("pointerdown", pointer);
+    await page.clock.runFor(599);
+    await expect(inspection(page)).toBeVisible();
+    await page.clock.runFor(1);
+    await expect(button).toHaveCount(0);
+    await expect(part(page, "notice")).toHaveText("Inspection cancelled");
+    await expect(part(page, "solve-time")).toHaveCount(0);
+  });
+});
+
 test("9b, 4b3, 4b3a–f, 12c2, 12f (draft), E2 and H1: all 18 events show official notation or their entry form", async ({
   page,
 }) => {
